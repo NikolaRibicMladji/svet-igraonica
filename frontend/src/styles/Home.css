@@ -1,0 +1,207 @@
+/* Hero sekcija */
+.hero {
+  padding: 80px 0;
+  background: linear-gradient(135deg, #fff5f0 0%, #ffe8e0 100%);
+  overflow: hidden;
+}
+
+.hero-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 60px;
+}
+
+.hero-content {
+  flex: 1;
+}
+
+.hero-content h1 {
+  font-size: 3.5rem;
+  line-height: 1.2;
+  margin-bottom: 20px;
+  color: #2c3e50;
+}
+
+.hero-content p {
+  font-size: 1.2rem;
+  color: #5a6e7a;
+  margin-bottom: 32px;
+  max-width: 500px;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 16px;
+}
+
+.hero-image {
+  flex: 1;
+  text-align: center;
+}
+
+.hero-emoji {
+  font-size: 280px;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+/* Kako radi sekcija */
+.how-it-works {
+  padding: 80px 0;
+  background: white;
+}
+
+.section-title {
+  text-align: center;
+  font-size: 2.2rem;
+  margin-bottom: 48px;
+  color: #2c3e50;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 32px;
+}
+
+.step-card {
+  text-align: center;
+  padding: 32px;
+  background: #f8fafc;
+  border-radius: 24px;
+  position: relative;
+}
+
+.step-number {
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  width: 32px;
+  height: 32px;
+  background: #ff6b4a;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.step-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.step-card h3 {
+  margin-bottom: 12px;
+}
+
+.step-card p {
+  color: #5a6e7a;
+}
+
+/* Zašto mi sekcija */
+.why-us {
+  padding: 80px 0;
+  background: #f8fafc;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 32px;
+}
+
+.feature {
+  text-align: center;
+  padding: 24px;
+}
+
+.feature-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.feature h3 {
+  margin-bottom: 8px;
+}
+
+.feature p {
+  color: #5a6e7a;
+  font-size: 0.9rem;
+}
+
+/* CTA sekcija */
+.cta {
+  padding: 80px 0;
+  background: linear-gradient(135deg, #ff6b4a 0%, #e85a3a 100%);
+  text-align: center;
+}
+
+.cta-container h2 {
+  color: white;
+  margin-bottom: 16px;
+}
+
+.cta-container p {
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 32px;
+  font-size: 1.1rem;
+}
+
+.cta-container .btn-primary {
+  background: white;
+  color: #ff6b4a;
+}
+
+.cta-container .btn-primary:hover {
+  transform: translateY(-2px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero {
+    padding: 40px 0;
+  }
+
+  .hero-container {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .hero-content h1 {
+    font-size: 2.2rem;
+  }
+
+  .hero-content p {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-buttons {
+    justify-content: center;
+  }
+
+  .hero-emoji {
+    font-size: 180px;
+  }
+
+  .section-title {
+    font-size: 1.8rem;
+  }
+
+  .steps,
+  .features {
+    grid-template-columns: 1fr;
+  }
+}

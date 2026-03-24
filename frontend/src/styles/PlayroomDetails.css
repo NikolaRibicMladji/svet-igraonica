@@ -1,0 +1,236 @@
+.playroom-details {
+  padding: 40px 0;
+}
+
+.btn-back {
+  background: none;
+  border: none;
+  color: #2196f3;
+  font-size: 16px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  padding: 0;
+}
+
+.btn-back:hover {
+  text-decoration: underline;
+}
+
+.details-card {
+  background: white;
+  border-radius: 15px;
+  padding: 30px;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+}
+
+.details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.details-header h1 {
+  margin: 0;
+  color: #333;
+}
+
+.rating {
+  background-color: #ff9800;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.details-location {
+  color: #666;
+  margin-bottom: 20px;
+  font-size: 16px;
+}
+
+.details-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 25px;
+}
+
+.info-item {
+  color: #555;
+}
+
+.details-description h3,
+.details-price h3,
+.details-features h3,
+.details-working-hours h3 {
+  margin: 20px 0 15px;
+  color: #333;
+}
+
+.details-description p {
+  line-height: 1.6;
+  color: #666;
+}
+
+.price-list {
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+.price-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.price-item:last-child {
+  border-bottom: none;
+}
+
+.price-item span:first-child {
+  color: #666;
+}
+
+.price-item strong {
+  color: #4caf50;
+  font-size: 18px;
+}
+
+.features-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.feature-badge {
+  background-color: #e8f5e9;
+  color: #4caf50;
+  padding: 8px 15px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.hours-list {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+.hour-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.hour-item:last-child {
+  border-bottom: none;
+}
+
+.day {
+  font-weight: bold;
+  color: #333;
+}
+
+.btn-book-large {
+  width: 100%;
+  background-color: #ff9800;
+  color: white;
+  padding: 15px;
+  border: none;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 30px;
+  transition: background-color 0.3s ease;
+}
+
+.btn-book-large:hover {
+  background-color: #e68900;
+}
+
+/* RESPONZIVNOST - TABLETI */
+@media (max-width: 768px) {
+  .details-card {
+    padding: 20px;
+  }
+
+  .details-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .details-info-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .features-list {
+    gap: 8px;
+  }
+
+  .feature-badge {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+/* RESPONZIVNOST - MOBILNI */
+@media (max-width: 480px) {
+  .playroom-details {
+    padding: 20px 0;
+  }
+
+  .details-card {
+    padding: 15px;
+  }
+
+  .details-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .details-header h1 {
+    font-size: 1.3rem;
+  }
+
+  .rating {
+    font-size: 12px;
+    padding: 3px 8px;
+  }
+
+  .details-location {
+    font-size: 14px;
+  }
+
+  .price-item {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .price-item strong {
+    font-size: 16px;
+  }
+
+  .hour-item {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .btn-book-large {
+    padding: 12px;
+    font-size: 16px;
+  }
+
+  .btn-back {
+    font-size: 14px;
+  }
+}
