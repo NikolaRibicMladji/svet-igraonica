@@ -23,6 +23,7 @@ app.use("/api/playrooms", require("./routes/playroomRoutes"));
 app.use("/api/timeslots", require("./routes/timeSlotRoutes"));
 app.use("/api/bookings", require("./routes/bookingRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
+app.use("/api/upload", require("./routes/uploadRoutes"));
 
 // Test ruta
 app.get("/", (req, res) => {

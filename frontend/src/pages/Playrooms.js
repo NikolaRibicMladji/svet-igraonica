@@ -1,122 +1,141 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { getAllPlayrooms } from "../services/playroomService";
+import { Link } from "react-router-dom";
+import { getMyPlayrooms, deletePlayroom } from "../services/playroomService";
+import { useAuth } from "../context/AuthContext";
 import "../styles/Playrooms.css";
 
-const Playrooms = () => {
+const MyPlayrooms = () => {
+  const { user } = useAuth();
   const [playrooms, setPlayrooms] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("");
-  const navigate = useNavigate();
 
   useEffect(() => {
-    loadPlayrooms();
+    loadMyPlayrooms();
   }, []);
 
-  const loadPlayrooms = async () => {
+  const loadMyPlayrooms = async () => {
     setLoading(true);
-    const result = await getAllPlayrooms();
+    const result = await getMyPlayrooms();
     if (result.success) {
       setPlayrooms(result.data);
     }
     setLoading(false);
   };
 
-  const filteredPlayrooms = playrooms.filter(
-    (playroom) =>
-      playroom.naziv.toLowerCase().includes(filter.toLowerCase()) ||
-      playroom.grad.toLowerCase().includes(filter.toLowerCase()),
-  );
-
-  const handleViewDetails = (id) => {
-    navigate(`/playrooms/${id}`);
-  };
-
-  const handleBook = (id) => {
-    navigate(`/book/${id}`);
+  const handleDelete = async (id) => {
+    if (
+      window.confirm("Da li ste sigurni da želite da obrišete ovu igraonicu?")
+    ) {
+      const result = await deletePlayroom(id);
+      if (result.success) {
+        loadMyPlayrooms();
+      } else {
+        alert(result.error);
+      }
+    }
   };
 
   if (loading) {
-    return <div className="container loading">Učitavanje igraonica...</div>;
+    return <div className="container loading">Učitavanje...</div>;
   }
 
   return (
     <div className="container playrooms-page">
-      <h1>Sve igraonice</h1>
-      <p>Pronađite savršeno mesto za igru vašeg deteta</p>
-
-      <div className="search-bar">
-        <input
-          type="text"
-          placeholder="Pretraži po nazivu ili gradu..."
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="search-input"
-        />
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "16px",
+          marginBottom: "30px",
+        }}
+      >
+        <h1>Moje igraonice</h1>
+        <Link to="/create-playroom" className="btn btn-primary">
+          + Dodaj novu igraonicu
+        </Link>
       </div>
 
-      {filteredPlayrooms.length === 0 ? (
+      {playrooms.length === 0 ? (
         <div className="empty-state">
-          <h3>Nema pronađenih igraonica</h3>
-          <p>Pokušajte sa drugim terminom za pretragu.</p>
+          <h3>Još niste dodali nijednu igraonicu</h3>
+          <p>Kliknite na dugme iznad da dodate vašu prvu igraonicu!</p>
         </div>
       ) : (
         <div className="playrooms-grid">
-          {filteredPlayrooms.map((playroom) => (
-            <div key={playroom._id} className="playroom-card">
-              <div className="playroom-image">🎪</div>
-              <div className="playroom-info">
-                <h2>{playroom.naziv}</h2>
-                <div className="playroom-location">
-                  📍 {playroom.adresa}, {playroom.grad}
-                </div>
-                <div className="playroom-price">
-                  {playroom.cenovnik?.osnovni} RSD <span>/ po detetu</span>
-                </div>
-                <div className="playroom-features">
-                  {playroom.pogodnosti?.slice(0, 3).map((feature, index) => {
-                    const featureNames = {
-                      animatori: "🎭 Animatori",
-                      kafic: "☕ Kafić",
-                      parking: "🅿️ Parking",
-                      rođendani: "🎂 Rođendani",
-                      wifi: "📶 WiFi",
-                      trampoline: "🤸 Trampoline",
-                      kliziste: "⛸️ Klizalište",
-                    };
-                    return (
-                      <span key={index} className="feature-tag">
-                        {featureNames[feature] || feature}
-                      </span>
-                    );
-                  })}
-                  {playroom.pogodnosti?.length > 3 && (
-                    <span className="feature-tag">
-                      +{playroom.pogodnosti.length - 3}
-                    </span>
+          {playrooms.map((playroom) => {
+            // Pronađi prvu sliku (glavnu ili prvu u nizu)
+            const mainImage =
+              playroom.slike && playroom.slike.length > 0
+                ? playroom.slike.find((img) => img.isMain) || playroom.slike[0]
+                : null;
+
+            return (
+              <div key={playroom._id} className="playroom-card">
+                <div className="playroom-image">
+                  {mainImage ? (
+                    <img src={mainImage.url} alt={playroom.naziv} />
+                  ) : (
+                    <div className="no-image">🎪</div>
                   )}
                 </div>
-                <div className="card-buttons">
-                  <button
-                    className="btn-view"
-                    onClick={() => handleViewDetails(playroom._id)}
+                <div className="playroom-info">
+                  <h2>{playroom.naziv}</h2>
+                  <div className="playroom-location">
+                    📍 {playroom.adresa}, {playroom.grad}
+                  </div>
+                  <div className="playroom-price">
+                    {playroom.cenovnik?.osnovni} RSD <span>/ po detetu</span>
+                  </div>
+                  <div className="playroom-features">
+                    <span
+                      className={`feature-tag ${playroom.verifikovan ? "verified" : "pending"}`}
+                    >
+                      {playroom.verifikovan
+                        ? "✅ Verifikovano"
+                        : "⏳ Čeka verifikaciju"}
+                    </span>
+                    <span className="feature-tag">
+                      👥 {playroom.kapacitet} dece
+                    </span>
+                    {playroom.slike && playroom.slike.length > 0 && (
+                      <span className="feature-tag">
+                        📸 {playroom.slike.length} slika
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    style={{ display: "flex", gap: "10px", marginTop: "15px" }}
                   >
-                    Detalji
-                  </button>
-                  <button
-                    className="btn-book"
-                    onClick={() => handleBook(playroom._id)}
-                  >
-                    Rezerviši
-                  </button>
+                    <button
+                      className="btn-view"
+                      onClick={() =>
+                        (window.location.href = `/playrooms/${playroom._id}`)
+                      }
+                    >
+                      Pregled
+                    </button>
+                    <button
+                      className="btn-danger"
+                      style={{
+                        padding: "10px",
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => handleDelete(playroom._id)}
+                    >
+                      Obriši
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
   );
 };
 
-export default Playrooms;
+export default MyPlayrooms;

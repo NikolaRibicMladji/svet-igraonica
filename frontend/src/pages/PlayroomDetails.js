@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getPlayroomById } from "../services/playroomService";
 import { useAuth } from "../context/AuthContext";
 import "../styles/PlayroomDetails.css";
+import ImageGallery from "../components/ImageGallery";
 
 const PlayroomDetails = () => {
   const { id } = useParams();
@@ -61,6 +62,11 @@ const PlayroomDetails = () => {
       </button>
 
       <div className="details-card">
+        {/* Galerija slika */}
+        <ImageGallery
+          images={playroom.slike || []}
+          playroomName={playroom.naziv}
+        />
         <div className="details-header">
           <h1>{playroom.naziv}</h1>
           <div className="rating">⭐ 5.0</div>

@@ -66,10 +66,31 @@ const PlayroomSchema = new mongoose.Schema({
   ],
   slike: [
     {
-      type: String,
-      default: [],
+      url: {
+        type: String,
+        required: true,
+      },
+      publicId: {
+        type: String,
+        required: true,
+      },
+      width: Number,
+      height: Number,
+      size: Number,
+      format: String,
+      isMain: {
+        type: Boolean,
+        default: false,
+      },
     },
   ],
+  video: {
+    url: String,
+    publicId: String,
+    duration: Number,
+    format: String,
+    thumbnail: String,
+  },
   verifikovan: {
     type: Boolean,
     default: false,
