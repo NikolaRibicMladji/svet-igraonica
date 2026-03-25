@@ -3,26 +3,11 @@ import {
   getMyTimeSlots,
   createTimeSlot,
   deleteTimeSlot,
+  generateTimeSlots,
 } from "../services/bookingService";
 import { getMyPlayrooms } from "../services/playroomService";
 import { useAuth } from "../context/AuthContext";
 import "../styles/ManageTimeSlots.css";
-import { generateTimeSlots } from "../services/bookingService";
-
-const handleGenerateSlots = async () => {
-  if (!selectedPlayroom) {
-    alert("Izaberite igraonicu");
-    return;
-  }
-
-  const result = await generateTimeSlots(selectedPlayroom);
-  if (result.success) {
-    alert(result.message);
-    loadData();
-  } else {
-    alert(result.error);
-  }
-};
 
 const ManageTimeSlots = () => {
   const { user } = useAuth();
@@ -31,6 +16,7 @@ const ManageTimeSlots = () => {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState("");
+  const [selectedPlayroom, setSelectedPlayroom] = useState("");
   const [formData, setFormData] = useState({
     playroomId: "",
     datum: "",
@@ -52,9 +38,11 @@ const ManageTimeSlots = () => {
     if (playroomsResult.success) {
       setPlayrooms(playroomsResult.data);
       if (playroomsResult.data.length > 0) {
+        const firstPlayroom = playroomsResult.data[0];
+        setSelectedPlayroom(firstPlayroom._id);
         setFormData((prev) => ({
           ...prev,
-          playroomId: playroomsResult.data[0]._id,
+          playroomId: firstPlayroom._id,
         }));
       }
     }
@@ -64,6 +52,22 @@ const ManageTimeSlots = () => {
       setTimeSlots(slotsResult.data);
     }
     setLoading(false);
+  };
+
+  // Funkcija za generisanje termina
+  const handleGenerateSlots = async () => {
+    if (!selectedPlayroom) {
+      alert("Izaberite igraonicu");
+      return;
+    }
+
+    const result = await generateTimeSlots(selectedPlayroom);
+    if (result.success) {
+      alert(result.message);
+      loadData();
+    } else {
+      alert(result.error);
+    }
   };
 
   const handleChange = (e) => {
@@ -111,6 +115,10 @@ const ManageTimeSlots = () => {
     return { text: "SLOBODAN", class: "badge-free" };
   };
 
+  if (loading) {
+    return <div className="container loading">Učitavanje...</div>;
+  }
+
   if (user?.role !== "vlasnik" && user?.role !== "admin") {
     return (
       <div className="container">
@@ -132,7 +140,7 @@ const ManageTimeSlots = () => {
           className="glass-card"
           style={{ textAlign: "center", padding: "60px" }}
         >
-          <h2>🏢 Nemate igraonica</h2>
+          <h2>🏢 Nemate igraonicu</h2>
           <p>
             Prvo morate dodati igraonicu da biste mogli da upravljate terminima.
           </p>
@@ -154,16 +162,25 @@ const ManageTimeSlots = () => {
         <div>
           <h1>📅 Upravljanje terminima</h1>
           <p className="subtitle">
-            Dodajte termine za vaše igraonice i omogućite roditeljima da
+            Dodajte termine za vašu igraonicu i omogućite roditeljima da
             rezervišu
           </p>
         </div>
-        <button
-          className={`btn ${showForm ? "btn-outline" : "btn-primary"}`}
-          onClick={() => setShowForm(!showForm)}
-        >
-          {showForm ? "✖ Zatvori" : "+ Dodaj termin"}
-        </button>
+        <div className="header-buttons">
+          <button
+            className="btn-secondary"
+            onClick={handleGenerateSlots}
+            style={{ marginRight: "12px" }}
+          >
+            🔄 Generiši termine (30 dana)
+          </button>
+          <button
+            className={`btn ${showForm ? "btn-outline" : "btn-primary"}`}
+            onClick={() => setShowForm(!showForm)}
+          >
+            {showForm ? "✖ Zatvori" : "+ Dodaj termin"}
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -275,6 +292,13 @@ const ManageTimeSlots = () => {
         <div className="glass-card empty-state">
           <p>📭 Još nemate nijedan termin.</p>
           <p>Kliknite na dugme "Dodaj termin" da kreirate prvi termin.</p>
+          <button
+            className="btn-secondary"
+            onClick={handleGenerateSlots}
+            style={{ marginTop: "16px" }}
+          >
+            🔄 Ili generišite termine za narednih 30 dana
+          </button>
         </div>
       ) : (
         <div className="slots-list">

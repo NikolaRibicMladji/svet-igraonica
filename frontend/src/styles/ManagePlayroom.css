@@ -1,0 +1,153 @@
+.manage-playroom-page {
+  padding: 40px 0;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.playroom-status {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: 40px;
+  font-weight: 600;
+}
+
+.status-badge.verified {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.pending {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.playroom-details-card {
+  background: white;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.playroom-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.playroom-details-header h2 {
+  margin: 0;
+  color: #ff6b4a;
+}
+
+.btn-edit {
+  background: #ff6b4a;
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.detail-item {
+  background: #f8fafc;
+  padding: 12px 16px;
+  border-radius: 12px;
+}
+
+.detail-item label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.detail-item p {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.detail-item.full-width {
+  grid-column: span 2;
+}
+
+.edit-form {
+  background: white;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.edit-form h2 {
+  margin-bottom: 20px;
+  color: #ff6b4a;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.btn-cancel {
+  flex: 1;
+  background: #e2e8f0;
+  color: #475569;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.btn-save {
+  flex: 1;
+  background: #ff6b4a;
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.playroom-actions {
+  margin-top: 24px;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-item.full-width {
+    grid-column: span 1;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}

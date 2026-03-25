@@ -14,10 +14,14 @@ const Navbar = () => {
     setMenuOpen(false);
   };
 
+  const closeMenu = () => {
+    setMenuOpen(false);
+  };
+
   return (
     <nav className="navbar">
       <div className="container navbar-container">
-        <Link to="/" className="navbar-logo" onClick={() => setMenuOpen(false)}>
+        <Link to="/" className="navbar-logo" onClick={closeMenu}>
           🎈 SvetIgraonica
         </Link>
 
@@ -28,49 +32,72 @@ const Navbar = () => {
         </button>
 
         <div className={`navbar-links ${menuOpen ? "open" : ""}`}>
-          <Link to="/" onClick={() => setMenuOpen(false)}>
-            Početna
+          {/* JAVNI LINKOVI */}
+          <Link to="/" onClick={closeMenu}>
+            🏠 Početna
           </Link>
-          <Link to="/playrooms" onClick={() => setMenuOpen(false)}>
-            Igraonice
+          <Link to="/playrooms" onClick={closeMenu}>
+            🎯 Igraonice
           </Link>
 
-          {isAuthenticated ? (
-            <>
-              <div className="user-menu">
-                <span className="user-name">👋 {user?.ime}</span>
-                {user?.role === "roditelj" && (
-                  <Link to="/my-bookings" onClick={() => setMenuOpen(false)}>
-                    Moje rezervacije
-                  </Link>
-                )}
-                {user?.role === "vlasnik" && (
-                  <>
-                    <Link to="/my-playrooms">Moje igraonice</Link>
-                    <Link to="/owner-slots">📅 Pregled termina</Link>
-                    <Link to="/manage-slots">➕ Upravljanje terminima</Link>
-                    <Link to="/create-playroom">✨ Dodaj igraonicu</Link>
-                  </>
-                )}
-                {user?.role === "admin" && (
-                  <Link to="/admin" onClick={() => setMenuOpen(false)}>
-                    Admin panel
-                  </Link>
-                )}
-                <button onClick={handleLogout} className="logout-link">
-                  Odjava
-                </button>
-              </div>
-            </>
-          ) : (
+          {!isAuthenticated ? (
             <div className="auth-links">
-              <Link to="/login" className="btn-login">
-                Prijava
+              <Link to="/login" className="btn-login" onClick={closeMenu}>
+                🔑 Prijava
               </Link>
-              <Link to="/register" className="btn-register">
-                Registracija
+              <Link to="/register" className="btn-register" onClick={closeMenu}>
+                📝 Registracija
               </Link>
             </div>
+          ) : (
+            <>
+              <div className="user-badge">
+                <span className="user-avatar">👤</span>
+                <span className="user-name">{user?.ime}</span>
+                <span className="user-role">
+                  {user?.role === "roditelj"
+                    ? "Roditelj"
+                    : user?.role === "vlasnik"
+                      ? "Vlasnik"
+                      : "Admin"}
+                </span>
+              </div>
+
+              {/* RODITELJ */}
+              {user?.role === "roditelj" && (
+                <Link to="/my-bookings" onClick={closeMenu}>
+                  📋 Moje rezervacije
+                </Link>
+              )}
+
+              {/* VLASNIK - BEZ "MOJE IGRAONICE" - DIREKTNO UPRAVLJANJE */}
+              {user?.role === "vlasnik" && (
+                <>
+                  <Link to="/manage-playroom" onClick={closeMenu}>
+                    🏢 Moja igraonica
+                  </Link>
+                  <Link to="/manage-slots" onClick={closeMenu}>
+                    📅 Upravljanje terminima
+                  </Link>
+                </>
+              )}
+
+              {/* ADMIN */}
+              {user?.role === "admin" && (
+                <>
+                  <Link to="/admin" onClick={closeMenu}>
+                    ⚙️ Admin panel
+                  </Link>
+                  <Link to="/all-playrooms" onClick={closeMenu}>
+                    🏢 Sve igraonice
+                  </Link>
+                </>
+              )}
+
+              <button onClick={handleLogout} className="logout-btn">
+                🚪 Odjava
+              </button>
+            </>
           )}
         </div>
       </div>

@@ -1,74 +1,151 @@
+/* ============================================
+   NAVBAR - GLAVNI KONTEJNER
+============================================ */
 .navbar {
-  background: white;
-  border-bottom: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
   position: sticky;
   top: 0;
   z-index: 1000;
-  padding: 16px 0;
+  padding: 14px 0;
+  transition: all 0.3s ease;
 }
 
 .navbar-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
 }
 
+/* ============================================
+   LOGO
+============================================ */
 .navbar-logo {
   font-size: 1.5rem;
-  font-weight: 700;
-  color: #ff6b4a;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ff6b4a 0%, #ff8c6e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   text-decoration: none;
   letter-spacing: -0.5px;
+  transition: opacity 0.2s;
 }
 
 .navbar-logo:hover {
-  color: #e85a3a;
+  opacity: 0.9;
+  -webkit-text-fill-color: transparent;
 }
 
+/* ============================================
+   NAV LINKOVI
+============================================ */
 .navbar-links {
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: 28px;
 }
 
 .navbar-links > a {
   color: #4a5568;
   text-decoration: none;
   font-weight: 500;
-  transition: color 0.2s;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  padding: 8px 4px;
+  position: relative;
+}
+
+.navbar-links > a::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(135deg, #ff6b4a, #ff8c6e);
+  transition: width 0.3s ease;
+}
+
+.navbar-links > a:hover::after {
+  width: 100%;
 }
 
 .navbar-links > a:hover {
   color: #ff6b4a;
 }
 
-.user-menu {
+/* ============================================
+   USER BADGE (KOMBINOVANI PRIKAZ)
+============================================ */
+.user-badge {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 8px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 107, 74, 0.08),
+    rgba(255, 140, 110, 0.05)
+  );
+  padding: 6px 16px 6px 12px;
+  border-radius: 40px;
+  transition: all 0.2s ease;
+}
+
+.user-badge:hover {
+  background: rgba(255, 107, 74, 0.12);
+  transform: translateY(-1px);
+}
+
+.user-avatar {
+  font-size: 1.1rem;
 }
 
 .user-name {
-  font-weight: 500;
-  color: #2c3e50;
-  background: #f7fafc;
-  padding: 6px 12px;
-  border-radius: 8px;
+  font-weight: 600;
+  color: #ff6b4a;
+  font-size: 0.9rem;
 }
 
-.logout-link {
-  background: none;
+.user-role {
+  font-size: 0.65rem;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+/* ============================================
+   DUGME ZA ODJAVU
+============================================ */
+.logout-btn {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+  color: white;
   border: none;
-  color: #e74c3c;
+  padding: 8px 20px;
+  border-radius: 40px;
   cursor: pointer;
-  font-weight: 500;
-  font-size: 1rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(244, 67, 54, 0.2);
 }
 
-.logout-link:hover {
-  color: #c0392b;
+.logout-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(244, 67, 54, 0.3);
+  background: linear-gradient(135deg, #d32f2f, #c62828);
 }
 
+/* ============================================
+   AUTH LINKOVI (PRIJAVA/REGISTRACIJA)
+============================================ */
 .auth-links {
   display: flex;
   gap: 12px;
@@ -76,40 +153,55 @@
 
 .btn-login,
 .btn-register {
-  padding: 8px 20px;
-  border-radius: 8px;
+  padding: 8px 24px;
+  border-radius: 40px;
   text-decoration: none;
-  font-weight: 500;
-  transition: all 0.2s;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
 }
 
 .btn-login {
   background: transparent;
   color: #ff6b4a;
-  border: 1px solid #ff6b4a;
+  border: 2px solid #ff6b4a;
 }
 
 .btn-login:hover {
   background: #ff6b4a;
   color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 74, 0.3);
 }
 
 .btn-register {
-  background: #ff6b4a;
+  background: linear-gradient(135deg, #ff6b4a, #ff8c6e);
   color: white;
+  border: none;
 }
 
 .btn-register:hover {
-  background: #e85a3a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 74, 0.3);
+  background: linear-gradient(135deg, #e85a3a, #ff7a5a);
 }
 
+/* ============================================
+   HAMBURGER MENI (MOBILNI)
+============================================ */
 .hamburger {
   display: none;
   flex-direction: column;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 5px;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.hamburger:hover {
+  background: rgba(255, 107, 74, 0.1);
 }
 
 .hamburger span {
@@ -117,10 +209,34 @@
   height: 2px;
   background: #ff6b4a;
   margin: 3px 0;
-  transition: 0.2s;
+  transition: all 0.3s ease;
+  border-radius: 2px;
 }
 
+.hamburger.open span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+
+.hamburger.open span:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger.open span:nth-child(3) {
+  transform: rotate(-45deg) translate(7px, -6px);
+}
+
+/* ============================================
+   RESPONZIVNOST - TABLETI I MOBILNI
+============================================ */
 @media (max-width: 768px) {
+  .navbar {
+    padding: 12px 0;
+  }
+
+  .navbar-container {
+    padding: 0 16px;
+  }
+
   .hamburger {
     display: flex;
   }
@@ -128,34 +244,112 @@
   .navbar-links {
     display: none;
     position: absolute;
-    top: 70px;
+    top: 65px;
     left: 0;
     right: 0;
     background: white;
     flex-direction: column;
-    padding: 24px;
-    gap: 20px;
+    padding: 24px 20px;
+    gap: 16px;
     border-bottom: 1px solid #e2e8f0;
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 20px 30px -12px rgba(0, 0, 0, 0.1);
+    animation: slideDown 0.3s ease;
   }
 
   .navbar-links.open {
     display: flex;
   }
 
-  .user-menu {
-    flex-direction: column;
+  .navbar-links > a {
     width: 100%;
-    gap: 16px;
+    text-align: center;
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .navbar-links > a::after {
+    display: none;
+  }
+
+  .navbar-links > a:hover {
+    background: rgba(255, 107, 74, 0.1);
+  }
+
+  .user-badge {
+    width: 100%;
+    justify-content: center;
+    padding: 10px;
+    margin: 4px 0;
+  }
+
+  .logout-btn {
+    width: 100%;
+    text-align: center;
+    padding: 12px;
+    margin-top: 8px;
   }
 
   .auth-links {
     flex-direction: column;
     width: 100%;
+    gap: 12px;
   }
 
   .btn-login,
   .btn-register {
     text-align: center;
+    padding: 12px;
+    width: 100%;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   DODATNE ANIMACIJE
+============================================ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   MOBILNI (MANJI OD 480px)
+============================================ */
+@media (max-width: 480px) {
+  .navbar-logo {
+    font-size: 1.2rem;
+  }
+
+  .navbar-links {
+    top: 60px;
+    padding: 20px 16px;
+    gap: 12px;
+  }
+
+  .user-badge {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .user-name {
+    font-size: 0.85rem;
+  }
+
+  .user-role {
+    font-size: 0.6rem;
   }
 }

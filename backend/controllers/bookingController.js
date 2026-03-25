@@ -5,6 +5,7 @@ const User = require("../models/User"); // DODATO
 const {
   sendBookingConfirmation,
   sendBookingCancellation,
+  sendBookingConfirmationToOwner,
 } = require("../utils/emailService"); // DODATO
 
 // @desc    Kreiraj novu rezervaciju (dinamički termin)
@@ -66,20 +67,33 @@ exports.createBooking = async (req, res) => {
 
     console.log(`✅ Rezervacija kreirana: ${booking._id}`);
 
-    // ========== POŠALJI EMAIL POTVRDU ==========
+    // ========== POŠALJI EMAIL RODITELJU ==========
     try {
       const user = await User.findById(req.user.id);
-      const timeSlot = {
-        datum: new Date(datum),
-        vremeOd,
-        vremeDo,
-      };
+      const timeSlot = { datum: new Date(datum), vremeOd, vremeDo };
 
       await sendBookingConfirmation(booking, user, playroom, timeSlot);
-      console.log(`📧 Email potvrda poslata na ${user.email}`);
+      console.log(`📧 Email roditelju poslat na ${user.email}`);
     } catch (emailError) {
-      console.error("Greška pri slanju emaila:", emailError);
-      // Ne prekidamo proces ako email ne uspe
+      console.error("Greška pri slanju emaila roditelju:", emailError);
+    }
+
+    // ========== POŠALJI EMAIL VLASNIKU ==========
+    try {
+      const vlasnik = await User.findById(playroom.vlasnikId);
+      const roditelj = await User.findById(req.user.id);
+      const timeSlot = { datum: new Date(datum), vremeOd, vremeDo };
+
+      await sendBookingConfirmationToOwner(
+        booking,
+        roditelj,
+        playroom,
+        timeSlot,
+        vlasnik,
+      );
+      console.log(`📧 Email vlasniku poslat na ${vlasnik.email}`);
+    } catch (emailError) {
+      console.error("Greška pri slanju emaila vlasniku:", emailError);
     }
 
     res.status(201).json({

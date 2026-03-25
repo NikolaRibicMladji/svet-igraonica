@@ -42,6 +42,20 @@ export const createPlayroom = async (playroomData) => {
   }
 };
 
+// Ažuriraj igraonicu (samo vlasnik)
+export const updatePlayroom = async (id, playroomData) => {
+  try {
+    const response = await api.put(`/playrooms/${id}`, playroomData);
+    return { success: true, data: response.data.data };
+  } catch (error) {
+    console.error("Greška pri ažuriranju igraonice:", error);
+    return {
+      success: false,
+      error: error.response?.data?.message || "Greška pri ažuriranju igraonice",
+    };
+  }
+};
+
 // Dohvati moje igraonice (vlasnik)
 export const getMyPlayrooms = async () => {
   try {
