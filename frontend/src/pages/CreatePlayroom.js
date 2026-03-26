@@ -10,6 +10,7 @@ const CreatePlayroom = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Osnovni podaci
   const [formData, setFormData] = useState({
     naziv: "",
     adresa: "",
@@ -17,35 +18,35 @@ const CreatePlayroom = () => {
     opis: "",
     kontaktTelefon: "",
     kontaktEmail: "",
-    kapacitet: "",
-    cenovnik: {
-      osnovni: "",
-      poRoditelju: "",
-      produzeno: "",
-      vikend: "",
+    kapacitet: {
+      deca: "",
+      roditelji: "",
     },
+    osnovnaCena: "",
   });
 
-  // Fiksni paketi
-  const [fiksniPaketi, setFiksniPaketi] = useState([]);
-  const [noviPaket, setNoviPaket] = useState({
+  // Dinamičke liste
+  const [cene, setCene] = useState([]);
+  const [novaCena, setNovaCena] = useState({ naziv: "", cena: "", opis: "" });
+
+  const [paketi, setPaketi] = useState([]);
+  const [noviPaket, setNoviPaket] = useState({ naziv: "", cena: "", opis: "" });
+
+  const [dodatneUsluge, setDodatneUsluge] = useState([]);
+  const [novaUsluga, setNovaUsluga] = useState({
     naziv: "",
     cena: "",
     opis: "",
+    tip: "fiksno",
   });
 
-  // OPCIONE POGODNOSTI - vlasnik unosi
-  const [opcije, setOpcije] = useState([]);
-  const [novaOpcija, setNovaOpcija] = useState({
-    naziv: "",
-    cena: "",
-    opis: "",
-    tip: "po_osobi",
-  });
-
-  // Besplatne pogodnosti (tekstualne)
-  const [pogodnosti, setPogodnosti] = useState([]);
+  const [besplatnePogodnosti, setBesplatnePogodnosti] = useState([]);
   const [novaPogodnost, setNovaPogodnost] = useState("");
+
+  // Slike
+  const [profilnaSlika, setProfilnaSlika] = useState(null);
+  const [slike, setSlike] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
   // Radno vreme
   const [radnoVreme, setRadnoVreme] = useState({
@@ -60,20 +61,21 @@ const CreatePlayroom = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
     if (name.includes(".")) {
       const [parent, child] = name.split(".");
-      setFormData({
-        ...formData,
+      setFormData((prev) => ({
+        ...prev,
         [parent]: {
-          ...formData[parent],
+          ...prev[parent],
           [child]: value,
         },
-      });
+      }));
     } else {
-      setFormData({
-        ...formData,
+      setFormData((prev) => ({
+        ...prev,
         [name]: value,
-      });
+      }));
     }
   };
 
@@ -97,11 +99,30 @@ const CreatePlayroom = () => {
     });
   };
 
-  // Dodavanje fiksnog paketa
+  // Dodavanje cene
+  const handleAddCena = () => {
+    if (novaCena.naziv.trim() && novaCena.cena) {
+      setCene([
+        ...cene,
+        {
+          naziv: novaCena.naziv.trim(),
+          cena: parseInt(novaCena.cena),
+          opis: novaCena.opis || "",
+        },
+      ]);
+      setNovaCena({ naziv: "", cena: "", opis: "" });
+    }
+  };
+
+  const handleRemoveCena = (index) => {
+    setCene(cene.filter((_, i) => i !== index));
+  };
+
+  // Dodavanje paketa
   const handleAddPaket = () => {
     if (noviPaket.naziv.trim() && noviPaket.cena) {
-      setFiksniPaketi([
-        ...fiksniPaketi,
+      setPaketi([
+        ...paketi,
         {
           naziv: noviPaket.naziv.trim(),
           cena: parseInt(noviPaket.cena),
@@ -113,39 +134,72 @@ const CreatePlayroom = () => {
   };
 
   const handleRemovePaket = (index) => {
-    setFiksniPaketi(fiksniPaketi.filter((_, i) => i !== index));
+    setPaketi(paketi.filter((_, i) => i !== index));
   };
 
-  // Dodavanje opcione pogodnosti
-  const handleAddOpcija = () => {
-    if (novaOpcija.naziv.trim() && novaOpcija.cena) {
-      setOpcije([
-        ...opcije,
+  // Dodavanje dodatne usluge
+  const handleAddUsluga = () => {
+    if (novaUsluga.naziv.trim() && novaUsluga.cena) {
+      setDodatneUsluge([
+        ...dodatneUsluge,
         {
-          naziv: novaOpcija.naziv.trim(),
-          cena: parseInt(novaOpcija.cena),
-          opis: novaOpcija.opis || "",
-          tip: novaOpcija.tip,
+          naziv: novaUsluga.naziv.trim(),
+          cena: parseInt(novaUsluga.cena),
+          opis: novaUsluga.opis || "",
+          tip: novaUsluga.tip,
         },
       ]);
-      setNovaOpcija({ naziv: "", cena: "", opis: "", tip: "po_osobi" });
+      setNovaUsluga({ naziv: "", cena: "", opis: "", tip: "fiksno" });
     }
   };
 
-  const handleRemoveOpcija = (index) => {
-    setOpcije(opcije.filter((_, i) => i !== index));
+  const handleRemoveUsluga = (index) => {
+    setDodatneUsluge(dodatneUsluge.filter((_, i) => i !== index));
   };
 
   // Dodavanje besplatne pogodnosti
   const handleAddPogodnost = () => {
     if (novaPogodnost.trim()) {
-      setPogodnosti([...pogodnosti, novaPogodnost.trim()]);
+      setBesplatnePogodnosti([...besplatnePogodnosti, novaPogodnost.trim()]);
       setNovaPogodnost("");
     }
   };
 
   const handleRemovePogodnost = (index) => {
-    setPogodnosti(pogodnosti.filter((_, i) => i !== index));
+    setBesplatnePogodnosti(besplatnePogodnosti.filter((_, i) => i !== index));
+  };
+
+  // Upload slike
+  const uploadImage = async (file, isProfilna = false) => {
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const response = await fetch("http://localhost:5000/api/upload/temp", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: formData,
+      });
+      const data = await response.json();
+      if (data.success) {
+        if (isProfilna) {
+          setProfilnaSlika(data.data);
+        } else {
+          setSlike([...slike, data.data]);
+        }
+      }
+    } catch (error) {
+      console.error("Greška pri uploadu:", error);
+    }
+  };
+
+  const handleFileChange = (e, isProfilna = false) => {
+    const file = e.target.files[0];
+    if (file) {
+      uploadImage(file, isProfilna);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -155,28 +209,31 @@ const CreatePlayroom = () => {
 
     const playroomData = {
       ...formData,
-      kapacitet: parseInt(formData.kapacitet),
-      cenovnik: {
-        osnovni: parseInt(formData.cenovnik.osnovni),
-        poRoditelju: formData.cenovnik.poRoditelju
-          ? parseInt(formData.cenovnik.poRoditelju)
+      kapacitet: {
+        deca: parseInt(formData.kapacitet.deca),
+        roditelji: formData.kapacitet.roditelji
+          ? parseInt(formData.kapacitet.roditelji)
           : 0,
-        produzeno: formData.cenovnik.produzeno
-          ? parseInt(formData.cenovnik.produzeno)
-          : 0,
-        vikend: formData.cenovnik.vikend
-          ? parseInt(formData.cenovnik.vikend)
-          : 0,
-        fiksniPaketi: fiksniPaketi,
       },
-      opcije: opcije,
-      pogodnosti: pogodnosti,
+      osnovnaCena: parseInt(formData.osnovnaCena),
+      cene: cene,
+      paketi: paketi,
+      dodatneUsluge: dodatneUsluge,
+      besplatnePogodnosti: besplatnePogodnosti,
+      profilnaSlika: profilnaSlika,
+      slike: slike,
       radnoVreme: {},
     };
 
     for (const [dan, vreme] of Object.entries(radnoVreme)) {
       if (vreme.radi) {
-        playroomData.radnoVreme[dan] = { od: vreme.od, do: vreme.do };
+        playroomData.radnoVreme[dan] = {
+          od: vreme.od,
+          do: vreme.do,
+          radi: true,
+        };
+      } else {
+        playroomData.radnoVreme[dan] = { radi: false };
       }
     }
 
@@ -289,205 +346,277 @@ const CreatePlayroom = () => {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Kapacitet */}
+          <div className="form-section">
+            <h3>👥 Kapacitet</h3>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Kapacitet dece *</label>
+                <input
+                  type="number"
+                  name="kapacitet.deca"
+                  value={formData.kapacitet?.deca || ""}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Kapacitet roditelja (opciono)</label>
+                <input
+                  type="number"
+                  name="kapacitet.roditelji"
+                  value={formData.kapacitet?.roditelji || ""}
+                  onChange={handleChange}
+                  placeholder="0 = neograničeno"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Slike */}
+          <div className="form-section">
+            <h3>🖼️ Slike</h3>
 
             <div className="form-group">
-              <label>Kapacitet (broj dece) *</label>
+              <label>Profilna slika (glavna slika koja se vidi na listi)</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleFileChange(e, true)}
+              />
+              {profilnaSlika && (
+                <div className="uploaded-image">
+                  <img src={profilnaSlika.url} alt="Profilna" />
+                  <span>Profilna slika postavljena</span>
+                </div>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label>
+                Ostale slike (maksimalno 10, prikazuju se na detaljima)
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleFileChange(e, false)}
+                disabled={slike.length >= 10}
+              />
+              <div className="image-list">
+                {slike.map((img, idx) => (
+                  <div key={idx} className="image-item">
+                    <img src={img.url} alt={`Slika ${idx + 1}`} />
+                  </div>
+                ))}
+                {slike.length >= 10 && (
+                  <p className="warning">Maksimalno 10 slika je dodato</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Osnovna cena */}
+          <div className="form-section">
+            <h3>💰 Osnovna cena</h3>
+            <div className="form-group">
+              <label>Osnovna cena po detetu (RSD) *</label>
               <input
                 type="number"
-                name="kapacitet"
-                value={formData.kapacitet}
+                name="osnovnaCena"
+                value={formData.osnovnaCena}
                 onChange={handleChange}
                 required
               />
             </div>
           </div>
 
-          {/* Cenovnik - detaljno */}
+          {/* Ostale cene */}
           <div className="form-section">
-            <h3>💰 Cenovnik</h3>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label>Cena po detetu (osnovna) *</label>
-                <input
-                  type="number"
-                  name="cenovnik.osnovni"
-                  value={formData.cenovnik.osnovni}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Cena po roditelju (pratilac)</label>
-                <input
-                  type="number"
-                  name="cenovnik.poRoditelju"
-                  value={formData.cenovnik.poRoditelju}
-                  onChange={handleChange}
-                  placeholder="0 = besplatno"
-                />
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label>Produženo vreme (po satu)</label>
-                <input
-                  type="number"
-                  name="cenovnik.produzeno"
-                  value={formData.cenovnik.produzeno}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="form-group">
-                <label>Vikend cena</label>
-                <input
-                  type="number"
-                  name="cenovnik.vikend"
-                  value={formData.cenovnik.vikend}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-
-            {/* Fiksni paketi */}
-            <div className="form-subsection">
-              <h4>🎁 Fiksni paketi</h4>
-              <p className="section-hint">
-                Npr. "Rođendanski paket - 5000 RSD", "Porodični paket - 3000
-                RSD"
-              </p>
-
-              <div className="fiksni-paketi-input">
-                <div className="add-paket">
-                  <input
-                    type="text"
-                    placeholder="Naziv paketa *"
-                    value={noviPaket.naziv}
-                    onChange={(e) =>
-                      setNoviPaket({ ...noviPaket, naziv: e.target.value })
-                    }
-                  />
-                  <input
-                    type="number"
-                    placeholder="Cena (RSD) *"
-                    value={noviPaket.cena}
-                    onChange={(e) =>
-                      setNoviPaket({ ...noviPaket, cena: e.target.value })
-                    }
-                  />
-                  <input
-                    type="text"
-                    placeholder="Opis (opciono)"
-                    value={noviPaket.opis}
-                    onChange={(e) =>
-                      setNoviPaket({ ...noviPaket, opis: e.target.value })
-                    }
-                  />
-                  <button type="button" onClick={handleAddPaket}>
-                    + Dodaj paket
-                  </button>
-                </div>
-                {fiksniPaketi.length > 0 && (
-                  <div className="paketi-list">
-                    {fiksniPaketi.map((paket, idx) => (
-                      <div key={idx} className="paket-item">
-                        <span>
-                          <strong>{paket.naziv}</strong> - {paket.cena} RSD
-                        </span>
-                        {paket.opis && (
-                          <span className="paket-opis">({paket.opis})</span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePaket(idx)}
-                        >
-                          ✖
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Opcione pogodnosti (roditelj bira) */}
-          <div className="form-section">
-            <h3>🎪 Opcione pogodnosti (roditelj bira pri rezervaciji)</h3>
+            <h3>💰 Ostale cene</h3>
             <p className="section-hint">
-              Dodajte dodatne sadržaje koje roditelj može da izabere i plati
-              dodatno (npr. "Dodatni animator", "Fotografisanje"...)
+              Dodajte dodatne cene (npr. "Produženo vreme", "Vikend", "Cena po
+              roditelju"...)
             </p>
 
-            <div className="opcije-input">
-              <div className="add-opcija">
+            <div className="dynamic-input">
+              <div className="add-item">
                 <input
                   type="text"
-                  placeholder="Naziv pogodnosti *"
-                  value={novaOpcija.naziv}
+                  placeholder="Naziv *"
+                  value={novaCena.naziv}
                   onChange={(e) =>
-                    setNovaOpcija({ ...novaOpcija, naziv: e.target.value })
+                    setNovaCena({ ...novaCena, naziv: e.target.value })
                   }
-                  className="opcija-input-field"
                 />
                 <input
                   type="number"
                   placeholder="Cena (RSD) *"
-                  value={novaOpcija.cena}
+                  value={novaCena.cena}
                   onChange={(e) =>
-                    setNovaOpcija({ ...novaOpcija, cena: e.target.value })
+                    setNovaCena({ ...novaCena, cena: e.target.value })
                   }
-                  className="opcija-price-field"
                 />
-                <select
-                  value={novaOpcija.tip}
-                  onChange={(e) =>
-                    setNovaOpcija({ ...novaOpcija, tip: e.target.value })
-                  }
-                  className="opcija-type-field"
-                >
-                  <option value="po_osobi">Cena po osobi</option>
-                  <option value="fiksno">Fiksna cena</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={handleAddOpcija}
-                  className="btn-add-opcija"
-                >
-                  + Dodaj
-                </button>
-              </div>
-              <div className="opcija-opis">
                 <input
                   type="text"
                   placeholder="Opis (opciono)"
-                  value={novaOpcija.opis}
+                  value={novaCena.opis}
                   onChange={(e) =>
-                    setNovaOpcija({ ...novaOpcija, opis: e.target.value })
+                    setNovaCena({ ...novaCena, opis: e.target.value })
                   }
-                  className="opcija-desc-field"
                 />
+                <button type="button" onClick={handleAddCena}>
+                  + Dodaj
+                </button>
               </div>
-
-              {opcije.length > 0 && (
-                <div className="opcije-list">
-                  {opcije.map((op, index) => (
-                    <div key={index} className="opcija-item">
-                      <div className="opcija-info">
-                        <span className="opcija-name">{op.naziv}</span>
-                        <span className="opcija-price">{op.cena} RSD</span>
-                        <span className="opcija-type">
-                          {op.tip === "po_osobi" ? "(po osobi)" : "(fiksno)"}
-                        </span>
-                        {op.opis && (
-                          <span className="opcija-desc">({op.opis})</span>
-                        )}
-                      </div>
+              {cene.length > 0 && (
+                <div className="items-list">
+                  {cene.map((item, idx) => (
+                    <div key={idx} className="item">
+                      <span>
+                        <strong>{item.naziv}</strong> - {item.cena} RSD
+                      </span>
+                      {item.opis && (
+                        <span className="item-opis">({item.opis})</span>
+                      )}
                       <button
                         type="button"
-                        onClick={() => handleRemoveOpcija(index)}
-                        className="remove-opcija"
+                        onClick={() => handleRemoveCena(idx)}
+                      >
+                        ✖
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Paketi */}
+          <div className="form-section">
+            <h3>🎁 Paketi</h3>
+            <p className="section-hint">
+              Dodajte pakete (npr. "Rođendanski paket", "Porodični paket"...)
+            </p>
+
+            <div className="dynamic-input">
+              <div className="add-item">
+                <input
+                  type="text"
+                  placeholder="Naziv paketa *"
+                  value={noviPaket.naziv}
+                  onChange={(e) =>
+                    setNoviPaket({ ...noviPaket, naziv: e.target.value })
+                  }
+                />
+                <input
+                  type="number"
+                  placeholder="Cena (RSD) *"
+                  value={noviPaket.cena}
+                  onChange={(e) =>
+                    setNoviPaket({ ...noviPaket, cena: e.target.value })
+                  }
+                />
+                <input
+                  type="text"
+                  placeholder="Opis (opciono)"
+                  value={noviPaket.opis}
+                  onChange={(e) =>
+                    setNoviPaket({ ...noviPaket, opis: e.target.value })
+                  }
+                />
+                <button type="button" onClick={handleAddPaket}>
+                  + Dodaj paket
+                </button>
+              </div>
+              {paketi.length > 0 && (
+                <div className="items-list">
+                  {paketi.map((item, idx) => (
+                    <div key={idx} className="item">
+                      <span>
+                        <strong>{item.naziv}</strong> - {item.cena} RSD
+                      </span>
+                      {item.opis && (
+                        <span className="item-opis">({item.opis})</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePaket(idx)}
+                      >
+                        ✖
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Dodatne usluge */}
+          <div className="form-section">
+            <h3>🎪 Dodatne usluge</h3>
+            <p className="section-hint">
+              Dodajte usluge koje roditelj može da izabere (npr. "Animator",
+              "Fotograf", "Torta"...)
+            </p>
+
+            <div className="dynamic-input">
+              <div className="add-item">
+                <input
+                  type="text"
+                  placeholder="Naziv usluge *"
+                  value={novaUsluga.naziv}
+                  onChange={(e) =>
+                    setNovaUsluga({ ...novaUsluga, naziv: e.target.value })
+                  }
+                />
+                <input
+                  type="number"
+                  placeholder="Cena (RSD) *"
+                  value={novaUsluga.cena}
+                  onChange={(e) =>
+                    setNovaUsluga({ ...novaUsluga, cena: e.target.value })
+                  }
+                />
+                <select
+                  value={novaUsluga.tip}
+                  onChange={(e) =>
+                    setNovaUsluga({ ...novaUsluga, tip: e.target.value })
+                  }
+                >
+                  <option value="fiksno">Fiksna cena</option>
+                  <option value="po_osobi">Cena po osobi</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Opis (opciono)"
+                  value={novaUsluga.opis}
+                  onChange={(e) =>
+                    setNovaUsluga({ ...novaUsluga, opis: e.target.value })
+                  }
+                />
+                <button type="button" onClick={handleAddUsluga}>
+                  + Dodaj
+                </button>
+              </div>
+              {dodatneUsluge.length > 0 && (
+                <div className="items-list">
+                  {dodatneUsluge.map((item, idx) => (
+                    <div key={idx} className="item">
+                      <span>
+                        <strong>{item.naziv}</strong> - {item.cena} RSD
+                      </span>
+                      <span className="item-type">
+                        {item.tip === "po_osobi" ? "(po osobi)" : "(fiksno)"}
+                      </span>
+                      {item.opis && (
+                        <span className="item-opis">({item.opis})</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveUsluga(idx)}
                       >
                         ✖
                       </button>
@@ -502,12 +631,12 @@ const CreatePlayroom = () => {
           <div className="form-section">
             <h3>✨ Besplatne pogodnosti</h3>
             <p className="section-hint">
-              Dodajte šta vaša igraonica nudi besplatno (npr. "Parking", "WiFi",
-              "Igračke"...)
+              Dodajte šta igraonica nudi besplatno (npr. "Parking", "WiFi",
+              "Kafić"...)
             </p>
 
-            <div className="pogodnosti-input">
-              <div className="add-pogodnost">
+            <div className="dynamic-input">
+              <div className="add-item-simple">
                 <input
                   type="text"
                   placeholder="Naziv pogodnosti"
@@ -518,15 +647,14 @@ const CreatePlayroom = () => {
                   + Dodaj
                 </button>
               </div>
-
-              {pogodnosti.length > 0 && (
-                <div className="pogodnosti-list">
-                  {pogodnosti.map((pog, index) => (
-                    <div key={index} className="pogodnost-item">
-                      <span>✓ {pog}</span>
+              {besplatnePogodnosti.length > 0 && (
+                <div className="items-list">
+                  {besplatnePogodnosti.map((item, idx) => (
+                    <div key={idx} className="item">
+                      <span>✓ {item}</span>
                       <button
                         type="button"
-                        onClick={() => handleRemovePogodnost(index)}
+                        onClick={() => handleRemovePogodnost(idx)}
                       >
                         ✖
                       </button>
@@ -571,6 +699,9 @@ const CreatePlayroom = () => {
                       className="time-input"
                     />
                   </div>
+                )}
+                {!radnoVreme[dan.key].radi && (
+                  <span className="closed-text">Zatvoreno</span>
                 )}
               </div>
             ))}

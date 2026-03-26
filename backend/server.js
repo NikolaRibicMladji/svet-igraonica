@@ -25,6 +25,7 @@ app.use("/api/bookings", require("./routes/bookingRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/upload", require("./routes/uploadRoutes"));
 app.use("/api/reviews", require("./routes/reviewRoutes"));
+app.use("/api/upload", require("./routes/tempUploadRoutes"));
 
 // Test ruta
 app.get("/", (req, res) => {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyPlayrooms, updatePlayroom } from "../services/playroomService";
 import { useAuth } from "../context/AuthContext";
+import PlayroomForm from "../components/PlayroomForm";
 import "../styles/ManagePlayroom.css";
 
 const ManagePlayroom = () => {
@@ -10,8 +11,8 @@ const ManagePlayroom = () => {
   const [playroom, setPlayroom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [formData, setFormData] = useState({});
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadPlayroom();
@@ -19,50 +20,18 @@ const ManagePlayroom = () => {
 
   const loadPlayroom = async () => {
     setLoading(true);
+    setError("");
     const result = await getMyPlayrooms();
     if (result.success && result.data.length > 0) {
-      const myPlayroom = result.data[0];
-      setPlayroom(myPlayroom);
-      setFormData({
-        naziv: myPlayroom.naziv,
-        adresa: myPlayroom.adresa,
-        grad: myPlayroom.grad,
-        opis: myPlayroom.opis,
-        kontaktTelefon: myPlayroom.kontaktTelefon,
-        kontaktEmail: myPlayroom.kontaktEmail,
-        kapacitet: myPlayroom.kapacitet,
-        cenovnik: {
-          osnovni: myPlayroom.cenovnik?.osnovni || "",
-        },
-      });
+      setPlayroom(result.data[0]);
     } else {
-      // Nema igraonice - vodi na kreiranje
       navigate("/create-playroom");
     }
     setLoading(false);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (name.includes(".")) {
-      const [parent, child] = name.split(".");
-      setFormData({
-        ...formData,
-        [parent]: {
-          ...formData[parent],
-          [child]: value,
-        },
-      });
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleUpdate = async (formData) => {
+    setError("");
     const result = await updatePlayroom(playroom._id, formData);
     if (result.success) {
       setMessage("Podaci su uspešno ažurirani");
@@ -70,38 +39,65 @@ const ManagePlayroom = () => {
       loadPlayroom();
       setTimeout(() => setMessage(""), 3000);
     } else {
-      alert(result.error);
+      setError(result.error || "Greška pri ažuriranju");
+      setTimeout(() => setError(""), 3000);
     }
   };
 
   if (loading) {
-    return <div className="container loading">Učitavanje...</div>;
+    return (
+      <div className="container">
+        <div className="loading-spinner">
+          <div className="spinner"></div>
+          <p>Učitavanje podataka...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!playroom) {
-    return null; // Redirect će se desiti
+    return null;
   }
 
   return (
-    <div className="container manage-playroom-page">
-      <h1>🏢 Moja igraonica</h1>
+    <div className="manage-playroom-page">
+      <div className="page-header">
+        <h1>🏢 Moja igraonica</h1>
+        <p className="page-subtitle">
+          Pregledajte i upravljajte podacima vaše igraonice
+        </p>
+      </div>
 
-      {message && <div className="success-message">{message}</div>}
+      {message && <div className="alert alert-success">{message}</div>}
+      {error && <div className="alert alert-error">{error}</div>}
 
       <div className="playroom-status">
         <div
           className={`status-badge ${playroom.verifikovan ? "verified" : "pending"}`}
         >
-          {playroom.verifikovan ? "✅ Verifikovano" : "⏳ Čeka verifikaciju"}
+          {playroom.verifikovan ? (
+            <>
+              <span className="status-icon">✅</span>
+              <span>Verifikovano</span>
+            </>
+          ) : (
+            <>
+              <span className="status-icon">⏳</span>
+              <span>Čeka verifikaciju</span>
+            </>
+          )}
         </div>
       </div>
 
       {!editing ? (
         <div className="playroom-details-card">
           <div className="playroom-details-header">
-            <h2>{playroom.naziv}</h2>
+            <div className="header-title">
+              <h2>{playroom.naziv}</h2>
+              <span className="playroom-id">ID: {playroom._id?.slice(-6)}</span>
+            </div>
             <button className="btn-edit" onClick={() => setEditing(true)}>
-              ✏️ Uredi podatke
+              <span>✏️</span> Uredi podatke
             </button>
           </div>
 
@@ -121,127 +117,163 @@ const ManagePlayroom = () => {
               <p>{playroom.kontaktEmail}</p>
             </div>
             <div className="detail-item">
-              <label>👥 Kapacitet</label>
-              <p>{playroom.kapacitet} dece</p>
+              <label>👶 Kapacitet dece</label>
+              <p>{playroom.kapacitet?.deca || 0} dece</p>
             </div>
             <div className="detail-item">
-              <label>💰 Cena po detetu</label>
-              <p>{playroom.cenovnik?.osnovni} RSD</p>
+              <label>👨‍👩‍👧 Kapacitet roditelja</label>
+              <p>
+                {playroom.kapacitet?.roditelji
+                  ? `${playroom.kapacitet.roditelji} roditelja`
+                  : "Neograničeno"}
+              </p>
             </div>
+            <div className="detail-item">
+              <label>💰 Osnovna cena</label>
+              <p>{playroom.osnovnaCena} RSD / dete</p>
+            </div>
+
+            {/* Profilna slika */}
+            {playroom.profilnaSlika?.url && (
+              <div className="detail-item full-width">
+                <label>🖼️ Profilna slika</label>
+                <div className="profile-image">
+                  <img src={playroom.profilnaSlika.url} alt="Profilna" />
+                </div>
+              </div>
+            )}
+
+            {/* Ostale slike */}
+            {playroom.slike && playroom.slike.length > 0 && (
+              <div className="detail-item full-width">
+                <label>📸 Galerija slika ({playroom.slike.length})</label>
+                <div className="gallery-images">
+                  {playroom.slike.map((img, idx) => (
+                    <div key={idx} className="gallery-image">
+                      <img src={img.url} alt={`Slika ${idx + 1}`} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Ostale cene */}
+            {playroom.cene && playroom.cene.length > 0 && (
+              <div className="detail-item full-width">
+                <label>💰 Ostale cene</label>
+                <div className="items-list">
+                  {playroom.cene.map((item, idx) => (
+                    <div key={idx} className="item-display">
+                      <span className="item-name">{item.naziv}</span>
+                      <span className="item-price">{item.cena} RSD</span>
+                      {item.opis && (
+                        <span className="item-opis">{item.opis}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Paketi */}
+            {playroom.paketi && playroom.paketi.length > 0 && (
+              <div className="detail-item full-width">
+                <label>🎁 Paketi</label>
+                <div className="items-list">
+                  {playroom.paketi.map((item, idx) => (
+                    <div key={idx} className="item-display">
+                      <span className="item-name">{item.naziv}</span>
+                      <span className="item-price">{item.cena} RSD</span>
+                      {item.opis && (
+                        <span className="item-opis">{item.opis}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Dodatne usluge */}
+            {playroom.dodatneUsluge && playroom.dodatneUsluge.length > 0 && (
+              <div className="detail-item full-width">
+                <label>🎪 Dodatne usluge</label>
+                <div className="items-list">
+                  {playroom.dodatneUsluge.map((item, idx) => (
+                    <div key={idx} className="item-display">
+                      <span className="item-name">{item.naziv}</span>
+                      <span className="item-price">{item.cena} RSD</span>
+                      <span className="item-type">
+                        {item.tip === "po_osobi" ? "po osobi" : "fiksno"}
+                      </span>
+                      {item.opis && (
+                        <span className="item-opis">{item.opis}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Besplatne pogodnosti */}
+            {playroom.besplatnePogodnosti &&
+              playroom.besplatnePogodnosti.length > 0 && (
+                <div className="detail-item full-width">
+                  <label>✨ Besplatne pogodnosti</label>
+                  <div className="free-features-list">
+                    {playroom.besplatnePogodnosti.map((item, idx) => (
+                      <span key={idx} className="free-badge">
+                        ✓ {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            {/* Radno vreme */}
+            <div className="detail-item full-width">
+              <label>⏰ Radno vreme</label>
+              <div className="working-hours">
+                {Object.entries(playroom.radnoVreme || {}).map(
+                  ([dan, vreme]) => {
+                    const dani = {
+                      ponedeljak: "Ponedeljak",
+                      utorak: "Utorak",
+                      sreda: "Sreda",
+                      cetvrtak: "Četvrtak",
+                      petak: "Petak",
+                      subota: "Subota",
+                      nedelja: "Nedelja",
+                    };
+                    return (
+                      <div key={dan} className="hour-row">
+                        <span className="day-name">{dani[dan]}:</span>
+                        {vreme?.radi === false ? (
+                          <span className="closed">Zatvoreno</span>
+                        ) : (
+                          <span className="hours">
+                            {vreme?.od || "09:00"} - {vreme?.do || "20:00"}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  },
+                )}
+              </div>
+            </div>
+
             <div className="detail-item full-width">
               <label>📝 Opis</label>
-              <p>{playroom.opis}</p>
+              <p className="description-text">{playroom.opis}</p>
             </div>
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="edit-form">
-          <h2>Uredi podatke</h2>
-
-          <div className="form-group">
-            <label>Naziv igraonice *</label>
-            <input
-              type="text"
-              name="naziv"
-              value={formData.naziv}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label>Adresa *</label>
-              <input
-                type="text"
-                name="adresa"
-                value={formData.adresa}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Grad *</label>
-              <input
-                type="text"
-                name="grad"
-                value={formData.grad}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>Opis *</label>
-            <textarea
-              name="opis"
-              rows="4"
-              value={formData.opis}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label>Kontakt telefon *</label>
-              <input
-                type="tel"
-                name="kontaktTelefon"
-                value={formData.kontaktTelefon}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Kontakt email *</label>
-              <input
-                type="email"
-                name="kontaktEmail"
-                value={formData.kontaktEmail}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label>Kapacitet (broj dece) *</label>
-              <input
-                type="number"
-                name="kapacitet"
-                value={formData.kapacitet}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Cena po detetu (RSD) *</label>
-              <input
-                type="number"
-                name="cenovnik.osnovni"
-                value={formData.cenovnik.osnovni}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-buttons">
-            <button
-              type="button"
-              className="btn-cancel"
-              onClick={() => setEditing(false)}
-            >
-              Otkaži
-            </button>
-            <button type="submit" className="btn-save">
-              Sačuvaj izmene
-            </button>
-          </div>
-        </form>
+        <PlayroomForm
+          initialData={playroom}
+          onSubmit={handleUpdate}
+          onCancel={() => setEditing(false)}
+          isEditing={true}
+        />
       )}
 
       <div className="playroom-actions">
@@ -250,6 +282,12 @@ const ManagePlayroom = () => {
           onClick={() => navigate("/manage-slots")}
         >
           📅 Upravljanje terminima
+        </button>
+        <button
+          className="btn-outline"
+          onClick={() => navigate(`/playrooms/${playroom._id}`)}
+        >
+          👁️ Pogledaj na sajtu
         </button>
       </div>
     </div>

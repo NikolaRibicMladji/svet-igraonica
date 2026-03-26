@@ -33,55 +33,39 @@ const PlayroomSchema = new mongoose.Schema({
     required: [true, "Kontakt email je obavezan"],
   },
   radnoVreme: {
-    ponedeljak: { od: String, do: String },
-    utorak: { od: String, do: String },
-    sreda: { od: String, do: String },
-    cetvrtak: { od: String, do: String },
-    petak: { od: String, do: String },
-    subota: { od: String, do: String },
-    nedelja: { od: String, do: String },
+    ponedeljak: {
+      od: String,
+      do: String,
+      radi: { type: Boolean, default: true },
+    },
+    utorak: { od: String, do: String, radi: { type: Boolean, default: true } },
+    sreda: { od: String, do: String, radi: { type: Boolean, default: true } },
+    cetvrtak: {
+      od: String,
+      do: String,
+      radi: { type: Boolean, default: true },
+    },
+    petak: { od: String, do: String, radi: { type: Boolean, default: true } },
+    subota: { od: String, do: String, radi: { type: Boolean, default: true } },
+    nedelja: { od: String, do: String, radi: { type: Boolean, default: true } },
   },
-  cenovnik: {
-    osnovni: {
+  kapacitet: {
+    deca: {
       type: Number,
-      required: [true, "Osnovna cena je obavezna"],
+      required: [true, "Kapacitet dece je obavezan"],
     },
-    poRoditelju: {
-      type: Number,
-      default: 0,
-    },
-    produzeno: {
+    roditelji: {
       type: Number,
       default: 0,
     },
-    vikend: {
-      type: Number,
-      default: 0,
-    },
-    fiksniPaketi: [
-      {
-        naziv: {
-          type: String,
-          required: true,
-        },
-        cena: {
-          type: Number,
-          required: true,
-        },
-        opis: {
-          type: String,
-          default: "",
-        },
-      },
-    ],
   },
-  pogodnosti: [
-    {
-      type: String,
-      trim: true,
-    },
-  ],
-  opcije: [
+  // Osnovna cena (po detetu) - OBAVEZNA
+  osnovnaCena: {
+    type: Number,
+    required: [true, "Osnovna cena je obavezna"],
+  },
+  // Ostale cene - vlasnik sam dodaje
+  cene: [
     {
       naziv: {
         type: String,
@@ -90,7 +74,40 @@ const PlayroomSchema = new mongoose.Schema({
       cena: {
         type: Number,
         required: true,
-        default: 0,
+      },
+      opis: {
+        type: String,
+        default: "",
+      },
+    },
+  ],
+  // Paketi (npr. Rođendanski paket)
+  paketi: [
+    {
+      naziv: {
+        type: String,
+        required: true,
+      },
+      cena: {
+        type: Number,
+        required: true,
+      },
+      opis: {
+        type: String,
+        default: "",
+      },
+    },
+  ],
+  // Dodatne usluge (npr. Animator, Tortas)
+  dodatneUsluge: [
+    {
+      naziv: {
+        type: String,
+        required: true,
+      },
+      cena: {
+        type: Number,
+        required: true,
       },
       opis: {
         type: String,
@@ -99,10 +116,22 @@ const PlayroomSchema = new mongoose.Schema({
       tip: {
         type: String,
         enum: ["po_osobi", "fiksno"],
-        default: "po_osobi",
+        default: "fiksno",
       },
     },
   ],
+  // Besplatne pogodnosti (parking, wifi, kafic...)
+  besplatnePogodnosti: [
+    {
+      type: String,
+      trim: true,
+    },
+  ],
+  // Slike
+  profilnaSlika: {
+    url: String,
+    publicId: String,
+  },
   slike: [
     {
       url: {
@@ -117,10 +146,6 @@ const PlayroomSchema = new mongoose.Schema({
       height: Number,
       size: Number,
       format: String,
-      isMain: {
-        type: Boolean,
-        default: false,
-      },
     },
   ],
   video: {
@@ -141,10 +166,6 @@ const PlayroomSchema = new mongoose.Schema({
   reviewCount: {
     type: Number,
     default: 0,
-  },
-  kapacitet: {
-    type: Number,
-    required: [true, "Kapacitet je obavezan"],
   },
   status: {
     type: String,
