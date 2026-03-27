@@ -308,15 +308,6 @@ const ManagePlayroom = () => {
           isEditing={true}
         />
       )}
-
-      <div className="playroom-actions">
-        <button
-          className="btn-secondary"
-          onClick={() => navigate("/manage-slots")}
-        >
-          📅 Upravljanje terminima
-        </button>
-      </div>
     </div>
   );
 };

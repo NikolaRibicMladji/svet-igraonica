@@ -1,4 +1,5 @@
 const Playroom = require("../models/Playroom");
+const { generateTimeSlotsForPlayroom } = require("../utils/generateTimeSlots");
 
 // @desc    Kreiraj novu igraonicu (samo vlasnici)
 // @route   POST /api/playrooms
@@ -19,9 +20,15 @@ exports.createPlayroom = async (req, res) => {
 
     const playroom = await Playroom.create(req.body);
 
+    // Automatski generiši termine za narednih 30 dana
+    console.log(`🔄 Generišem termine za ${playroom.naziv}...`);
+    const result = await generateTimeSlotsForPlayroom(playroom._id, 30);
+    console.log(`✅ Generisano ${result.createdCount} termina`);
+
     res.status(201).json({
       success: true,
       data: playroom,
+      message: `Igraonica je kreirana. ${result.createdCount} termina je automatski generisano.`,
     });
   } catch (error) {
     console.error("Greška pri kreiranju igraonice:", error);
@@ -48,11 +55,11 @@ exports.getAllPlayrooms = async (req, res) => {
       query.grad = grad;
     }
 
-    // Filter po ceni
+    // Filter po ceni (koristi osnovnaCena iz novog modela)
     if (minCena || maxCena) {
-      query["cenovnik.osnovni"] = {};
-      if (minCena) query["cenovnik.osnovni"].$gte = parseInt(minCena);
-      if (maxCena) query["cenovnik.osnovni"].$lte = parseInt(maxCena);
+      query.osnovnaCena = {};
+      if (minCena) query.osnovnaCena.$gte = parseInt(minCena);
+      if (maxCena) query.osnovnaCena.$lte = parseInt(maxCena);
     }
 
     // Filter po oceni
@@ -60,10 +67,10 @@ exports.getAllPlayrooms = async (req, res) => {
       query.rating = { $gte: parseInt(minRating) };
     }
 
-    // Filter po pogodnostima
+    // Filter po besplatnim pogodnostima
     if (pogodnosti) {
       const pogodnostiArray = pogodnosti.split(",");
-      query.pogodnosti = { $in: pogodnostiArray };
+      query.besplatnePogodnosti = { $in: pogodnostiArray };
     }
 
     // Sortiranje
@@ -71,9 +78,9 @@ exports.getAllPlayrooms = async (req, res) => {
     if (sortBy === "rating") {
       sort = { rating: -1 };
     } else if (sortBy === "price_asc") {
-      sort = { "cenovnik.osnovni": 1 };
+      sort = { osnovnaCena: 1 };
     } else if (sortBy === "price_desc") {
-      sort = { "cenovnik.osnovni": -1 };
+      sort = { osnovnaCena: -1 };
     }
 
     const playrooms = await Playroom.find(query).select("-__v").sort(sort);
@@ -108,7 +115,7 @@ exports.getPlayroomById = async (req, res) => {
       "Pronađena igraonica:",
       playroom ? playroom.naziv : "Nije pronađena",
     );
-    console.log("VideoGalerija:", playroom?.videoGalerija);
+    console.log("VideoGalerija:", playroom?.videoGalerija?.length || 0);
 
     if (!playroom) {
       return res.status(404).json({
@@ -190,14 +197,33 @@ exports.updatePlayroom = async (req, res) => {
       });
     }
 
+    // Ažuriraj igraonicu
     playroom = await Playroom.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     });
 
+    // Ako je promenjeno radno vreme, regeneriši termine
+    if (req.body.radnoVreme) {
+      console.log(
+        `🔄 Radno vreme promenjeno, regenerišem termine za ${playroom.naziv}...`,
+      );
+      const {
+        generateTimeSlotsForPlayroom,
+      } = require("../utils/generateTimeSlots");
+      const {
+        deleteAllTimeSlotsForPlayroom,
+      } = require("../utils/generateTimeSlots");
+
+      await deleteAllTimeSlotsForPlayroom(playroom._id);
+      const result = await generateTimeSlotsForPlayroom(playroom._id, 30);
+      console.log(`✅ Regenerisano ${result.createdCount} termina`);
+    }
+
     res.status(200).json({
       success: true,
       data: playroom,
+      message: "Igraonica je uspešno ažurirana",
     });
   } catch (error) {
     console.error("Greška:", error);
@@ -233,11 +259,16 @@ exports.deletePlayroom = async (req, res) => {
       });
     }
 
+    // Obriši sve termine vezane za igraonicu
+    const TimeSlot = require("../models/TimeSlot");
+    await TimeSlot.deleteMany({ playroomId: playroom._id });
+    console.log(`🗑 Obrisani svi termini za igraonicu ${playroom.naziv}`);
+
     await playroom.deleteOne();
 
     res.status(200).json({
       success: true,
-      message: "Igraonica je obrisana",
+      message: "Igraonica i svi njeni termini su obrisani",
     });
   } catch (error) {
     console.error("Greška:", error);
@@ -266,10 +297,58 @@ exports.verifyPlayroom = async (req, res) => {
     playroom.status = "aktivan";
     await playroom.save();
 
+    // Generiši termine za verifikovanu igraonicu
+    console.log(`🔄 Generišem termine za ${playroom.naziv}...`);
+    const result = await generateTimeSlotsForPlayroom(playroom._id, 30);
+    console.log(`✅ Generisano ${result.createdCount} termina`);
+
     res.status(200).json({
       success: true,
       data: playroom,
-      message: "Igraonica je verifikovana",
+      message: `Igraonica je verifikovana. ${result.createdCount} termina je automatski generisano.`,
+    });
+  } catch (error) {
+    console.error("Greška:", error);
+    res.status(500).json({
+      success: false,
+      message: "Greška na serveru",
+    });
+  }
+};
+
+// @desc    Regeneriši termine za igraonicu (ručno)
+// @route   POST /api/playrooms/:id/regenerate-slots
+// @access  Private (vlasnik)
+exports.regenerateTimeSlots = async (req, res) => {
+  try {
+    const playroom = await Playroom.findById(req.params.id);
+
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronađena",
+      });
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da regenerišete termine",
+      });
+    }
+
+    const TimeSlot = require("../models/TimeSlot");
+    await TimeSlot.deleteMany({ playroomId: playroom._id });
+
+    const result = await generateTimeSlotsForPlayroom(playroom._id, 30);
+
+    res.status(200).json({
+      success: true,
+      message: `Termini su regenerisani. Generisano ${result.createdCount} novih termina.`,
+      data: result,
     });
   } catch (error) {
     console.error("Greška:", error);
