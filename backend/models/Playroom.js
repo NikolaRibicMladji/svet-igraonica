@@ -178,6 +178,12 @@ const PlayroomSchema = new mongoose.Schema({
     enum: ["aktivan", "neaktivan", "u_izradi"],
     default: "u_izradi",
   },
+  drustveneMreze: {
+    instagram: { type: String, default: "", trim: true },
+    facebook: { type: String, default: "", trim: true },
+    tiktok: { type: String, default: "", trim: true },
+    website: { type: String, default: "", trim: true },
+  },
   createdAt: {
     type: Date,
     default: Date.now,

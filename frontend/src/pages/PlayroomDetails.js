@@ -126,28 +126,79 @@ const PlayroomDetails = () => {
           📍 {playroom.adresa}, {playroom.grad}
         </div>
 
-        <div className="details-info-grid">
-          <div className="info-item">
-            <strong>📞 Telefon:</strong> {playroom.kontaktTelefon}
+        <div className="details-info-three-columns">
+          {/* Leva kolona - Kontakt */}
+          <div className="info-column">
+            <div className="info-item">
+              <strong>📞 Telefon:</strong> {playroom.kontaktTelefon}
+            </div>
+            <div className="info-item">
+              <strong>📧 Email:</strong> {playroom.kontaktEmail}
+            </div>
           </div>
 
-          <div className="info-item">
-            <strong>👶 Kapacitet dece:</strong> {playroom.kapacitet?.deca || 0}
+          {/* Srednja kolona - Društvene mreže */}
+          <div className="info-column">
+            <div className="social-links">
+              <h4>🌐 Posetite nas</h4>
+              <div className="social-buttons">
+                {playroom.drustveneMreze?.instagram && (
+                  <a
+                    href={playroom.drustveneMreze.instagram}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="social-btn instagram"
+                  >
+                    📸 Instagram
+                  </a>
+                )}
+                {playroom.drustveneMreze?.facebook && (
+                  <a
+                    href={playroom.drustveneMreze.facebook}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="social-btn facebook"
+                  >
+                    📘 Facebook
+                  </a>
+                )}
+                {playroom.drustveneMreze?.tiktok && (
+                  <a
+                    href={playroom.drustveneMreze.tiktok}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="social-btn tiktok"
+                  >
+                    🎵 TikTok
+                  </a>
+                )}
+                {playroom.drustveneMreze?.website && (
+                  <a
+                    href={playroom.drustveneMreze.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="social-btn website"
+                  >
+                    🌐 Veb sajt
+                  </a>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="info-item">
-            <strong>👨‍👩‍👧 Kapacitet roditelja:</strong>{" "}
-            {playroom.kapacitet?.roditelji
-              ? `${playroom.kapacitet.roditelji} roditelja`
-              : "Neograničeno"}
-          </div>
-          <div className="info-item">
-            <strong>📧 Email:</strong> {playroom.kontaktEmail}
-          </div>
-        </div>
 
-        <div className="details-description">
-          <h3>Opis igraonice</h3>
-          <p>{playroom.opis}</p>
+          {/* Desna kolona - Kapacitet */}
+          <div className="info-column">
+            <div className="info-item">
+              <strong>👶 Kapacitet dece:</strong>{" "}
+              {playroom.kapacitet?.deca || 0}
+            </div>
+            <div className="info-item">
+              <strong>👨‍👩‍👧 Kapacitet roditelja:</strong>{" "}
+              {playroom.kapacitet?.roditelji
+                ? `${playroom.kapacitet.roditelji} roditelja`
+                : "Neograničeno"}
+            </div>
+          </div>
         </div>
 
         {/* Dugme za cenovnik */}

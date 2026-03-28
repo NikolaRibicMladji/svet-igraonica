@@ -40,6 +40,13 @@ const CreatePlayroom = () => {
     tip: "fiksno",
   });
 
+  const [drustveneMreze, setDrustveneMreze] = useState({
+    instagram: "",
+    facebook: "",
+    tiktok: "",
+    website: "",
+  });
+
   const [besplatnePogodnosti, setBesplatnePogodnosti] = useState([]);
   const [novaPogodnost, setNovaPogodnost] = useState("");
 
@@ -58,6 +65,11 @@ const CreatePlayroom = () => {
     subota: { od: "10:00", do: "22:00", radi: true },
     nedelja: { od: "10:00", do: "21:00", radi: true },
   });
+
+  const handleDrustveneMrezeChange = (e) => {
+    const { name, value } = e.target;
+    setDrustveneMreze((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -222,6 +234,7 @@ const CreatePlayroom = () => {
       besplatnePogodnosti: besplatnePogodnosti,
       profilnaSlika: profilnaSlika,
       slike: slike,
+      drustveneMreze: drustveneMreze,
       radnoVreme: {},
     };
 
@@ -662,6 +675,57 @@ const CreatePlayroom = () => {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3>🌐 Društvene mreže</h3>
+            <p className="section-hint">
+              Dodajte linkove ka vašim profilima (opciono)
+            </p>
+
+            <div className="form-group">
+              <label>📸 Instagram</label>
+              <input
+                type="url"
+                name="instagram"
+                value={drustveneMreze.instagram}
+                onChange={handleDrustveneMrezeChange}
+                placeholder="https://www.instagram.com/vas_profil/"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>📘 Facebook</label>
+              <input
+                type="url"
+                name="facebook"
+                value={drustveneMreze.facebook}
+                onChange={handleDrustveneMrezeChange}
+                placeholder="https://www.facebook.com/vas_profil/"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>🎵 TikTok</label>
+              <input
+                type="url"
+                name="tiktok"
+                value={drustveneMreze.tiktok}
+                onChange={handleDrustveneMrezeChange}
+                placeholder="https://www.tiktok.com/@vas_profil"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>🌐 Veb sajt</label>
+              <input
+                type="url"
+                name="website"
+                value={drustveneMreze.website}
+                onChange={handleDrustveneMrezeChange}
+                placeholder="https://www.vas-sajt.com"
+              />
             </div>
           </div>
 

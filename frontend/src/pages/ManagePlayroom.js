@@ -262,6 +262,51 @@ const ManagePlayroom = () => {
                 </div>
               )}
 
+            {/* Društvene mreže */}
+            {playroom.drustveneMreze && (
+              <div className="detail-item full-width">
+                <label>🌐 Društvene mreže</label>
+                <div className="social-links-manage">
+                  {playroom.drustveneMreze.instagram && (
+                    <a
+                      href={playroom.drustveneMreze.instagram}
+                      target="_blank"
+                      className="social-link-small instagram"
+                    >
+                      📸 Instagram
+                    </a>
+                  )}
+                  {playroom.drustveneMreze.facebook && (
+                    <a
+                      href={playroom.drustveneMreze.facebook}
+                      target="_blank"
+                      className="social-link-small facebook"
+                    >
+                      📘 Facebook
+                    </a>
+                  )}
+                  {playroom.drustveneMreze.tiktok && (
+                    <a
+                      href={playroom.drustveneMreze.tiktok}
+                      target="_blank"
+                      className="social-link-small tiktok"
+                    >
+                      🎵 TikTok
+                    </a>
+                  )}
+                  {playroom.drustveneMreze.website && (
+                    <a
+                      href={playroom.drustveneMreze.website}
+                      target="_blank"
+                      className="social-link-small website"
+                    >
+                      🌐 Veb sajt
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Radno vreme */}
             <div className="detail-item full-width">
               <label>⏰ Radno vreme</label>

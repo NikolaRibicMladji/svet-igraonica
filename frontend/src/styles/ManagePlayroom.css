@@ -419,6 +419,39 @@
   color: #64748b;
 }
 
+.social-links-manage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+.social-link-small {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 30px;
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.social-link-small.instagram {
+  background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af);
+  color: white;
+}
+.social-link-small.facebook {
+  background: #1877f2;
+  color: white;
+}
+.social-link-small.tiktok {
+  background: #000000;
+  color: white;
+}
+.social-link-small.website {
+  background: #334155;
+  color: white;
+}
+
 @keyframes slideIn {
   from {
     opacity: 0;
