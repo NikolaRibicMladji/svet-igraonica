@@ -125,7 +125,12 @@ const Book = () => {
       }
       return sum + c.cena;
     }, 0) +
-    selectedUsluge.reduce((sum, u) => sum + u.cena, 0);
+    selectedUsluge.reduce((sum, u) => {
+      if (u.tip === "po_osobi") {
+        return sum + u.cena * ukupnoOsoba;
+      }
+      return sum + u.cena;
+    }, 0);
 
   const scrollToTop = () => {
     setTimeout(() => {
@@ -181,8 +186,11 @@ const Book = () => {
         tip: c.tip,
         cena: c.cena,
       })),
-      selectedUsluge: selectedUsluge.map((u) => u.naziv),
-      ukupnaCena,
+      selectedUsluge: selectedUsluge.map((u) => ({
+        naziv: u.naziv,
+        cena: u.cena,
+        tip: u.tip,
+      })),
     });
 
     if (result.success) {
@@ -535,25 +543,37 @@ const Book = () => {
                   </div>
                 )}
 
-              {selectedOstaleCene.map((c, idx) => (
-                <div key={idx} className="summary-item">
-                  <span>
-                    {c.naziv}
-                    {c.tip === "po_osobi" && ` (× ${ukupnoOsoba} osoba)`}
-                  </span>
-                  <span>
-                    {c.tip === "po_osobi"
-                      ? `+${c.cena * ukupnoOsoba} RSD`
-                      : `+${c.cena} RSD`}
-                  </span>
-                </div>
-              ))}
-              {selectedUsluge.map((u, idx) => (
-                <div key={idx} className="summary-item">
-                  <span>{u.naziv}</span>
-                  <span>+{u.cena} RSD</span>
-                </div>
-              ))}
+              {selectedOstaleCene.map((c, idx) => {
+                const ukupnoOsoba = brojDeceNum + brojRoditeljaNum;
+                const ukupnaCena =
+                  c.tip === "po_osobi" ? c.cena * ukupnoOsoba : c.cena;
+                return (
+                  <div key={idx} className="summary-item">
+                    <span>
+                      {c.naziv}
+                      {c.tip === "po_osobi" &&
+                        ` (${c.cena} RSD × ${ukupnoOsoba} osoba)`}
+                    </span>
+                    <span>= +{ukupnaCena} RSD</span>
+                  </div>
+                );
+              })}
+
+              {selectedUsluge.map((u, idx) => {
+                const ukupnoOsoba = brojDeceNum + brojRoditeljaNum;
+                const ukupnaCena =
+                  u.tip === "po_osobi" ? u.cena * ukupnoOsoba : u.cena;
+                return (
+                  <div key={idx} className="summary-item">
+                    <span>
+                      {u.naziv}
+                      {u.tip === "po_osobi" &&
+                        ` (${u.cena} RSD po osobi × ${ukupnoOsoba} osoba)`}
+                    </span>
+                    <span>+{ukupnaCena} RSD</span>
+                  </div>
+                );
+              })}
 
               <div className="summary-total">
                 <span>Ukupno za plaćanje:</span>

@@ -68,7 +68,7 @@ exports.createBooking = async (req, res) => {
     // Izračunaj ukupnu cenu
     let ukupnaCena = playroom.osnovnaCena * (brojDece || 0);
 
-    // Dodaj cenu za roditelje ako postoji
+    // Dodaj cenu za roditelje
     if (
       playroom.cenaRoditelja &&
       playroom.cenaRoditelja.tip !== "ne_naplacuje"
@@ -78,6 +78,26 @@ exports.createBooking = async (req, res) => {
       } else if (playroom.cenaRoditelja.tip === "po_osobi") {
         ukupnaCena += playroom.cenaRoditelja.iznos * (brojRoditelja || 0);
       }
+    }
+
+    // Dodaj dodatne cene
+    if (req.body.selectedOstaleCene) {
+      ukupnaCena += req.body.selectedOstaleCene.reduce((sum, c) => {
+        if (c.tip === "po_osobi") {
+          return sum + c.cena * ((brojDece || 0) + (brojRoditelja || 0));
+        }
+        return sum + c.cena;
+      }, 0);
+    }
+
+    // Dodaj dodatne usluge
+    if (req.body.selectedUsluge) {
+      ukupnaCena += req.body.selectedUsluge.reduce((sum, u) => {
+        if (u.tip === "po_osobi") {
+          return sum + u.cena * ((brojDece || 0) + (brojRoditelja || 0));
+        }
+        return sum + u.cena;
+      }, 0);
     }
 
     // Kreiraj rezervaciju (bez provere da li je korisnik prijavljen)
