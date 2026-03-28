@@ -136,7 +136,7 @@ exports.getTimeSlotsByPlayroom = async (req, res) => {
         datum: new Date(datum),
         vremeOd,
         vremeDo,
-        cena: playroom.cenovnik?.osnovni || 800,
+        cena: playroom.osnovnaCena || playroom.cenovnik?.osnovni || 800,
         zauzeto: isZauzeto,
         booking: null,
       });

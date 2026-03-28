@@ -4,7 +4,8 @@ const BookingSchema = new mongoose.Schema({
   roditeljId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-    required: true,
+    required: false,
+    default: null,
   },
   playroomId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -47,6 +48,27 @@ const BookingSchema = new mongoose.Schema({
   vremeDo: {
     type: String,
     required: true,
+  },
+  // Dodaj pored postojećih polja
+  imeRoditelja: {
+    type: String,
+    required: true,
+  },
+  prezimeRoditelja: {
+    type: String,
+    required: true,
+  },
+  emailRoditelja: {
+    type: String,
+    required: true,
+  },
+  telefonRoditelja: {
+    type: String,
+    required: true,
+  },
+  brojRoditelja: {
+    type: Number,
+    default: 0,
   },
   createdAt: {
     type: Date,

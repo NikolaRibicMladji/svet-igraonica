@@ -673,6 +673,13 @@
   font-size: 1.4rem;
 }
 
+.cena-info {
+  margin-top: 6px;
+  color: #ff6b4a;
+  font-weight: 500;
+  display: block;
+}
+
 /* Dugme */
 .btn-book {
   width: 100%;

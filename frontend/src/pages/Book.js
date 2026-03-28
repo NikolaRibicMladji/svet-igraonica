@@ -12,7 +12,7 @@ const Book = () => {
   const [timeSlots, setTimeSlots] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [brojDece, setBrojDece] = useState("");
-  const [brojRoditelja, setBrojRoditelja] = useState(0);
+  const [brojRoditelja, setBrojRoditelja] = useState("");
   const [napomena, setNapomena] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -22,13 +22,9 @@ const Book = () => {
     return today.toISOString().split("T")[0];
   });
 
-  // State za dodatne usluge (one koje se plaćaju)
   const [selectedUsluge, setSelectedUsluge] = useState([]);
-
-  // State za ostale cene (produženo, vikend, itd.)
   const [selectedOstaleCene, setSelectedOstaleCene] = useState([]);
 
-  // Podaci korisnika
   const [korisnikPodaci, setKorisnikPodaci] = useState({
     ime: "",
     prezime: "",
@@ -66,20 +62,16 @@ const Book = () => {
   };
 
   const scrollToBookingForm = () => {
-    console.log("Skrolujem..."); // DODAJ OVO ZA DEBUG
     setTimeout(() => {
       if (bookingFormRef.current) {
         bookingFormRef.current.scrollIntoView({
           behavior: "smooth",
           block: "start",
         });
-      } else {
-        console.log("bookingFormRef nije definisan");
       }
     }, 200);
   };
 
-  // Toggle za dodatne usluge
   const toggleUsluga = (usluga) => {
     setSelectedUsluge((prev) => {
       if (prev.find((u) => u.naziv === usluga.naziv)) {
@@ -90,7 +82,6 @@ const Book = () => {
     });
   };
 
-  // Toggle za ostale cene
   const toggleOstalaCena = (cena) => {
     setSelectedOstaleCene((prev) => {
       if (prev.find((c) => c.naziv === cena.naziv)) {
@@ -101,20 +92,35 @@ const Book = () => {
     });
   };
 
-  // Izračunavanje ukupne cene
   const cenaPoDetetu = selectedSlot?.cena || playroom?.osnovnaCena || 0;
   const cenaRoditelj = playroom?.cene?.find(
     (c) =>
       c.naziv.toLowerCase() === "roditelj" ||
       c.naziv.toLowerCase() === "roditelji",
   );
-  const ukupnoOsoba = brojDece + brojRoditelja;
+
+  const brojDeceNum = brojDece === "" ? 0 : parseInt(brojDece);
+  const brojRoditeljaNum = brojRoditelja === "" ? 0 : parseInt(brojRoditelja);
+  const ukupnoOsoba = brojDeceNum + brojRoditeljaNum;
+
+  let cenaRoditelji = 0;
+  if (
+    playroom?.cenaRoditelja &&
+    playroom.cenaRoditelja.tip !== "ne_naplacuje"
+  ) {
+    if (playroom.cenaRoditelja.tip === "fiksno") {
+      cenaRoditelji = playroom.cenaRoditelja.iznos;
+    } else if (playroom.cenaRoditelja.tip === "po_osobi") {
+      cenaRoditelji = playroom.cenaRoditelja.iznos * brojRoditeljaNum;
+    }
+  }
 
   const ukupnaCena =
-    cenaPoDetetu * (brojDece || 0) +
+    cenaPoDetetu * brojDeceNum +
+    cenaRoditelji +
     selectedOstaleCene.reduce((sum, c) => {
       if (c.tip === "po_osobi") {
-        return sum + c.cena * (brojDece + brojRoditelja);
+        return sum + c.cena * ukupnoOsoba;
       }
       return sum + c.cena;
     }, 0) +
@@ -126,7 +132,7 @@ const Book = () => {
       return;
     }
 
-    if (!brojDece || brojDece < 1) {
+    if (!brojDece || brojDeceNum < 1) {
       setError("Unesite broj dece");
       return;
     }
@@ -149,8 +155,8 @@ const Book = () => {
       datum: selectedDate,
       vremeOd: selectedSlot.vremeOd,
       vremeDo: selectedSlot.vremeDo,
-      brojDece,
-      brojRoditelja,
+      brojDece: brojDeceNum,
+      brojRoditelja: brojRoditeljaNum,
       napomena,
       ime: korisnikPodaci.ime,
       prezime: korisnikPodaci.prezime,
@@ -254,7 +260,6 @@ const Book = () => {
                     className={`slot-card ${status.class} ${isSelected ? "selected" : ""}`}
                     onClick={() => {
                       if (!status.disabled) {
-                        console.log("Kliknut termin:", slot); // DODAJ OVO ZA DEBUG
                         setSelectedSlot(slot);
                         scrollToBookingForm();
                       }
@@ -265,10 +270,6 @@ const Book = () => {
                       <span className="time-range">
                         {slot.vremeOd} - {slot.vremeDo}
                       </span>
-                    </div>
-                    <div className="slot-price">
-                      <span className="price-amount">{slot.cena} RSD</span>
-                      <span className="price-unit">/ dete</span>
                     </div>
                     <div className={`slot-status-badge ${status.class}`}>
                       {status.text}
@@ -305,7 +306,6 @@ const Book = () => {
               </p>
             </div>
 
-            {/* 1. BROJ DECE */}
             <div className="form-group">
               <label>👶 Broj dece *</label>
               <input
@@ -328,29 +328,42 @@ const Book = () => {
               </small>
             </div>
 
-            {/* 2. BROJ RODITELJA (ako vlasnik ima cenu) */}
-            {/* Broj roditelja (ako postoji cena) */}
-            {cenaRoditelj && (
-              <div className="form-group">
-                <label>👨‍👩‍👧 Broj roditelja (pratilaca)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max={playroom.kapacitet?.roditelji || 50}
-                  value={brojRoditelja}
-                  onChange={(e) =>
-                    setBrojRoditelja(Math.max(0, parseInt(e.target.value) || 0))
+            {/* Broj roditelja - UVEK VIDLJIV */}
+            <div className="form-group">
+              <label>👨‍👩‍👧 Broj roditelja (pratilaca)</label>
+              <input
+                type="number"
+                min="0"
+                max={playroom.kapacitet?.roditelji || 50}
+                value={brojRoditelja}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === "") {
+                    setBrojRoditelja("");
+                  } else {
+                    const num = parseInt(value);
+                    if (!isNaN(num) && num >= 0) {
+                      setBrojRoditelja(num);
+                    }
                   }
-                />
-                <small className="price-hint">
-                  {cenaRoditelj.tip === "po_osobi"
-                    ? `${cenaRoditelj.cena} RSD po roditelju`
-                    : `${cenaRoditelj.cena} RSD fiksno`}
-                </small>
-              </div>
-            )}
+                }}
+                placeholder="Unesite broj roditelja"
+              />
+              <small className="price-hint">
+                Maksimalno {playroom.kapacitet?.roditelji || 50} roditelja
+              </small>
 
-            {/* 3. OSTALE CENE (produženo, vikend, itd.) */}
+              {/* Prikaz cene SAMO ako vlasnik naplaćuje */}
+              {playroom?.cenaRoditelja &&
+                playroom.cenaRoditelja.tip !== "ne_naplacuje" && (
+                  <small className="price-hint cena-info">
+                    {playroom.cenaRoditelja.tip === "fiksno"
+                      ? `Cena: ${playroom.cenaRoditelja.iznos} RSD (fiksno)`
+                      : `Cena: ${playroom.cenaRoditelja.iznos} RSD po roditelju`}
+                  </small>
+                )}
+            </div>
+
             {playroom.cene && playroom.cene.length > 0 && (
               <div className="options-section">
                 <h4>💰 Dodatne cene (opciono)</h4>
@@ -378,7 +391,6 @@ const Book = () => {
               </div>
             )}
 
-            {/* 4. DODATNE USLUGE (animator, fotograf, torta) */}
             {playroom.dodatneUsluge && playroom.dodatneUsluge.length > 0 && (
               <div className="options-section">
                 <h4>🎪 Dodatne usluge (opciono)</h4>
@@ -408,7 +420,6 @@ const Book = () => {
               </div>
             )}
 
-            {/* 5. BESPLATNE POGODNOSTI (samo prikaz) */}
             {playroom.besplatnePogodnosti &&
               playroom.besplatnePogodnosti.length > 0 && (
                 <div className="free-features-section">
@@ -423,7 +434,6 @@ const Book = () => {
                 </div>
               )}
 
-            {/* Podaci korisnika */}
             <div className="user-data-section">
               <h4>👤 Vaši podaci</h4>
               <div className="form-row">
@@ -482,32 +492,35 @@ const Book = () => {
               />
             </div>
 
-            {/* LISTA SVEGA ŠTO JE KORISNIK ODABRAO */}
             <div className="order-summary">
               <h4>🛒 Pregled rezervacije</h4>
 
-              {brojDece > 0 && (
+              {brojDeceNum > 0 && (
                 <div className="summary-item">
                   <span>
-                    {brojDece} dete × {selectedSlot.cena} RSD
+                    {brojDeceNum} dete × {selectedSlot.cena} RSD
                   </span>
-                  <span>{brojDece * selectedSlot.cena} RSD</span>
+                  <span>{brojDeceNum * selectedSlot.cena} RSD</span>
                 </div>
               )}
 
-              {brojRoditelja > 0 && cenaRoditelj && (
-                <div className="summary-item">
-                  <span>
-                    {brojRoditelja} roditelj × {cenaRoditelj.cena} RSD
-                    {cenaRoditelj.tip === "po_osobi" && " (po osobi)"}
-                  </span>
-                  <span>
-                    {cenaRoditelj.tip === "po_osobi"
-                      ? `+${cenaRoditelj.cena * brojRoditelja} RSD`
-                      : `+${cenaRoditelj.cena} RSD`}
-                  </span>
-                </div>
-              )}
+              {brojRoditeljaNum > 0 &&
+                playroom?.cenaRoditelja &&
+                playroom.cenaRoditelja.tip !== "ne_naplacuje" && (
+                  <div className="summary-item">
+                    <span>
+                      {playroom.cenaRoditelja.tip === "fiksno"
+                        ? `${brojRoditeljaNum} roditelj (fiksno)`
+                        : `${brojRoditeljaNum} roditelj × ${playroom.cenaRoditelja.iznos} RSD`}
+                    </span>
+                    <span>
+                      {playroom.cenaRoditelja.tip === "fiksno"
+                        ? `+${playroom.cenaRoditelja.iznos} RSD`
+                        : `+${playroom.cenaRoditelja.iznos * brojRoditeljaNum} RSD`}
+                    </span>
+                  </div>
+                )}
+
               {selectedOstaleCene.map((c, idx) => (
                 <div key={idx} className="summary-item">
                   <span>

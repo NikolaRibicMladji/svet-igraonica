@@ -16,6 +16,7 @@ import ManagePlayroom from "./pages/ManagePlayroom";
 import AdminPanel from "./pages/AdminPanel";
 import PlayroomDetails from "./pages/PlayroomDetails";
 import Book from "./pages/Book";
+import BookingSuccess from "./pages/BookingSuccess";
 import MyBookings from "./pages/MyBookings";
 import ManageTimeSlots from "./pages/ManageTimeSlots";
 import OwnerTimeSlots from "./pages/OwnerTimeSlots";
@@ -86,6 +87,7 @@ function App() {
           <Route path="/playrooms" element={<Playrooms />} />
           <Route path="/playrooms/:id" element={<PlayroomDetails />} />
           <Route path="/book/:id" element={<Book />} />
+          <Route path="/booking-success" element={<BookingSuccess />} />
 
           {/* ========== RODITELJ RUTE ========== */}
           <Route

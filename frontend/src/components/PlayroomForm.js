@@ -31,7 +31,12 @@ const PlayroomForm = ({ initialData, onSubmit, onCancel, isEditing }) => {
   const [videoNaziv, setVideoNaziv] = useState("");
   const [paketi, setPaketi] = useState(initialData?.paketi || []);
   const [noviPaket, setNoviPaket] = useState({ naziv: "", cena: "", opis: "" });
-
+  const [cenaRoditelja, setCenaRoditelja] = useState(
+    initialData?.cenaRoditelja || {
+      tip: "ne_naplacuje",
+      iznos: "",
+    },
+  );
   const [dodatneUsluge, setDodatneUsluge] = useState(
     initialData?.dodatneUsluge || [],
   );
@@ -72,6 +77,11 @@ const PlayroomForm = ({ initialData, onSubmit, onCancel, isEditing }) => {
     },
   );
 
+  const handleCenaRoditeljaChange = (e) => {
+    const { name, value } = e.target;
+    setCenaRoditelja((prev) => ({ ...prev, [name]: value }));
+  };
+
   const uploadVideo = async (file) => {
     if (videoGalerija.length >= 3) {
       alert("Maksimalno 3 video snimka mogu biti dodata!");
@@ -90,9 +100,9 @@ const PlayroomForm = ({ initialData, onSubmit, onCancel, isEditing }) => {
         },
         body: formData,
       });
-      console.log("Odgovor:", response); // DODAJ OVO
+      console.log("Odgovor:", response);
       const data = await response.json();
-      console.log("Podaci:", data); // DODAJ OVO
+      console.log("Podaci:", data);
       if (data.success) {
         setVideoGalerija([
           ...videoGalerija,
@@ -175,7 +185,6 @@ const PlayroomForm = ({ initialData, onSubmit, onCancel, isEditing }) => {
     }));
   };
 
-  // Dodavanje cene
   const handleAddCena = () => {
     if (novaCena.naziv.trim() && novaCena.cena) {
       setCene([
@@ -195,7 +204,6 @@ const PlayroomForm = ({ initialData, onSubmit, onCancel, isEditing }) => {
     setCene(cene.filter((_, i) => i !== index));
   };
 
-  // Dodavanje paketa
   const handleAddPaket = () => {
     if (noviPaket.naziv.trim() && noviPaket.cena) {
       setPaketi([
@@ -214,7 +222,6 @@ const PlayroomForm = ({ initialData, onSubmit, onCancel, isEditing }) => {
     setPaketi(paketi.filter((_, i) => i !== index));
   };
 
-  // Dodavanje dodatne usluge
   const handleAddUsluga = () => {
     if (novaUsluga.naziv.trim() && novaUsluga.cena) {
       setDodatneUsluge([
@@ -234,7 +241,6 @@ const PlayroomForm = ({ initialData, onSubmit, onCancel, isEditing }) => {
     setDodatneUsluge(dodatneUsluge.filter((_, i) => i !== index));
   };
 
-  // Dodavanje besplatne pogodnosti
   const handleAddPogodnost = () => {
     if (novaPogodnost.trim()) {
       setBesplatnePogodnosti([...besplatnePogodnosti, novaPogodnost.trim()]);
@@ -246,7 +252,6 @@ const PlayroomForm = ({ initialData, onSubmit, onCancel, isEditing }) => {
     setBesplatnePogodnosti(besplatnePogodnosti.filter((_, i) => i !== index));
   };
 
-  // Upload slike
   const uploadImage = async (file, isProfilna = false) => {
     const formDataUpload = new FormData();
     formDataUpload.append("image", file);
@@ -310,6 +315,7 @@ const PlayroomForm = ({ initialData, onSubmit, onCancel, isEditing }) => {
       slike: slike,
       videoGalerija: videoGalerija,
       drustveneMreze: drustveneMreze,
+      cenaRoditelja: cenaRoditelja,
       radnoVreme: {},
     };
 
@@ -567,6 +573,47 @@ const PlayroomForm = ({ initialData, onSubmit, onCancel, isEditing }) => {
             required
           />
         </div>
+      </div>
+
+      {/* Cena za roditelje */}
+      <div className="form-section">
+        <h3>👨‍👩‍👧 Cena za roditelje</h3>
+        <p className="section-hint">
+          Odredite da li se naplaćuje ulaz za roditelje
+        </p>
+
+        <div className="form-group">
+          <label>Način naplate</label>
+          <select
+            name="tip"
+            value={cenaRoditelja.tip}
+            onChange={handleCenaRoditeljaChange}
+          >
+            <option value="ne_naplacuje">Ne naplaćuje se</option>
+            <option value="fiksno">
+              Fiksno (bez obzira na broj roditelja)
+            </option>
+            <option value="po_osobi">Po osobi (svaki roditelj posebno)</option>
+          </select>
+        </div>
+
+        {cenaRoditelja.tip !== "ne_naplacuje" && (
+          <div className="form-group">
+            <label>Cena (RSD)</label>
+            <input
+              type="number"
+              name="iznos"
+              value={cenaRoditelja.iznos}
+              onChange={handleCenaRoditeljaChange}
+              placeholder="Unesite cenu"
+            />
+            <small className="price-hint">
+              {cenaRoditelja.tip === "fiksno"
+                ? "Ova cena se dodaje jednom"
+                : "Ova cena se množi sa brojem roditelja"}
+            </small>
+          </div>
+        )}
       </div>
 
       {/* Ostale cene */}

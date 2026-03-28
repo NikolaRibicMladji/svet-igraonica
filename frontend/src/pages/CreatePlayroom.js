@@ -9,6 +9,10 @@ const CreatePlayroom = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [cenaRoditelja, setCenaRoditelja] = useState({
+    tip: "ne_naplacuje",
+    iznos: "",
+  });
 
   // Osnovni podaci
   const [formData, setFormData] = useState({
@@ -70,6 +74,11 @@ const CreatePlayroom = () => {
     subota: { od: "10:00", do: "22:00", radi: true },
     nedelja: { od: "10:00", do: "21:00", radi: true },
   });
+
+  const handleCenaRoditeljaChange = (e) => {
+    const { name, value } = e.target;
+    setCenaRoditelja((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleDrustveneMrezeChange = (e) => {
     const { name, value } = e.target;
@@ -452,7 +461,50 @@ const CreatePlayroom = () => {
             </div>
           </div>
 
-          {/* Ostale cene */}
+          {/* Cena za roditelje */}
+          <div className="form-section">
+            <h3>👨‍👩‍👧 Cena za roditelje</h3>
+            <p className="section-hint">
+              Odredite da li se naplaćuje ulaz za roditelje
+            </p>
+
+            <div className="form-group">
+              <label>Način naplate</label>
+              <select
+                name="tip"
+                value={cenaRoditelja.tip}
+                onChange={handleCenaRoditeljaChange}
+              >
+                <option value="ne_naplacuje">Ne naplaćuje se</option>
+                <option value="fiksno">
+                  Fiksno (bez obzira na broj roditelja)
+                </option>
+                <option value="po_osobi">
+                  Po osobi (svaki roditelj posebno)
+                </option>
+              </select>
+            </div>
+
+            {cenaRoditelja.tip !== "ne_naplacuje" && (
+              <div className="form-group">
+                <label>Cena (RSD)</label>
+                <input
+                  type="number"
+                  name="iznos"
+                  value={cenaRoditelja.iznos}
+                  onChange={handleCenaRoditeljaChange}
+                  placeholder="Unesite cenu"
+                  required
+                />
+                <small className="price-hint">
+                  {cenaRoditelja.tip === "fiksno"
+                    ? "Ova cena se dodaje jednom"
+                    : "Ova cena se množi sa brojem roditelja"}
+                </small>
+              </div>
+            )}
+          </div>
+
           {/* Ostale cene */}
           <div className="form-section">
             <h3>💰 Ostale cene</h3>

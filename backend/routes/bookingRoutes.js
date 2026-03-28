@@ -9,10 +9,12 @@ const {
   confirmBooking,
 } = require("../controllers/bookingController");
 
+// Javna ruta - SVI MOGU DA REZERVIŠU
+router.post("/", createBooking);
+
 // Sve rute zahtevaju prijavu
 router.use(protect);
 
-router.post("/", createBooking);
 router.get("/my", getMyBookings);
 router.get("/owner", getOwnerBookings);
 router.put("/:id/cancel", cancelBooking);

@@ -205,6 +205,17 @@ const PlayroomSchema = new mongoose.Schema({
       },
     },
   ],
+  cenaRoditelja: {
+    tip: {
+      type: String,
+      enum: ["ne_naplacuje", "fiksno", "po_osobi"],
+      default: "ne_naplacuje",
+    },
+    iznos: {
+      type: Number,
+      default: 0,
+    },
+  },
   createdAt: {
     type: Date,
     default: Date.now,
