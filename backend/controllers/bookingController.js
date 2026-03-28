@@ -117,7 +117,14 @@ exports.createBooking = async (req, res) => {
       };
       const timeSlot = { datum: new Date(datum), vremeOd, vremeDo };
 
-      await sendBookingConfirmation(booking, roditelj, playroom, timeSlot);
+      await sendBookingConfirmation(
+        booking,
+        roditelj,
+        playroom,
+        timeSlot,
+        req.body.selectedOstaleCene || [],
+        req.body.selectedUsluge || [],
+      );
       console.log(`📧 Email roditelju poslat na ${email}`);
     } catch (emailError) {
       console.error("Greška pri slanju emaila roditelju:", emailError);
@@ -140,6 +147,8 @@ exports.createBooking = async (req, res) => {
         playroom,
         timeSlot,
         vlasnik,
+        req.body.selectedOstaleCene || [], // <--- DODATO
+        req.body.selectedUsluge || [], // <--- DODATO
       );
       console.log(`📧 Email vlasniku poslat na ${vlasnik.email}`);
     } catch (emailError) {

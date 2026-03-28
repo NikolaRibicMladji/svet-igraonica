@@ -24,6 +24,7 @@ const Book = () => {
 
   const [selectedUsluge, setSelectedUsluge] = useState([]);
   const [selectedOstaleCene, setSelectedOstaleCene] = useState([]);
+  const topRef = useRef(null);
 
   const [korisnikPodaci, setKorisnikPodaci] = useState({
     ime: "",
@@ -126,14 +127,26 @@ const Book = () => {
     }, 0) +
     selectedUsluge.reduce((sum, u) => sum + u.cena, 0);
 
+  const scrollToTop = () => {
+    setTimeout(() => {
+      if (topRef.current) {
+        topRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }, 100);
+  };
+
   const handleBook = async () => {
     if (!selectedSlot) {
       setError("Izaberite termin");
+      scrollToTop();
       return;
     }
 
     if (!brojDece || brojDeceNum < 1) {
       setError("Unesite broj dece");
+      scrollToTop();
       return;
     }
 
@@ -144,6 +157,7 @@ const Book = () => {
       !korisnikPodaci.telefon
     ) {
       setError("Molimo popunite sve podatke");
+      scrollToTop();
       return;
     }
 
@@ -206,7 +220,7 @@ const Book = () => {
   }
 
   return (
-    <div className="container book-page">
+    <div className="container book-page" ref={topRef}>
       <button
         className="back-link"
         onClick={() => navigate(`/playrooms/${id}`)}
