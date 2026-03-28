@@ -11,7 +11,7 @@ const Book = () => {
   const [playroom, setPlayroom] = useState(null);
   const [timeSlots, setTimeSlots] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState(null);
-  const [brojDece, setBrojDece] = useState(1);
+  const [brojDece, setBrojDece] = useState("");
   const [brojRoditelja, setBrojRoditelja] = useState(0);
   const [napomena, setNapomena] = useState("");
   const [loading, setLoading] = useState(true);
@@ -106,7 +106,7 @@ const Book = () => {
   const cenaPoRoditelju = playroom?.cenaPoRoditelju || 0;
 
   const ukupnaCena =
-    cenaPoDetetu * brojDece +
+    cenaPoDetetu * (brojDece || 0) +
     cenaPoRoditelju * brojRoditelja +
     selectedOstaleCene.reduce((sum, c) => sum + c.cena, 0) +
     selectedUsluge.reduce((sum, u) => sum + u.cena, 0);
@@ -114,6 +114,11 @@ const Book = () => {
   const handleBook = async () => {
     if (!selectedSlot) {
       setError("Izaberite termin");
+      return;
+    }
+
+    if (!brojDece || brojDece < 1) {
+      setError("Unesite broj dece");
       return;
     }
 
@@ -293,19 +298,20 @@ const Book = () => {
               <input
                 type="number"
                 min="1"
-                max={selectedSlot?.slobodno || 30}
+                max={playroom.kapacitet?.deca || 30}
                 value={brojDece}
-                onChange={(e) =>
-                  setBrojDece(
-                    Math.min(
-                      selectedSlot?.slobodno || 30,
-                      parseInt(e.target.value) || 1,
-                    ),
-                  )
-                }
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  if (value >= 1 && value <= (selectedSlot?.slobodno || 30)) {
+                    setBrojDece(value);
+                  } else if (e.target.value === "") {
+                    setBrojDece("");
+                  }
+                }}
+                placeholder="Unesite broj dece"
               />
               <small className="price-hint">
-                ({selectedSlot.cena} RSD po detetu)
+                Maksimalno {playroom.kapacitet?.deca || 30} dece
               </small>
             </div>
 
@@ -316,14 +322,14 @@ const Book = () => {
                 <input
                   type="number"
                   min="0"
-                  max="20"
+                  max={playroom.kapacitet?.roditelji || 50}
                   value={brojRoditelja}
                   onChange={(e) =>
                     setBrojRoditelja(Math.max(0, parseInt(e.target.value) || 0))
                   }
                 />
                 <small className="price-hint">
-                  +{playroom.cenaPoRoditelju} RSD po roditelju
+                  Maksimalno {playroom.kapacitet?.roditelji || 50} roditelja
                 </small>
               </div>
             )}
