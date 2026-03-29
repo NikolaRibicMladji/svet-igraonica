@@ -339,6 +339,7 @@
   transition: all 0.2s;
   flex: 1;
   text-align: center;
+  margin-top: 14px;
 }
 
 .btn-price:hover {

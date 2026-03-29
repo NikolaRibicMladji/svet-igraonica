@@ -23,7 +23,7 @@ const Home = () => {
                 Potraži igraonicu →
               </Link>
               <Link to="/register" className="btn btn-outline">
-                Postani vlasnik
+                Registruj igraonicu
               </Link>
             </div>
           </div>

@@ -12,6 +12,9 @@ const Register = () => {
     telefon: "",
     role: "roditelj",
   });
+
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [error, setError] = useState("");
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -23,14 +26,32 @@ const Register = () => {
     });
   };
 
+  const validatePasswords = () => {
+    if (formData.password !== confirmPassword) {
+      setPasswordError("Lozinke se ne podudaraju");
+      return false;
+    }
+    setPasswordError("");
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
+    // Provera lozinki
+    if (!validatePasswords()) {
+      return;
+    }
+
     const result = await register(formData);
 
     if (result.success) {
-      navigate("/");
+      if (formData.role === "vlasnik") {
+        navigate("/manage-playroom");
+      } else {
+        navigate("/");
+      }
     } else {
       setError(result.error);
     }
@@ -85,6 +106,24 @@ const Register = () => {
             required
             minLength="6"
           />
+        </div>
+
+        <div className="form-group">
+          <label>Potvrdite lozinku *</label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+          />
+          {passwordError && (
+            <div
+              className="error-message"
+              style={{ marginTop: "5px", fontSize: "0.8rem" }}
+            >
+              {passwordError}
+            </div>
+          )}
         </div>
 
         <div className="form-group">
