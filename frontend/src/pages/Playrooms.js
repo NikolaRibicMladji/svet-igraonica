@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllPlayrooms } from "../services/playroomService";
+import api from "../services/api";
 import PlayroomFilters from "../components/PlayroomFilters";
 import "../styles/Playrooms.css";
 
@@ -18,7 +18,6 @@ const Playrooms = () => {
   const loadPlayrooms = async () => {
     setLoading(true);
 
-    // Konstruiši query string iz filtera
     const queryParams = new URLSearchParams();
     if (filters.grad && filters.grad !== "svi")
       queryParams.append("grad", filters.grad);
@@ -32,16 +31,18 @@ const Playrooms = () => {
       queryParams.append("pogodnosti", filters.pogodnosti.join(","));
     }
 
-    const queryString = queryParams.toString();
-    const url = `/playrooms${queryString ? `?${queryString}` : ""}`;
+    try {
+      // UMESTO fetch-a sa localhost-om, sada koristimo 'api'
+      // On automatski dodaje "https://svet-igraonica.onrender.com/api" ispred
+      const response = await api.get(`/playrooms?${queryParams.toString()}`);
 
-    // Pozovi API sa filterima
-    const response = await fetch(`http://localhost:5000/api${url}`);
-    const result = await response.json();
-
-    if (result.success) {
-      setPlayrooms(result.data);
+      if (response.data.success) {
+        setPlayrooms(response.data.data);
+      }
+    } catch (error) {
+      console.error("Greška pri komunikaciji sa serverom:", error);
     }
+
     setLoading(false);
   };
 
