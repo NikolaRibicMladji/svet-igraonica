@@ -109,7 +109,7 @@ exports.deletePlayroomImage = async (req, res) => {
 
     // Izbaci URL iz niza
     const decodedUrl = decodeURIComponent(imageUrl);
-    playroom.slike = playroom.slike.filter((url) => url !== decodedUrl);
+    playroom.slike = playroom.slike.filter((image) => image.url !== decodedUrl);
     await playroom.save();
 
     res.status(200).json({

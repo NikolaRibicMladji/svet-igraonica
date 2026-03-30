@@ -58,9 +58,12 @@ const Navbar = () => {
                 </Link>
               )}
 
-              {/* VLASNIK - BEZ "MOJE IGRAONICE" - DIREKTNO UPRAVLJANJE */}
+              {/* VLASNIK */}
               {user?.role === "vlasnik" && (
                 <>
+                  <Link to="/vlasnik/dashboard" onClick={closeMenu}>
+                    📊 Dashboard
+                  </Link>
                   <Link to="/manage-playroom" onClick={closeMenu}>
                     🏢 Moja igraonica
                   </Link>

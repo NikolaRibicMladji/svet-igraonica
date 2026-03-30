@@ -4,9 +4,7 @@ const { protect, vlasnik } = require("../middleware/authMiddleware");
 const upload = require("../middleware/upload");
 const {
   uploadPlayroomImage,
-  uploadPlayroomVideo,
   deletePlayroomImage,
-  deletePlayroomVideo,
 } = require("../controllers/uploadController");
 const videoController = require("../controllers/videoController");
 
@@ -21,12 +19,6 @@ router.post(
   uploadPlayroomImage,
 );
 router.delete("/playroom/:playroomId/:imageUrl", deletePlayroomImage);
-router.post(
-  "/video",
-  protect,
-  vlasnik,
-  upload.single("video"),
-  videoController.uploadVideo,
-);
+router.post("/video", upload.single("video"), videoController.uploadVideo);
 
 module.exports = router;

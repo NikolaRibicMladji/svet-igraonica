@@ -18,9 +18,21 @@ const TimeSlotSchema = new mongoose.Schema({
     type: String,
     required: [true, "Vreme do je obavezno"],
   },
+  maxDece: {
+    type: Number,
+    default: 20,
+  },
+  slobodno: {
+    type: Number,
+    default: 20,
+  },
   zauzeto: {
     type: Boolean,
-    default: false, // false = slobodno, true = zauzeto
+    default: false,
+  },
+  aktivno: {
+    type: Boolean,
+    default: true,
   },
   cena: {
     type: Number,
@@ -31,5 +43,10 @@ const TimeSlotSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+TimeSlotSchema.index(
+  { playroomId: 1, datum: 1, vremeOd: 1, vremeDo: 1 },
+  { unique: true },
+);
 
 module.exports = mongoose.model("TimeSlot", TimeSlotSchema);

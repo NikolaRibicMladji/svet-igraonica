@@ -28,6 +28,10 @@ const BookingSchema = new mongoose.Schema({
     type: Number,
     default: 1,
   },
+  brojRoditelja: {
+    type: Number,
+    default: 0,
+  },
   ukupnaCena: {
     type: Number,
     required: true,
@@ -45,11 +49,6 @@ const BookingSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "TimeSlot",
   },
-  vremeDo: {
-    type: String,
-    required: true,
-  },
-  // Dodaj pored postojećih polja
   imeRoditelja: {
     type: String,
     required: true,
@@ -65,10 +64,6 @@ const BookingSchema = new mongoose.Schema({
   telefonRoditelja: {
     type: String,
     required: true,
-  },
-  brojRoditelja: {
-    type: Number,
-    default: 0,
   },
   createdAt: {
     type: Date,

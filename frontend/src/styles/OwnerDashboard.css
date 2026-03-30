@@ -1,0 +1,65 @@
+.dashboard-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dashboard-header {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.playroom-name {
+  color: #666;
+  font-weight: bold;
+}
+
+.stats-grid {
+  display: flex;
+  flex-wrap: wrap; /* Ključ za responzivnost */
+  gap: 20px;
+  justify-content: center;
+}
+
+.stat-card {
+  flex: 1 1 300px; /* Širina 300px, ali se širi da popuni prostor */
+  min-width: 280px;
+  padding: 25px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  color: white;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.blue {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+.green {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+.gold {
+  background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+}
+
+.stat-icon {
+  font-size: 2.5rem;
+}
+.stat-info h3 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+.stat-info p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+/* Mobile verzija */
+@media (max-width: 768px) {
+  .stat-card {
+    flex: 1 1 100%; /* Na telefonu jedna kartica zauzima ceo red */
+  }
+}

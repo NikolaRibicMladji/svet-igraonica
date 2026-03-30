@@ -10,7 +10,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Proveri da li je korisnik već prijavljen (pri učitavanju)
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -20,7 +19,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Učitaj podatke o korisniku
   const loadUser = async () => {
     try {
       const response = await api.get("/auth/me");
@@ -28,42 +26,55 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error("Greška pri učitavanju korisnika:", err);
       localStorage.removeItem("token");
+      localStorage.removeItem("user");
     } finally {
       setLoading(false);
     }
   };
 
-  // Registracija
+  // REGISTRACIJA - Ažurirano za accessToken
   const register = async (userData) => {
     setError(null);
     try {
       const response = await api.post("/auth/register", userData);
-      localStorage.setItem("token", response.data.token);
+      // Backend sada vraća accessToken
+      localStorage.setItem("token", response.data.accessToken);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
       setUser(response.data.user);
       return { success: true, user: response.data.user };
     } catch (err) {
-      setError(err.response?.data?.message || "Greška pri registraciji");
-      return { success: false, error: err.response?.data?.message };
+      const msg = err.response?.data?.message || "Greška pri registraciji";
+      setError(msg);
+      return { success: false, error: msg };
     }
   };
 
-  // Prijava
-  const login = async (email, password) => {
+  // PRIJAVA - Popravljene promenljive (lozinka i res)
+  const login = async (email, lozinka) => {
+    // Promenjeno u lozinka da se slaže sa body-jem
     setError(null);
     try {
-      const response = await api.post("/auth/login", { email, password });
-      localStorage.setItem("token", response.data.token);
-      setUser(response.data.user);
-      return { success: true, user: response.data.user };
+      const res = await api.post("/auth/login", { email, lozinka });
+
+      localStorage.setItem("token", res.data.accessToken);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+      setUser(res.data.user); // Koristimo res, ne response
+      return { success: true, user: res.data.user };
     } catch (err) {
-      setError(err.response?.data?.message || "Greška pri prijavi");
-      return { success: false, error: err.response?.data?.message };
+      const msg = err.response?.data?.message || "Greška pri prijavi";
+      setError(msg);
+      return { success: false, error: msg };
     }
   };
 
-  // Odjava
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (err) {
+      console.error("Logout error", err);
+    }
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
   };
 

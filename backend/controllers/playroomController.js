@@ -358,3 +358,76 @@ exports.regenerateTimeSlots = async (req, res) => {
     });
   }
 };
+
+const Booking = require("../models/Booking");
+
+// @desc    Dohvati statistiku za vlasnika igraonice
+// @route   GET /api/playrooms/:id/stats
+// @access  Private (Vlasnik)
+exports.getOwnerStats = async (req, res, next) => {
+  try {
+    const playroomId = req.params.id;
+
+    const playroom = await Playroom.findById(playroomId);
+    if (!playroom) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Igraonica nije pronađena" });
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate dozvolu za ovaj pristup",
+      });
+    }
+
+    const stats = await Booking.aggregate([
+      { $match: { playroomId: playroom._id } },
+      {
+        $group: {
+          _id: null,
+          totalBookings: { $sum: 1 },
+          confirmedBookings: {
+            $sum: { $cond: [{ $eq: ["$status", "potvrdjeno"] }, 1, 0] },
+          },
+          completedBookings: {
+            $sum: { $cond: [{ $eq: ["$status", "zavrseno"] }, 1, 0] },
+          },
+          totalRevenue: {
+            $sum: {
+              $cond: [
+                { $in: ["$status", ["potvrdjeno", "zavrseno"]] },
+                "$ukupnaCena",
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    const result =
+      stats.length > 0
+        ? stats[0]
+        : {
+            totalBookings: 0,
+            confirmedBookings: 0,
+            completedBookings: 0,
+            totalRevenue: 0,
+          };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        playroomName: playroom.naziv,
+        ...result,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

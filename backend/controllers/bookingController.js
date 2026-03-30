@@ -49,6 +49,26 @@ exports.createBooking = async (req, res) => {
       });
     }
 
+    const slotDateStart = new Date(datum);
+    slotDateStart.setHours(0, 0, 0, 0);
+
+    const slotDateEnd = new Date(datum);
+    slotDateEnd.setHours(23, 59, 59, 999);
+
+    const existingTimeSlot = await TimeSlot.findOne({
+      playroomId,
+      datum: { $gte: slotDateStart, $lte: slotDateEnd },
+      vremeOd,
+      vremeDo,
+    });
+
+    if (existingTimeSlot && existingTimeSlot.zauzeto) {
+      return res.status(400).json({
+        success: false,
+        message: "Ovaj termin je već zauzet",
+      });
+    }
+
     // Proveri da li već postoji rezervacija za ovo vreme
     const existingBooking = await Booking.findOne({
       playroomId,
@@ -123,6 +143,12 @@ exports.createBooking = async (req, res) => {
     }
 
     const booking = await Booking.create(bookingData);
+
+    if (existingTimeSlot) {
+      existingTimeSlot.zauzeto = true;
+      existingTimeSlot.slobodno = 0;
+      await existingTimeSlot.save();
+    }
 
     console.log(`✅ Rezervacija kreirana: ${booking._id}`);
 
@@ -296,6 +322,24 @@ exports.cancelBooking = async (req, res) => {
     booking.status = "otkazano";
     await booking.save();
 
+    const slotDateStart = new Date(booking.datum);
+    slotDateStart.setHours(0, 0, 0, 0);
+
+    const slotDateEnd = new Date(booking.datum);
+    slotDateEnd.setHours(23, 59, 59, 999);
+
+    const existingTimeSlot = await TimeSlot.findOne({
+      playroomId: booking.playroomId._id || booking.playroomId,
+      datum: { $gte: slotDateStart, $lte: slotDateEnd },
+      vremeOd: booking.vremeOd,
+      vremeDo: booking.vremeDo,
+    });
+
+    if (existingTimeSlot) {
+      existingTimeSlot.zauzeto = false;
+      existingTimeSlot.slobodno = existingTimeSlot.maxDece || 20;
+      await existingTimeSlot.save();
+    }
     // ========== POŠALJI EMAIL O OTKAZIVANJU ==========
     try {
       await sendBookingCancellation(user, playroom, timeSlot);

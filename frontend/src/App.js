@@ -20,6 +20,7 @@ import BookingSuccess from "./pages/BookingSuccess";
 import MyBookings from "./pages/MyBookings";
 import ManageTimeSlots from "./pages/ManageTimeSlots";
 import OwnerTimeSlots from "./pages/OwnerTimeSlots";
+import OwnerDashboard from "./pages/OwnerDashboard";
 import "./styles/global.css";
 
 // ============================================
@@ -74,78 +75,93 @@ const RoditeljRoute = ({ children }) => {
 // ============================================
 // GLAVNA APP KOMPONENTA
 // ============================================
+function AppRoutes() {
+  const { user } = useAuth();
+
+  return (
+    <>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/playrooms" element={<Playrooms />} />
+        <Route path="/playrooms/:id" element={<PlayroomDetails />} />
+        <Route path="/book/:id" element={<Book />} />
+        <Route path="/booking-success" element={<BookingSuccess />} />
+
+        <Route
+          path="/my-bookings"
+          element={
+            <RoditeljRoute>
+              <MyBookings />
+            </RoditeljRoute>
+          }
+        />
+
+        <Route
+          path="/manage-playroom"
+          element={
+            <VlasnikRoute>
+              <ManagePlayroom />
+            </VlasnikRoute>
+          }
+        />
+        <Route
+          path="/create-playroom"
+          element={
+            <VlasnikRoute>
+              <CreatePlayroom />
+            </VlasnikRoute>
+          }
+        />
+        <Route
+          path="/manage-slots"
+          element={
+            <VlasnikRoute>
+              <ManageTimeSlots />
+            </VlasnikRoute>
+          }
+        />
+        <Route
+          path="/owner-slots"
+          element={
+            <VlasnikRoute>
+              <OwnerTimeSlots />
+            </VlasnikRoute>
+          }
+        />
+        <Route
+          path="/vlasnik/dashboard"
+          element={
+            user?.role === "vlasnik" ? (
+              <OwnerDashboard />
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminPanel />
+            </AdminRoute>
+          }
+        />
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
+  );
+}
+
 function App() {
   return (
     <Router>
       <AuthProvider>
-        <Navbar />
-        <Routes>
-          {/* ========== JAVNE RUTE - SVAKO MOŽE ========== */}
-          <Route path="/" element={<Home />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/playrooms" element={<Playrooms />} />
-          <Route path="/playrooms/:id" element={<PlayroomDetails />} />
-          <Route path="/book/:id" element={<Book />} />
-          <Route path="/booking-success" element={<BookingSuccess />} />
-
-          {/* ========== RODITELJ RUTE ========== */}
-          <Route
-            path="/my-bookings"
-            element={
-              <RoditeljRoute>
-                <MyBookings />
-              </RoditeljRoute>
-            }
-          />
-
-          {/* ========== VLASNIK RUTE ========== */}
-          <Route
-            path="/manage-playroom"
-            element={
-              <VlasnikRoute>
-                <ManagePlayroom />
-              </VlasnikRoute>
-            }
-          />
-          <Route
-            path="/create-playroom"
-            element={
-              <VlasnikRoute>
-                <CreatePlayroom />
-              </VlasnikRoute>
-            }
-          />
-          <Route
-            path="/manage-slots"
-            element={
-              <VlasnikRoute>
-                <ManageTimeSlots />
-              </VlasnikRoute>
-            }
-          />
-          <Route
-            path="/owner-slots"
-            element={
-              <VlasnikRoute>
-                <OwnerTimeSlots />
-              </VlasnikRoute>
-            }
-          />
-
-          {/* ========== ADMIN RUTE ========== */}
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <AdminPanel />
-              </AdminRoute>
-            }
-          />
-
-          {/* ========== 404 - STRANICA NIJE PRONAĐENA ========== */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AppRoutes />
       </AuthProvider>
     </Router>
   );
