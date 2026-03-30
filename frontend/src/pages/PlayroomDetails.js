@@ -69,9 +69,6 @@ const PlayroomDetails = () => {
     kliziste: "⛸️ Klizalište",
   };
 
-  console.log("🔍 DEBUG - videoGalerija:", playroom?.videoGalerija);
-  console.log("🔍 DEBUG - dužina:", playroom?.videoGalerija?.length);
-
   return (
     <div className="container playroom-details">
       <button className="btn-back" onClick={() => navigate("/playrooms")}>
