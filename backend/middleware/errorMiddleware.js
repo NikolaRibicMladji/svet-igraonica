@@ -1,28 +1,41 @@
-const ErrorResponse = require("../utils/errorResponse");
-
 const errorHandler = (err, req, res, next) => {
-  let error = err;
+  console.error("❌ ERROR:", {
+    message: err.message,
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    path: req.originalUrl,
+    method: req.method,
+  });
 
-  console.error("[ERROR]", err.name, err.message);
+  let statusCode = err.statusCode || 500;
+  let message = err.message || "Greška na serveru";
 
-  if (err.name === "CastError") {
-    error = new ErrorResponse(`Resurs nije pronađen sa ID: ${err.value}`, 404);
-  }
-
+  // 🔥 Mongo duplicate key (npr email, slot, itd)
   if (err.code === 11000) {
-    error = new ErrorResponse("Podatak već postoji u bazi", 400);
+    statusCode = 400;
+    const field = Object.keys(err.keyValue || {})[0];
+    message = `${field} već postoji`;
   }
 
+  // 🔥 Mongoose bad ObjectId
+  if (err.name === "CastError") {
+    statusCode = 400;
+    message = "Nevalidan ID";
+  }
+
+  // 🔥 Validation error (Mongoose)
   if (err.name === "ValidationError") {
-    const message = Object.values(err.errors)
+    statusCode = 400;
+    message = Object.values(err.errors)
       .map((val) => val.message)
       .join(", ");
-    error = new ErrorResponse(message, 400);
   }
 
-  res.status(error.statusCode || 500).json({
+  res.status(statusCode).json({
     success: false,
-    message: error.message || "Greška na serveru",
+    message,
+    ...(process.env.NODE_ENV === "development" && {
+      stack: err.stack,
+    }),
   });
 };
 

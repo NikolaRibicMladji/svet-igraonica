@@ -1,6 +1,14 @@
 const Playroom = require("../models/Playroom");
-const { generateTimeSlotsForPlayroom } = require("../utils/generateTimeSlots");
-
+const Booking = require("../models/Booking");
+const TimeSlot = require("../models/TimeSlot");
+const PLAYROOM_STATUS = require("../constants/playroomStatus");
+const BOOKING_STATUS = require("../constants/bookingStatus");
+const {
+  createPlayroomWithSlots,
+  verifyPlayroomAndGenerateSlots,
+  regenerateSlotsForPlayroom,
+} = require("../services/playroomService");
+const { syncTimeSlotsWithWorkingHours } = require("../utils/generateTimeSlots");
 const isEqual = require("lodash.isequal");
 
 const normalizeRadnoVreme = (radnoVreme = {}) => {
@@ -18,7 +26,6 @@ const normalizeRadnoVreme = (radnoVreme = {}) => {
 
   for (const day of days) {
     const value = radnoVreme?.[day] || {};
-
     const radi = value.radi === true;
 
     if (!radi) {
@@ -38,13 +45,14 @@ const normalizeRadnoVreme = (radnoVreme = {}) => {
 // @desc    Kreiraj novu igraonicu (samo vlasnici)
 // @route   POST /api/playrooms
 // @access  Private (vlasnik ili admin)
-exports.createPlayroom = async (req, res) => {
+exports.createPlayroom = async (req, res, next) => {
   try {
-    // Dodaj vlasnika iz tokena
     req.body.vlasnikId = req.user.id;
 
-    // Proveri da li već postoji igraonica sa istim imenom
-    const postoji = await Playroom.findOne({ naziv: req.body.naziv });
+    const postoji = await Playroom.findOne({
+      naziv: req.body.naziv?.trim(),
+    });
+
     if (postoji) {
       return res.status(400).json({
         success: false,
@@ -52,70 +60,66 @@ exports.createPlayroom = async (req, res) => {
       });
     }
 
-    const playroom = await Playroom.create(req.body);
-
-    // Automatski generiši termine za narednih 30 dana
-    console.log(`🔄 Generišem termine za ${playroom.naziv}...`);
-    const result = await generateTimeSlotsForPlayroom(playroom._id, 30);
-    console.log(`✅ Generisano ${result.createdCount} termina`);
+    const result = await createPlayroomWithSlots({
+      ...req.body,
+      naziv: req.body.naziv?.trim(),
+      kontaktEmail: req.body.kontaktEmail?.trim()?.toLowerCase(),
+    });
 
     res.status(201).json({
       success: true,
-      data: playroom,
-      message: `Igraonica je kreirana. ${result.createdCount} termina je automatski generisano.`,
+      data: result.playroom,
+      message: `Igraonica je kreirana. ${
+        result.slotResult?.createdCount || 0
+      } termina je automatski generisano.`,
+      slotWarning: result.slotError || null,
     });
   } catch (error) {
-    console.error("Greška pri kreiranju igraonice:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška na serveru",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // @desc    Dohvati sve verifikovane igraonice (sa filtriranjem)
 // @route   GET /api/playrooms
 // @access  Public
-exports.getAllPlayrooms = async (req, res) => {
+exports.getAllPlayrooms = async (req, res, next) => {
   try {
     const { grad, minCena, maxCena, pogodnosti, minRating, sortBy } = req.query;
 
-    // Osnovni filter - samo verifikovane i aktivne igraonice
-    let query = { verifikovan: true, status: "aktivan" };
+    const query = {
+      verifikovan: true,
+      status: PLAYROOM_STATUS.AKTIVAN,
+    };
 
-    // Filter po gradu
     if (grad && grad !== "svi") {
       query.grad = grad;
     }
 
-    // Filter po ceni (koristi osnovnaCena iz novog modela)
     if (minCena || maxCena) {
       query.osnovnaCena = {};
-      if (minCena) query.osnovnaCena.$gte = parseInt(minCena);
-      if (maxCena) query.osnovnaCena.$lte = parseInt(maxCena);
+      if (minCena) query.osnovnaCena.$gte = parseInt(minCena, 10);
+      if (maxCena) query.osnovnaCena.$lte = parseInt(maxCena, 10);
     }
 
-    // Filter po oceni
     if (minRating && minRating !== "sve") {
-      query.rating = { $gte: parseInt(minRating) };
+      query.rating = { $gte: parseInt(minRating, 10) };
     }
 
-    // Filter po besplatnim pogodnostima
     if (pogodnosti) {
-      const pogodnostiArray = pogodnosti.split(",");
-      query.besplatnePogodnosti = { $in: pogodnostiArray };
+      const pogodnostiArray = pogodnosti
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean);
+
+      if (pogodnostiArray.length > 0) {
+        query.besplatnePogodnosti = { $in: pogodnostiArray };
+      }
     }
 
-    // Sortiranje
-    let sort = { createdAt: -1 }; // default: najnovije prvo
-    if (sortBy === "rating") {
-      sort = { rating: -1 };
-    } else if (sortBy === "price_asc") {
-      sort = { osnovnaCena: 1 };
-    } else if (sortBy === "price_desc") {
-      sort = { osnovnaCena: -1 };
-    }
+    let sort = { createdAt: -1 };
+    if (sortBy === "rating") sort = { rating: -1 };
+    if (sortBy === "price_asc") sort = { osnovnaCena: 1 };
+    if (sortBy === "price_desc") sort = { osnovnaCena: -1 };
 
     const playrooms = await Playroom.find(query).select("-__v").sort(sort);
 
@@ -125,31 +129,19 @@ exports.getAllPlayrooms = async (req, res) => {
       data: playrooms,
     });
   } catch (error) {
-    console.error("Greška:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška na serveru",
-    });
+    next(error);
   }
 };
 
 // @desc    Dohvati jednu igraonicu po ID
 // @route   GET /api/playrooms/:id
 // @access  Public
-exports.getPlayroomById = async (req, res) => {
+exports.getPlayroomById = async (req, res, next) => {
   try {
-    console.log("Dohvatam igraonicu sa ID:", req.params.id);
-
     const playroom = await Playroom.findById(req.params.id).populate(
       "vlasnikId",
       "ime prezime email telefon",
     );
-
-    console.log(
-      "Pronađena igraonica:",
-      playroom ? playroom.naziv : "Nije pronađena",
-    );
-    console.log("VideoGalerija:", playroom?.videoGalerija?.length || 0);
 
     if (!playroom) {
       return res.status(404).json({
@@ -158,12 +150,10 @@ exports.getPlayroomById = async (req, res) => {
       });
     }
 
-    // Ako nije verifikovana, samo vlasnik i admin mogu da vide
-    if (
-      !playroom.verifikovan &&
-      req.user?.role !== "vlasnik" &&
-      req.user?.role !== "admin"
-    ) {
+    const isAdmin = req.user?.role === "admin";
+    const isOwner = playroom.vlasnikId?._id?.toString() === req.user?.id;
+
+    if (!playroom.verifikovan && !isAdmin && !isOwner) {
       return res.status(403).json({
         success: false,
         message: "Ova igraonica još nije verifikovana",
@@ -175,18 +165,14 @@ exports.getPlayroomById = async (req, res) => {
       data: playroom,
     });
   } catch (error) {
-    console.error("Greška:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška na serveru",
-    });
+    next(error);
   }
 };
 
 // @desc    Dohvati svoje igraonice (za vlasnika)
 // @route   GET /api/playrooms/mine/my-playrooms
 // @access  Private (vlasnik)
-exports.getMyPlayrooms = async (req, res) => {
+exports.getMyPlayrooms = async (req, res, next) => {
   try {
     const playrooms = await Playroom.find({ vlasnikId: req.user.id }).sort({
       createdAt: -1,
@@ -198,18 +184,14 @@ exports.getMyPlayrooms = async (req, res) => {
       data: playrooms,
     });
   } catch (error) {
-    console.error("Greška:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška na serveru",
-    });
+    next(error);
   }
 };
 
 // @desc    Ažuriraj igraonicu
 // @route   PUT /api/playrooms/:id
 // @access  Private (vlasnik te igraonice ili admin)
-exports.updatePlayroom = async (req, res) => {
+exports.updatePlayroom = async (req, res, next) => {
   try {
     let playroom = await Playroom.findById(req.params.id);
 
@@ -220,7 +202,6 @@ exports.updatePlayroom = async (req, res) => {
       });
     }
 
-    // Proveri da li korisnik ima pravo (vlasnik ili admin)
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
@@ -232,49 +213,57 @@ exports.updatePlayroom = async (req, res) => {
     }
 
     const oldRadnoVreme = normalizeRadnoVreme(playroom.radnoVreme);
-    const newRadnoVreme = normalizeRadnoVreme(req.body.radnoVreme);
+    const hasRadnoVremeUpdate = Object.prototype.hasOwnProperty.call(
+      req.body,
+      "radnoVreme",
+    );
+    const newRadnoVreme = hasRadnoVremeUpdate
+      ? normalizeRadnoVreme(req.body.radnoVreme)
+      : oldRadnoVreme;
 
-    // Ažuriraj igraonicu
-    playroom = await Playroom.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    playroom = await Playroom.findByIdAndUpdate(
+      req.params.id,
+      {
+        ...req.body,
+        ...(req.body.naziv ? { naziv: req.body.naziv.trim() } : {}),
+        ...(req.body.kontaktEmail
+          ? { kontaktEmail: req.body.kontaktEmail.trim().toLowerCase() }
+          : {}),
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
 
-    // Regeneriši termine SAMO ako je radno vreme stvarno promenjeno
-    if (req.body.radnoVreme && !isEqual(oldRadnoVreme, newRadnoVreme)) {
-      console.log(
-        `🔄 Radno vreme promenjeno, sinhronizujem termine za ${playroom.naziv}...`,
-      );
+    let syncResult = null;
 
-      const {
-        syncTimeSlotsWithWorkingHours,
-      } = require("../utils/generateTimeSlots");
+    if (hasRadnoVremeUpdate && !isEqual(oldRadnoVreme, newRadnoVreme)) {
+      syncResult = await syncTimeSlotsWithWorkingHours(playroom._id, 30);
 
-      const result = await syncTimeSlotsWithWorkingHours(playroom._id, 30);
-
-      console.log(
-        `✅ Sinhronizacija termina završena | novo: ${result.createdCount} | deaktivirano: ${result.deactivatedCount} | konflikti: ${result.conflictCount}`,
-      );
+      if (!syncResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: syncResult.message || "Greška pri sinhronizaciji termina",
+        });
+      }
     }
 
     res.status(200).json({
       success: true,
       data: playroom,
       message: "Igraonica je uspešno ažurirana",
+      slotSync: syncResult,
     });
   } catch (error) {
-    console.error("Greška:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška na serveru",
-    });
+    next(error);
   }
 };
 
 // @desc    Obriši igraonicu
 // @route   DELETE /api/playrooms/:id
 // @access  Private (vlasnik ili admin)
-exports.deletePlayroom = async (req, res) => {
+exports.deletePlayroom = async (req, res, next) => {
   try {
     const playroom = await Playroom.findById(req.params.id);
 
@@ -285,7 +274,6 @@ exports.deletePlayroom = async (req, res) => {
       });
     }
 
-    // Proveri prava
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
@@ -296,11 +284,19 @@ exports.deletePlayroom = async (req, res) => {
       });
     }
 
-    // Obriši sve termine vezane za igraonicu
-    const TimeSlot = require("../models/TimeSlot");
-    await TimeSlot.deleteMany({ playroomId: playroom._id });
-    console.log(`🗑 Obrisani svi termini za igraonicu ${playroom.naziv}`);
+    const activeBookings = await Booking.countDocuments({
+      playroomId: playroom._id,
+      status: { $ne: BOOKING_STATUS.OTKAZANO },
+    });
 
+    if (activeBookings > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Ne možeš obrisati igraonicu dok postoje aktivne rezervacije",
+      });
+    }
+
+    await TimeSlot.deleteMany({ playroomId: playroom._id });
     await playroom.deleteOne();
 
     res.status(200).json({
@@ -308,55 +304,33 @@ exports.deletePlayroom = async (req, res) => {
       message: "Igraonica i svi njeni termini su obrisani",
     });
   } catch (error) {
-    console.error("Greška:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška na serveru",
-    });
+    next(error);
   }
 };
 
 // @desc    Verifikuj igraonicu (samo admin)
 // @route   PUT /api/playrooms/:id/verify
 // @access  Private (admin)
-exports.verifyPlayroom = async (req, res) => {
+exports.verifyPlayroom = async (req, res, next) => {
   try {
-    const playroom = await Playroom.findById(req.params.id);
-
-    if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
-    }
-
-    playroom.verifikovan = true;
-    playroom.status = "aktivan";
-    await playroom.save();
-
-    // Generiši termine za verifikovanu igraonicu
-    console.log(`🔄 Generišem termine za ${playroom.naziv}...`);
-    const result = await generateTimeSlotsForPlayroom(playroom._id, 30);
-    console.log(`✅ Generisano ${result.createdCount} termina`);
+    const result = await verifyPlayroomAndGenerateSlots(req.params.id);
 
     res.status(200).json({
       success: true,
-      data: playroom,
-      message: `Igraonica je verifikovana. ${result.createdCount} termina je automatski generisano.`,
+      data: result.playroom,
+      message: `Igraonica je verifikovana. ${
+        result.slotResult?.createdCount || 0
+      } termina je automatski generisano.`,
     });
   } catch (error) {
-    console.error("Greška:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška na serveru",
-    });
+    next(error);
   }
 };
 
 // @desc    Regeneriši termine za igraonicu (ručno)
 // @route   POST /api/playrooms/:id/regenerate-slots
-// @access  Private (vlasnik)
-exports.regenerateTimeSlots = async (req, res) => {
+// @access  Private (vlasnik ili admin)
+exports.regenerateTimeSlots = async (req, res, next) => {
   try {
     const playroom = await Playroom.findById(req.params.id);
 
@@ -373,30 +347,25 @@ exports.regenerateTimeSlots = async (req, res) => {
     ) {
       return res.status(403).json({
         success: false,
-        message: "Nemate pravo da regenerišete termine",
+        message: "Nemate pravo da regenerišete termine za ovu igraonicu",
       });
     }
 
-    const TimeSlot = require("../models/TimeSlot");
-    await TimeSlot.deleteMany({ playroomId: playroom._id });
-
-    const result = await generateTimeSlotsForPlayroom(playroom._id, 30);
+    const result = await regenerateSlotsForPlayroom(req.params.id);
 
     res.status(200).json({
       success: true,
-      message: `Termini su regenerisani. Generisano ${result.createdCount} novih termina.`,
+      message: `Termini su sinhronizovani. Novo: ${
+        result.createdCount || 0
+      }, deaktivirano: ${result.deactivatedCount || 0}, konflikti: ${
+        result.conflictCount || 0
+      }.`,
       data: result,
     });
   } catch (error) {
-    console.error("Greška:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška na serveru",
-    });
+    next(error);
   }
 };
-
-const Booking = require("../models/Booking");
 
 // @desc    Dohvati statistiku za vlasnika igraonice
 // @route   GET /api/playrooms/:id/stats
@@ -407,9 +376,10 @@ exports.getOwnerStats = async (req, res, next) => {
 
     const playroom = await Playroom.findById(playroomId);
     if (!playroom) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Igraonica nije pronađena" });
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronađena",
+      });
     }
 
     if (
@@ -429,15 +399,34 @@ exports.getOwnerStats = async (req, res, next) => {
           _id: null,
           totalBookings: { $sum: 1 },
           confirmedBookings: {
-            $sum: { $cond: [{ $eq: ["$status", "potvrdjeno"] }, 1, 0] },
+            $sum: {
+              $cond: [{ $eq: ["$status", BOOKING_STATUS.POTVRDJENO] }, 1, 0],
+            },
+          },
+          waitingBookings: {
+            $sum: {
+              $cond: [{ $eq: ["$status", BOOKING_STATUS.CEKANJE] }, 1, 0],
+            },
+          },
+          canceledBookings: {
+            $sum: {
+              $cond: [{ $eq: ["$status", BOOKING_STATUS.OTKAZANO] }, 1, 0],
+            },
           },
           completedBookings: {
-            $sum: { $cond: [{ $eq: ["$status", "zavrseno"] }, 1, 0] },
+            $sum: {
+              $cond: [{ $eq: ["$status", BOOKING_STATUS.ZAVRSENO] }, 1, 0],
+            },
           },
           totalRevenue: {
             $sum: {
               $cond: [
-                { $in: ["$status", ["potvrdjeno", "zavrseno"]] },
+                {
+                  $in: [
+                    "$status",
+                    [BOOKING_STATUS.POTVRDJENO, BOOKING_STATUS.ZAVRSENO],
+                  ],
+                },
                 "$ukupnaCena",
                 0,
               ],
@@ -453,6 +442,8 @@ exports.getOwnerStats = async (req, res, next) => {
         : {
             totalBookings: 0,
             confirmedBookings: 0,
+            waitingBookings: 0,
+            canceledBookings: 0,
             completedBookings: 0,
             totalRevenue: 0,
           };

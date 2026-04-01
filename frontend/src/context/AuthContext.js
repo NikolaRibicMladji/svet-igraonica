@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, lozinka) => {
+  const login = async (email, password) => {
     setError(null);
     try {
       const res = await api.post("/auth/login", { email, lozinka });

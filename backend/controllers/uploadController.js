@@ -3,11 +3,10 @@ const Playroom = require("../models/Playroom");
 const streamifier = require("streamifier");
 
 // Upload slike za igraonicu
-exports.uploadPlayroomImage = async (req, res) => {
+exports.uploadPlayroomImage = async (req, res, next) => {
   try {
     const { playroomId } = req.params;
 
-    // Proveri da li igraonica postoji
     const playroom = await Playroom.findById(playroomId);
     if (!playroom) {
       return res.status(404).json({
@@ -16,7 +15,6 @@ exports.uploadPlayroomImage = async (req, res) => {
       });
     }
 
-    // Proveri prava (samo vlasnik ili admin)
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
@@ -27,7 +25,6 @@ exports.uploadPlayroomImage = async (req, res) => {
       });
     }
 
-    // Proveri da li je slika poslata
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -35,25 +32,26 @@ exports.uploadPlayroomImage = async (req, res) => {
       });
     }
 
-    // Upload na Cloudinary
     const result = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
           folder: "svet-igraonica",
+          resource_type: "image",
           transformation: [
-            { width: 800, height: 600, crop: "limit" },
+            { width: 1600, height: 1200, crop: "limit" },
             { quality: "auto" },
+            { fetch_format: "auto" },
           ],
         },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
+        (error, uploadResult) => {
+          if (error) return reject(error);
+          resolve(uploadResult);
         },
       );
+
       streamifier.createReadStream(req.file.buffer).pipe(stream);
     });
 
-    // Sačuvaj URL slike u bazi
     playroom.slike.push({
       url: result.secure_url,
       publicId: result.public_id,
@@ -61,8 +59,15 @@ exports.uploadPlayroomImage = async (req, res) => {
       height: result.height,
       size: result.bytes,
       format: result.format,
-      isMain: playroom.slike.length === 0, // Prva slika je glavna
     });
+
+    if (!playroom.profilnaSlika?.url) {
+      playroom.profilnaSlika = {
+        url: result.secure_url,
+        publicId: result.public_id,
+      };
+    }
+
     await playroom.save();
 
     res.status(200).json({
@@ -70,21 +75,20 @@ exports.uploadPlayroomImage = async (req, res) => {
       data: {
         url: result.secure_url,
         publicId: result.public_id,
+        width: result.width,
+        height: result.height,
+        format: result.format,
+        size: result.bytes,
       },
       message: "Slika je uspešno dodata",
     });
   } catch (error) {
-    console.error("Greška pri uploadu slike:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška pri uploadu slike",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // Obriši sliku
-exports.deletePlayroomImage = async (req, res) => {
+exports.deletePlayroomImage = async (req, res, next) => {
   try {
     const { playroomId, imageUrl } = req.params;
 
@@ -96,7 +100,6 @@ exports.deletePlayroomImage = async (req, res) => {
       });
     }
 
-    // Proveri prava
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
@@ -107,9 +110,40 @@ exports.deletePlayroomImage = async (req, res) => {
       });
     }
 
-    // Izbaci URL iz niza
     const decodedUrl = decodeURIComponent(imageUrl);
+    const imageToDelete = playroom.slike.find(
+      (image) => image.url === decodedUrl,
+    );
+
+    if (!imageToDelete) {
+      return res.status(404).json({
+        success: false,
+        message: "Slika nije pronađena",
+      });
+    }
+
+    if (imageToDelete.publicId) {
+      await cloudinary.uploader.destroy(imageToDelete.publicId, {
+        resource_type: "image",
+      });
+    }
+
     playroom.slike = playroom.slike.filter((image) => image.url !== decodedUrl);
+
+    if (playroom.profilnaSlika?.url === decodedUrl) {
+      if (playroom.slike.length > 0) {
+        playroom.profilnaSlika = {
+          url: playroom.slike[0].url,
+          publicId: playroom.slike[0].publicId,
+        };
+      } else {
+        playroom.profilnaSlika = {
+          url: "",
+          publicId: "",
+        };
+      }
+    }
+
     await playroom.save();
 
     res.status(200).json({
@@ -117,10 +151,6 @@ exports.deletePlayroomImage = async (req, res) => {
       message: "Slika je obrisana",
     });
   } catch (error) {
-    console.error("Greška:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška na serveru",
-    });
+    next(error);
   }
 };

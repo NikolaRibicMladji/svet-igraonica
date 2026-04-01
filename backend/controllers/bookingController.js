@@ -1,7 +1,8 @@
 const Booking = require("../models/Booking");
 const TimeSlot = require("../models/TimeSlot");
 const Playroom = require("../models/Playroom");
-const User = require("../models/User");
+const { reserveSlot } = require("../services/bookingService");
+const BOOKING_STATUS = require("../constants/bookingStatus");
 const {
   sendBookingConfirmation,
   sendBookingCancellation,
@@ -10,226 +11,82 @@ const {
 
 // @desc    Kreiraj novu rezervaciju (i za neregistrovane korisnike)
 // @route   POST /api/bookings
-// @access  Public (svi mogu)
-exports.createBooking = async (req, res) => {
+// @access  Public
+exports.createBooking = async (req, res, next) => {
   try {
-    const {
-      playroomId,
-      datum,
-      vremeOd,
-      vremeDo,
-      brojDece,
-      brojRoditelja,
-      napomena,
-      ime,
-      prezime,
-      email,
-      telefon,
-    } = req.body;
-
-    console.log("Primljeni podaci:", {
-      playroomId,
-      datum,
-      vremeOd,
-      vremeDo,
-      brojDece,
-      brojRoditelja,
-      ime,
-      prezime,
-      email,
-      telefon,
+    const booking = await reserveSlot({
+      slotId: req.body.slotId,
+      user: req.user || null,
+      payload: {
+        imeRoditelja: req.body.imeRoditelja || req.body.ime,
+        prezimeRoditelja: req.body.prezimeRoditelja || req.body.prezime || "-",
+        emailRoditelja:
+          req.body.emailRoditelja || req.body.email || "nije-uneto@example.com",
+        telefon: req.body.telefon,
+        brojDece: req.body.brojDece,
+        brojRoditelja: req.body.brojRoditelja,
+        napomena: req.body.napomena,
+      },
     });
 
-    // Proveri da li igraonica postoji
-    const playroom = await Playroom.findById(playroomId);
-    if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
-    }
+    try {
+      const populatedBooking = await Booking.findById(booking._id)
+        .populate("playroomId", "naziv adresa grad vlasnikId")
+        .populate("roditeljId", "ime prezime email telefon")
+        .populate("timeSlotId");
 
-    const slotDateStart = new Date(datum);
-    slotDateStart.setHours(0, 0, 0, 0);
+      const userForEmail = populatedBooking.roditeljId || {
+        ime: populatedBooking.imeRoditelja,
+        prezime: populatedBooking.prezimeRoditelja,
+        email: populatedBooking.emailRoditelja,
+        telefon: populatedBooking.telefonRoditelja,
+      };
 
-    const slotDateEnd = new Date(datum);
-    slotDateEnd.setHours(23, 59, 59, 999);
+      const playroom = populatedBooking.playroomId;
+      const timeSlot = {
+        datum: populatedBooking.datum,
+        vremeOd: populatedBooking.vremeOd,
+        vremeDo: populatedBooking.vremeDo,
+      };
 
-    const existingTimeSlot = await TimeSlot.findOne({
-      playroomId,
-      datum: { $gte: slotDateStart, $lte: slotDateEnd },
-      vremeOd,
-      vremeDo,
-    });
-
-    if (!existingTimeSlot) {
-      return res.status(400).json({
-        success: false,
-        message: "Termin ne postoji",
-      });
-    }
-
-    if (existingTimeSlot && existingTimeSlot.zauzeto) {
-      return res.status(400).json({
-        success: false,
-        message: "Ovaj termin je već zauzet",
-      });
-    }
-
-    // Proveri da li već postoji rezervacija za ovo vreme
-    const existingBooking = await Booking.findOne({
-      playroomId,
-      datum: { $gte: slotDateStart, $lte: slotDateEnd },
-      vremeOd,
-      vremeDo,
-      status: { $ne: "otkazano" },
-    });
-
-    if (existingBooking) {
-      return res.status(400).json({
-        success: false,
-        message: "Ovaj termin je već zauzet",
-      });
-    }
-
-    // Izračunaj ukupnu cenu
-    let ukupnaCena = playroom.osnovnaCena * (brojDece || 0);
-
-    // Dodaj cenu za roditelje
-    if (
-      playroom.cenaRoditelja &&
-      playroom.cenaRoditelja.tip !== "ne_naplacuje"
-    ) {
-      if (playroom.cenaRoditelja.tip === "fiksno") {
-        ukupnaCena += playroom.cenaRoditelja.iznos;
-      } else if (playroom.cenaRoditelja.tip === "po_osobi") {
-        ukupnaCena += playroom.cenaRoditelja.iznos * (brojRoditelja || 0);
+      if (userForEmail.email) {
+        await sendBookingConfirmation(
+          populatedBooking,
+          userForEmail,
+          playroom,
+          timeSlot,
+        );
       }
-    }
 
-    // Dodaj dodatne cene
-    if (req.body.selectedOstaleCene) {
-      ukupnaCena += req.body.selectedOstaleCene.reduce((sum, c) => {
-        if (c.tip === "po_osobi") {
-          return sum + c.cena * ((brojDece || 0) + (brojRoditelja || 0));
-        }
-        return sum + c.cena;
-      }, 0);
-    }
-
-    // Dodaj dodatne usluge
-    if (req.body.selectedUsluge) {
-      ukupnaCena += req.body.selectedUsluge.reduce((sum, u) => {
-        if (u.tip === "po_osobi") {
-          return sum + u.cena * ((brojDece || 0) + (brojRoditelja || 0));
-        }
-        return sum + u.cena;
-      }, 0);
-    }
-
-    // Kreiraj rezervaciju (bez provere da li je korisnik prijavljen)
-    const bookingData = {
-      playroomId,
-      datum: new Date(datum),
-      vremeOd,
-      vremeDo,
-      brojDece: brojDece || 1,
-      brojRoditelja: brojRoditelja || 0,
-      ukupnaCena,
-      napomena,
-      imeRoditelja: ime,
-      prezimeRoditelja: prezime,
-      emailRoditelja: email,
-      telefonRoditelja: telefon,
-      status: "potvrdjeno",
-    };
-
-    // Ako je korisnik prijavljen, dodaj i njegov ID
-    if (req.user) {
-      bookingData.roditeljId = req.user.id;
-    }
-
-    const booking = await Booking.create(bookingData);
-
-    if (existingTimeSlot) {
-      existingTimeSlot.zauzeto = true;
-      existingTimeSlot.slobodno = 0;
-      await existingTimeSlot.save();
-    }
-
-    console.log(`✅ Rezervacija kreirana: ${booking._id}`);
-
-    // ========== POŠALJI EMAIL RODITELJU ==========
-    try {
-      // Kreiraj objekat roditelja za email
-      const roditelj = {
-        ime: ime,
-        prezime: prezime,
-        email: email,
-        telefon: telefon,
-      };
-      const timeSlot = { datum: new Date(datum), vremeOd, vremeDo };
-
-      await sendBookingConfirmation(
-        booking,
-        roditelj,
-        playroom,
-        timeSlot,
-        req.body.selectedOstaleCene || [],
-        req.body.selectedUsluge || [],
-      );
-      console.log(`📧 Email roditelju poslat na ${email}`);
+      if (playroom?.vlasnikId) {
+        await sendBookingConfirmationToOwner(
+          populatedBooking,
+          playroom,
+          timeSlot,
+        );
+      }
     } catch (emailError) {
-      console.error("Greška pri slanju emaila roditelju:", emailError);
+      console.error("Greška pri slanju email potvrde:", emailError);
     }
 
-    // ========== POŠALJI EMAIL VLASNIKU ==========
-    try {
-      const vlasnik = await User.findById(playroom.vlasnikId);
-      const roditelj = {
-        ime: ime,
-        prezime: prezime,
-        email: email,
-        telefon: telefon,
-      };
-      const timeSlot = { datum: new Date(datum), vremeOd, vremeDo };
-
-      await sendBookingConfirmationToOwner(
-        booking,
-        roditelj,
-        playroom,
-        timeSlot,
-        vlasnik,
-        req.body.selectedOstaleCene || [], // <--- DODATO
-        req.body.selectedUsluge || [], // <--- DODATO
-      );
-      console.log(`📧 Email vlasniku poslat na ${vlasnik.email}`);
-    } catch (emailError) {
-      console.error("Greška pri slanju emaila vlasniku:", emailError);
-    }
-
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: booking,
-      message: "Rezervacija je uspešno kreirana",
+      message: "Rezervacija uspešno kreirana",
     });
   } catch (error) {
-    console.error("Greška pri kreiranju rezervacije:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška na serveru",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 // @desc    Dohvati moje rezervacije (roditelj)
 // @route   GET /api/bookings/my
 // @access  Private (roditelj)
-exports.getMyBookings = async (req, res) => {
+exports.getMyBookings = async (req, res, next) => {
   try {
     const bookings = await Booking.find({ roditeljId: req.user.id })
       .populate("playroomId", "naziv adresa grad slike")
+      .populate("timeSlotId")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -238,18 +95,14 @@ exports.getMyBookings = async (req, res) => {
       data: bookings,
     });
   } catch (error) {
-    console.error("Greška:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška na serveru",
-    });
+    next(error);
   }
 };
 
 // @desc    Dohvati rezervacije za moje igraonice (vlasnik)
 // @route   GET /api/bookings/owner
 // @access  Private (vlasnik)
-exports.getOwnerBookings = async (req, res) => {
+exports.getOwnerBookings = async (req, res, next) => {
   try {
     const playrooms = await Playroom.find({ vlasnikId: req.user.id });
     const playroomIds = playrooms.map((p) => p._id);
@@ -257,6 +110,7 @@ exports.getOwnerBookings = async (req, res) => {
     const bookings = await Booking.find({ playroomId: { $in: playroomIds } })
       .populate("roditeljId", "ime prezime email telefon")
       .populate("playroomId", "naziv adresa grad")
+      .populate("timeSlotId")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -265,22 +119,18 @@ exports.getOwnerBookings = async (req, res) => {
       data: bookings,
     });
   } catch (error) {
-    console.error("Greška:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška na serveru",
-    });
+    next(error);
   }
 };
 
 // @desc    Otkaži rezervaciju
 // @route   PUT /api/bookings/:id/cancel
-// @access  Private (roditelj ili vlasnik)
-exports.cancelBooking = async (req, res) => {
+// @access  Private (roditelj ili vlasnik ili admin)
+exports.cancelBooking = async (req, res, next) => {
   try {
     const booking = await Booking.findById(req.params.id)
       .populate("playroomId", "naziv adresa grad vlasnikId")
-      .populate("roditeljId", "ime prezime email");
+      .populate("roditeljId", "ime prezime email telefon");
 
     if (!booking) {
       return res.status(404).json({
@@ -289,68 +139,63 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
-    // Proveri da li korisnik ima pravo
-    if (
+    const isOwnerOfBooking =
       booking.roditeljId &&
-      booking.roditeljId._id.toString() !== req.user.id
-    ) {
+      booking.roditeljId._id &&
+      booking.roditeljId._id.toString() === req.user.id;
+
+    const isAdmin = req.user.role === "admin";
+
+    let isPlayroomOwner = false;
+    if (booking.playroomId?.vlasnikId) {
+      isPlayroomOwner = booking.playroomId.vlasnikId.toString() === req.user.id;
+    } else {
       const playroom = await Playroom.findById(booking.playroomId);
-      if (
-        playroom.vlasnikId.toString() !== req.user.id &&
-        req.user.role !== "admin"
-      ) {
-        return res.status(403).json({
-          success: false,
-          message: "Nemate pravo da otkažete ovu rezervaciju",
-        });
-      }
+      isPlayroomOwner = playroom?.vlasnikId?.toString() === req.user.id;
     }
 
-    if (booking.status === "otkazano") {
+    if (!isOwnerOfBooking && !isPlayroomOwner && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da otkažete ovu rezervaciju",
+      });
+    }
+
+    if (booking.status === BOOKING_STATUS.OTKAZANO) {
       return res.status(400).json({
         success: false,
         message: "Rezervacija je već otkazana",
       });
     }
 
-    // Sačuvaj podatke za email pre nego što promenimo status
-    const user = booking.roditeljId || {
-      ime: booking.imeRoditelja,
-      prezime: booking.prezimeRoditelja,
-      email: booking.emailRoditelja,
-    };
-    const playroom = booking.playroomId;
-    const timeSlot = {
-      datum: booking.datum,
-      vremeOd: booking.vremeOd,
-      vremeDo: booking.vremeDo,
-    };
-
-    booking.status = "otkazano";
+    booking.status = BOOKING_STATUS.OTKAZANO;
     await booking.save();
 
-    const slotDateStart = new Date(booking.datum);
-    slotDateStart.setHours(0, 0, 0, 0);
-
-    const slotDateEnd = new Date(booking.datum);
-    slotDateEnd.setHours(23, 59, 59, 999);
-
-    const existingTimeSlot = await TimeSlot.findOne({
-      playroomId: booking.playroomId._id || booking.playroomId,
-      datum: { $gte: slotDateStart, $lte: slotDateEnd },
-      vremeOd: booking.vremeOd,
-      vremeDo: booking.vremeDo,
-    });
-
-    if (existingTimeSlot) {
-      existingTimeSlot.zauzeto = false;
-      existingTimeSlot.slobodno = existingTimeSlot.maxDece || 20;
-      await existingTimeSlot.save();
+    const timeSlot = await TimeSlot.findById(booking.timeSlotId);
+    if (timeSlot) {
+      timeSlot.zauzeto = false;
+      timeSlot.slobodno = timeSlot.maxDece || 20;
+      await timeSlot.save();
     }
-    // ========== POŠALJI EMAIL O OTKAZIVANJU ==========
+
     try {
-      await sendBookingCancellation(user, playroom, timeSlot);
-      console.log(`📧 Email o otkazivanju poslat na ${user.email}`);
+      const userForEmail = booking.roditeljId || {
+        ime: booking.imeRoditelja,
+        prezime: booking.prezimeRoditelja,
+        email: booking.emailRoditelja,
+        telefon: booking.telefonRoditelja,
+      };
+
+      const playroom = booking.playroomId;
+      const slotForEmail = {
+        datum: booking.datum,
+        vremeOd: booking.vremeOd,
+        vremeDo: booking.vremeDo,
+      };
+
+      if (userForEmail.email) {
+        await sendBookingCancellation(userForEmail, playroom, slotForEmail);
+      }
     } catch (emailError) {
       console.error("Greška pri slanju emaila o otkazivanju:", emailError);
     }
@@ -360,22 +205,18 @@ exports.cancelBooking = async (req, res) => {
       message: "Rezervacija je otkazana",
     });
   } catch (error) {
-    console.error("Greška:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška na serveru",
-    });
+    next(error);
   }
 };
 
-// @desc    Potvrdi rezervaciju (vlasnik)
+// @desc    Potvrdi rezervaciju
 // @route   PUT /api/bookings/:id/confirm
-// @access  Private (vlasnik)
-exports.confirmBooking = async (req, res) => {
+// @access  Private (vlasnik ili admin)
+exports.confirmBooking = async (req, res, next) => {
   try {
     const booking = await Booking.findById(req.params.id)
       .populate("playroomId", "naziv adresa grad vlasnikId")
-      .populate("roditeljId", "ime prezime email");
+      .populate("roditeljId", "ime prezime email telefon");
 
     if (!booking) {
       return res.status(404).json({
@@ -384,35 +225,58 @@ exports.confirmBooking = async (req, res) => {
       });
     }
 
-    const playroom = await Playroom.findById(booking.playroomId);
-    if (
-      playroom.vlasnikId.toString() !== req.user.id &&
-      req.user.role !== "admin"
-    ) {
+    const isAdmin = req.user.role === "admin";
+    const isPlayroomOwner =
+      booking.playroomId?.vlasnikId &&
+      booking.playroomId.vlasnikId.toString() === req.user.id;
+
+    if (!isPlayroomOwner && !isAdmin) {
       return res.status(403).json({
         success: false,
         message: "Nemate pravo da potvrdite ovu rezervaciju",
       });
     }
 
-    booking.status = "potvrdjeno";
+    if (booking.status === BOOKING_STATUS.OTKAZANO) {
+      return res.status(400).json({
+        success: false,
+        message: "Otkazana rezervacija ne može biti potvrđena",
+      });
+    }
+
+    if (booking.status === BOOKING_STATUS.POTVRDJENO) {
+      return res.status(400).json({
+        success: false,
+        message: "Rezervacija je već potvrđena",
+      });
+    }
+
+    booking.status = BOOKING_STATUS.POTVRDJENO;
     await booking.save();
 
-    // ========== POŠALJI EMAIL POTVRDU AKO JE BILO U ČEKANJU ==========
     try {
-      const user = booking.roditeljId || {
+      const userForEmail = booking.roditeljId || {
         ime: booking.imeRoditelja,
         prezime: booking.prezimeRoditelja,
         email: booking.emailRoditelja,
+        telefon: booking.telefonRoditelja,
       };
-      const timeSlot = {
+
+      const playroom = booking.playroomId;
+      const slotForEmail = {
         datum: booking.datum,
         vremeOd: booking.vremeOd,
         vremeDo: booking.vremeDo,
       };
 
-      await sendBookingConfirmation(booking, user, playroom, timeSlot);
-      console.log(`📧 Email potvrde poslat na ${user.email}`);
+      if (userForEmail.email) {
+        await sendBookingConfirmation(
+          booking,
+          userForEmail,
+          playroom,
+          slotForEmail,
+        );
+      }
     } catch (emailError) {
       console.error("Greška pri slanju emaila potvrde:", emailError);
     }
@@ -422,22 +286,21 @@ exports.confirmBooking = async (req, res) => {
       message: "Rezervacija je potvrđena",
     });
   } catch (error) {
-    console.error("Greška:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška na serveru",
-    });
+    next(error);
   }
 };
 
 // @desc    Dohvati jednu rezervaciju po ID
 // @route   GET /api/bookings/:id
-// @access  Private (roditelj ili vlasnik)
-exports.getBookingById = async (req, res) => {
+// @access  Private (roditelj ili vlasnik ili admin)
+exports.getBookingById = async (req, res, next) => {
   try {
     const booking = await Booking.findById(req.params.id)
       .populate("roditeljId", "ime prezime email telefon")
-      .populate("playroomId", "naziv adresa grad kontaktTelefon kontaktEmail")
+      .populate(
+        "playroomId",
+        "naziv adresa grad kontaktTelefon kontaktEmail vlasnikId",
+      )
       .populate("timeSlotId");
 
     if (!booking) {
@@ -447,21 +310,20 @@ exports.getBookingById = async (req, res) => {
       });
     }
 
-    // Proveri prava
-    if (
+    const isAdmin = req.user.role === "admin";
+    const isOwnerOfBooking =
       booking.roditeljId &&
-      booking.roditeljId._id.toString() !== req.user.id
-    ) {
-      const playroom = await Playroom.findById(booking.playroomId);
-      if (
-        playroom.vlasnikId.toString() !== req.user.id &&
-        req.user.role !== "admin"
-      ) {
-        return res.status(403).json({
-          success: false,
-          message: "Nemate pravo da vidite ovu rezervaciju",
-        });
-      }
+      booking.roditeljId._id &&
+      booking.roditeljId._id.toString() === req.user.id;
+    const isPlayroomOwner =
+      booking.playroomId?.vlasnikId &&
+      booking.playroomId.vlasnikId.toString() === req.user.id;
+
+    if (!isOwnerOfBooking && !isPlayroomOwner && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da vidite ovu rezervaciju",
+      });
     }
 
     res.status(200).json({
@@ -469,10 +331,6 @@ exports.getBookingById = async (req, res) => {
       data: booking,
     });
   } catch (error) {
-    console.error("Greška:", error);
-    res.status(500).json({
-      success: false,
-      message: "Greška na serveru",
-    });
+    next(error);
   }
 };

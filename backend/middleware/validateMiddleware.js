@@ -1,19 +1,19 @@
 const validate = (schema) => (req, res, next) => {
   try {
-    schema.parse({
-      body: req.body,
-      query: req.query,
-      params: req.params,
-    });
-
+    const parsed = schema.parse(req.body);
+    req.body = parsed;
     next();
-  } catch (e) {
+  } catch (err) {
+    const errors =
+      err?.errors?.map((e) => ({
+        field: e.path?.join("."),
+        message: e.message,
+      })) || [];
+
     return res.status(400).json({
       success: false,
-      errors: (e.issues || []).map((err) => ({
-        path: err.path.join("."),
-        message: err.message,
-      })),
+      message: errors[0]?.message || "Validation error",
+      errors,
     });
   }
 };

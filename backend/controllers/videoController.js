@@ -1,10 +1,13 @@
 const cloudinary = require("../config/cloudinary");
 const streamifier = require("streamifier");
 
-exports.uploadVideo = async (req, res) => {
+exports.uploadVideo = async (req, res, next) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, message: "Nema videa" });
+      return res.status(400).json({
+        success: false,
+        message: "Nema videa",
+      });
     }
 
     const result = await new Promise((resolve, reject) => {
@@ -15,17 +18,19 @@ exports.uploadVideo = async (req, res) => {
           transformation: [
             { width: 1280, height: 720, crop: "limit" },
             { quality: "auto:good" },
+            { fetch_format: "auto" },
           ],
         },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
+        (error, uploadResult) => {
+          if (error) return reject(error);
+          resolve(uploadResult);
         },
       );
+
       streamifier.createReadStream(req.file.buffer).pipe(stream);
     });
 
-    res.json({
+    res.status(200).json({
       success: true,
       data: {
         url: result.secure_url,
@@ -35,10 +40,14 @@ exports.uploadVideo = async (req, res) => {
           format: "jpg",
         }),
         duration: result.duration,
+        width: result.width,
+        height: result.height,
+        format: result.format,
+        bytes: result.bytes,
       },
+      message: "Video je uspešno uploadovan",
     });
   } catch (error) {
-    console.error("Greška pri uploadu videa:", error);
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };

@@ -1,4 +1,7 @@
 const express = require("express");
+const authorize = require("../middleware/roleMiddleware");
+const checkOwner = require("../middleware/ownerMiddleware");
+const ROLES = require("../constants/roles");
 const router = express.Router();
 const {
   createPlayroom,
@@ -23,9 +26,28 @@ router.get("/:id/stats", protect, playroomController.getOwnerStats);
 router.get("/:id", getPlayroomById);
 
 // PRIVATNE CRUD RUTE
-router.post("/", protect, vlasnik, createPlayroom);
-router.put("/:id", protect, updatePlayroom);
-router.delete("/:id", protect, deletePlayroom);
+router.post("/", protect, authorize(ROLES.VLASNIK), createPlayroom);
+router.put(
+  "/:id",
+  protect,
+  authorize(ROLES.VLASNIK),
+  checkOwner,
+  updatePlayroom,
+);
+router.delete(
+  "/:id",
+  protect,
+  authorize(ROLES.VLASNIK),
+  checkOwner,
+  deletePlayroom,
+);
+router.post(
+  "/:id/regenerate-slots",
+  protect,
+  authorize(ROLES.VLASNIK),
+  checkOwner,
+  regenerateTimeSlots,
+);
 
 // ADMIN RUTA
 router.put("/:id/verify", protect, admin, verifyPlayroom);
