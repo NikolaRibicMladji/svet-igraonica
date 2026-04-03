@@ -1,3 +1,7 @@
+/* =========================================
+   BOOK PAGE
+========================================= */
+
 .book-page {
   padding: 40px 0;
   min-height: 100vh;
@@ -21,12 +25,16 @@
   color: #e85a3a;
 }
 
+/* CARD */
+
 .book-card {
   background: white;
   border-radius: 24px;
   padding: 32px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
+
+/* HEADER */
 
 .book-header {
   margin-bottom: 32px;
@@ -42,7 +50,6 @@
 
 .playroom-badge h2 {
   color: #ff6b4a;
-  margin-bottom: 8px;
 }
 
 .location {
@@ -50,450 +57,149 @@
   font-size: 0.9rem;
 }
 
-/* Date selector */
+/* DATE */
+
 .date-selector {
   margin-bottom: 32px;
 }
 
 .date-selector label {
-  display: block;
   font-weight: 600;
   margin-bottom: 12px;
-  color: #2c3e50;
-  font-size: 0.9rem;
+  display: block;
 }
 
 .date-input {
   padding: 14px 16px;
   border: 2px solid #e2e8f0;
   border-radius: 12px;
-  font-size: 1rem;
   width: 100%;
   max-width: 300px;
-  font-family: inherit;
-  cursor: pointer;
 }
 
 .date-input:focus {
-  outline: none;
   border-color: #ff6b4a;
+  outline: none;
 }
 
-/* Slots grid */
-.slots-section h3 {
-  margin-bottom: 20px;
-  color: #2c3e50;
-}
+/* =========================================
+   SLOTS
+========================================= */
 
 .slots-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
-  margin-bottom: 32px;
 }
 
 .slot-card {
-  background: white;
   border: 2px solid #e2e8f0;
   border-radius: 16px;
   padding: 20px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
+  transition: 0.2s;
 }
 
 .slot-card:hover:not(.slot-full) {
   border-color: #ff6b4a;
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(255, 107, 74, 0.15);
 }
 
 .slot-card.selected {
   border-color: #ff6b4a;
   background: #fff5f0;
-  box-shadow: 0 8px 20px rgba(255, 107, 74, 0.2);
 }
 
 .slot-card.slot-full {
-  background: #f8fafc;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.slot-card.slot-last {
-  border-color: #f39c12;
-}
-
-.slot-time {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  font-weight: 600;
-  font-size: 1.1rem;
-  color: #2c3e50;
-}
-
-.time-icon {
-  font-size: 1.2rem;
-}
-
-.slot-info {
-  margin-bottom: 12px;
-}
-
-.slot-price {
-  margin-bottom: 8px;
-}
-
-.price-amount {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #ff6b4a;
-}
-
-.price-unit {
-  font-size: 0.8rem;
-  color: #95a5a6;
-}
-
-.slot-capacity {
-  font-size: 0.85rem;
-  color: #5a6e7a;
-}
-
-.slot-status-badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  margin-top: 8px;
-}
-
-.slot-status-badge.slot-free {
-  background: #e8f5e9;
-  color: #2ecc71;
-}
-
-.slot-status-badge.slot-last {
-  background: #fff3e0;
-  color: #f39c12;
-}
-
-.slot-status-badge.slot-full {
-  background: #ffebee;
-  color: #e74c3c;
-}
-
-/* Booking form */
-.booking-form {
-  margin-top: 32px;
-  padding-top: 24px;
-  border-top: 2px solid #f0f2f5;
-}
-
-.booking-form h3 {
-  margin-bottom: 20px;
-}
-
-.selected-slot-summary {
-  background: #f8fafc;
-  padding: 16px;
-  border-radius: 12px;
-  margin-bottom: 24px;
-}
-
-.selected-slot-summary p {
-  margin: 8px 0;
-  color: #2c3e50;
-}
-
-.kids-input,
-.note-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-family: inherit;
-}
-
-.kids-input:focus,
-.note-input:focus {
-  outline: none;
-  border-color: #ff6b4a;
-}
-
-.price-summary {
-  background: #f8fafc;
-  padding: 20px;
-  border-radius: 16px;
-  margin: 24px 0;
-}
-
-.summary-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-  color: #5a6e7a;
-}
-
-.summary-total {
-  display: flex;
-  justify-content: space-between;
-  padding-top: 12px;
-  margin-top: 8px;
-  border-top: 2px solid #e2e8f0;
-  font-weight: 600;
-  font-size: 1.1rem;
-}
-
-.total-amount {
-  color: #ff6b4a;
-  font-size: 1.3rem;
-}
-
-.btn-book {
-  width: 100%;
-  background: #ff6b4a;
-  color: white;
-  padding: 16px;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-book:hover:not(:disabled) {
-  background: #e85a3a;
-  transform: translateY(-2px);
-}
-
-.btn-book:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.error-message {
-  background: #ffebee;
-  color: #c62828;
-  padding: 14px 18px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  border-left: 4px solid #f44336;
-  font-weight: 500;
-  animation: slideIn 0.3s ease;
+.slot-time {
+  font-weight: 600;
+  margin-bottom: 10px;
 }
 
-.loading-slots {
-  text-align: center;
-  padding: 40px;
-  color: #95a5a6;
-}
-
-.no-slots {
-  text-align: center;
-  padding: 40px;
-  background: #f8fafc;
-  border-radius: 16px;
-  color: #5a6e7a;
-}
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.price-hint {
-  display: block;
-  font-size: 0.7rem;
-  color: #64748b;
-  margin-top: 4px;
-}
-
-.order-summary {
-  background: #f8fafc;
-  border-radius: 16px;
-  padding: 16px;
-  margin: 20px 0;
-}
-
-.order-summary h4 {
-  margin-bottom: 12px;
-  color: #1e293b;
-  font-size: 0.9rem;
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 8px;
-}
-
-.summary-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-  color: #475569;
-  font-size: 0.85rem;
-  border-bottom: 1px solid #eef2f6;
-}
-
-.summary-total {
-  display: flex;
-  justify-content: space-between;
-  padding: 12px 0 0;
-  margin-top: 8px;
-  font-weight: 700;
-  font-size: 1.1rem;
-  border-top: 2px solid #e2e8f0;
-}
-
-.total-amount {
+.price-amount {
   color: #ff6b4a;
-  font-size: 1.2rem;
-}
-.free-features-section {
-  margin: 20px 0;
-  padding: 12px;
-  background: #e8f5e9;
-  border-radius: 12px;
+  font-weight: 700;
 }
 
-.free-features-section h4 {
-  margin-bottom: 8px;
-  color: #2e7d32;
-  font-size: 0.9rem;
-}
-
-.free-features-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.free-badge {
-  background: white;
-  color: #2e7d32;
-  padding: 4px 12px;
+.slot-status-badge {
+  margin-top: 8px;
+  padding: 4px 10px;
   border-radius: 20px;
   font-size: 0.75rem;
-  font-weight: 500;
 }
 
-.option-type {
-  font-size: 0.65rem;
-  background: #f1f5f9;
-  padding: 2px 6px;
-  border-radius: 12px;
-  color: #64748b;
-  margin-left: 6px;
+.slot-free {
+  background: #e8f5e9;
+  color: #2ecc71;
 }
 
-/* ============================================
-   BOOKING FORM - UNAPREĐENI IZGLED
-============================================ */
+.slot-last {
+  background: #fff3e0;
+  color: #f39c12;
+}
+
+.slot-full {
+  background: #ffebee;
+  color: #e74c3c;
+}
+
+/* =========================================
+   FORM
+========================================= */
 
 .booking-form {
-  background: white;
-  border-radius: 24px;
+  margin-top: 32px;
   padding: 24px;
-  margin-top: 24px;
+  border-radius: 20px;
+  background: white;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  border: 1px solid #eef2f6;
 }
 
 .booking-form h3 {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #1e293b;
   margin-bottom: 20px;
-  padding-bottom: 12px;
   border-bottom: 2px solid #ff6b4a;
   display: inline-block;
 }
 
-/* Selected slot summary */
-.selected-slot-summary {
-  background: linear-gradient(135deg, #f8fafc, #ffffff);
-  border-radius: 20px;
-  padding: 20px;
-  margin-bottom: 24px;
-  border: 1px solid #eef2f6;
+.form-group {
+  margin-bottom: 16px;
 }
 
-.selected-slot-summary p {
-  margin: 8px 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.95rem;
-}
-
-.selected-slot-summary p:first-child {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #ff6b4a;
-}
-
-/* Form grupe */
-.booking-form .form-group {
-  margin-bottom: 20px;
-}
-
-.booking-form .form-group label {
-  display: block;
-  font-weight: 600;
-  color: #334155;
-  margin-bottom: 8px;
-  font-size: 0.85rem;
-}
-
-.booking-form .form-group input,
-.booking-form .form-group textarea {
+.form-group input,
+.form-group textarea {
   width: 100%;
-  padding: 12px 16px;
+  padding: 12px;
+  border-radius: 12px;
   border: 2px solid #e2e8f0;
-  border-radius: 16px;
-  font-size: 0.95rem;
-  transition: all 0.2s;
 }
 
-.booking-form .form-group input:focus,
-.booking-form .form-group textarea:focus {
-  outline: none;
+.form-group input:focus,
+.form-group textarea:focus {
   border-color: #ff6b4a;
-  box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.1);
+  outline: none;
 }
 
-.price-hint {
-  display: block;
-  font-size: 0.7rem;
-  color: #64748b;
-  margin-top: 6px;
+/* GRID */
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
 
-/* Sekcije za opcije */
+/* =========================================
+   OPTIONS
+========================================= */
+
 .options-section {
   background: #f8fafc;
-  border-radius: 20px;
   padding: 20px;
+  border-radius: 20px;
   margin: 20px 0;
-}
-
-.options-section h4 {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #ff6b4a;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.options-section h4::before {
-  content: "🎪";
-  font-size: 1rem;
 }
 
 .options-grid {
@@ -503,222 +209,89 @@
 }
 
 .option-card {
-  background: white;
-  border-radius: 16px;
-  padding: 12px 16px;
   border: 1px solid #e2e8f0;
-  transition: all 0.2s;
+  border-radius: 16px;
+  padding: 12px;
 }
 
 .option-card:hover {
   border-color: #ff6b4a;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-.option-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  width: 100%;
-}
+/* =========================================
+   SUMMARY
+========================================= */
 
-.option-checkbox input {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  accent-color: #ff6b4a;
-}
-
-.option-name {
-  flex: 1;
-  font-weight: 500;
-  color: #1e293b;
-}
-
-.option-price {
-  font-weight: 600;
-  color: #ff6b4a;
-}
-
-.option-type {
-  font-size: 0.65rem;
-  background: #f1f5f9;
-  padding: 2px 8px;
-  border-radius: 20px;
-  color: #64748b;
-  margin-left: 8px;
-}
-
-.option-desc {
-  font-size: 0.7rem;
-  color: #64748b;
-  margin-top: 8px;
-  padding-left: 28px;
-}
-
-/* Besplatne pogodnosti */
-.free-features-section {
-  background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
-  border-radius: 20px;
-  padding: 20px;
-  margin: 20px 0;
-  border-left: 4px solid #4caf50;
-}
-
-.free-features-section h4 {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #2e7d32;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.free-features-section h4::before {
-  content: "✨";
-  font-size: 1rem;
-}
-
-.free-features-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.free-badge {
-  background: white;
-  color: #2e7d32;
-  padding: 6px 14px;
-  border-radius: 40px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-/* Podaci korisnika */
-.user-data-section {
-  background: #f8fafc;
-  border-radius: 20px;
-  padding: 20px;
-  margin: 20px 0;
-}
-
-.user-data-section h4 {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #ff6b4a;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.user-data-section h4::before {
-  content: "👤";
-  font-size: 1rem;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-/* Pregled rezervacije */
 .order-summary {
-  background: linear-gradient(135deg, #fff9f5, #ffffff);
+  background: #fff9f5;
   border-radius: 20px;
   padding: 20px;
   margin: 24px 0;
-  border: 1px solid #ffe4dc;
-}
-
-.order-summary h4 {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #ff6b4a;
-  display: inline-block;
 }
 
 .summary-item {
   display: flex;
   justify-content: space-between;
   padding: 10px 0;
-  color: #475569;
-  font-size: 0.9rem;
-  border-bottom: 1px dashed #eef2f6;
-}
-
-.summary-item:last-of-type {
-  border-bottom: none;
 }
 
 .summary-total {
   display: flex;
   justify-content: space-between;
-  padding: 16px 0 8px;
-  margin-top: 8px;
-  font-weight: 800;
-  font-size: 1.2rem;
+  font-weight: 700;
   border-top: 2px solid #ff6b4a;
-  color: #1e293b;
+  margin-top: 10px;
+  padding-top: 10px;
 }
 
 .total-amount {
   color: #ff6b4a;
-  font-size: 1.4rem;
+  font-size: 1.3rem;
 }
 
-.cena-info {
-  margin-top: 6px;
-  color: #ff6b4a;
-  font-weight: 500;
-  display: block;
-}
+/* =========================================
+   BUTTON
+========================================= */
 
-/* Dugme */
 .btn-book {
   width: 100%;
+  padding: 16px;
+  border-radius: 50px;
   background: linear-gradient(135deg, #ff6b4a, #ff8c6e);
   color: white;
-  padding: 16px;
-  border: none;
-  border-radius: 60px;
-  font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
-  margin-top: 16px;
+  transition: 0.2s;
 }
 
-.btn-book:hover:not(:disabled) {
+.btn-book:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(255, 107, 74, 0.3);
 }
 
-.btn-book:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+/* =========================================
+   MESSAGES
+========================================= */
+
+.error-message {
+  background: #ffebee;
+  color: #c62828;
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 20px;
 }
 
-input::placeholder {
-  color: #94a3b8;
-  font-size: 0.85rem;
+.loading-slots,
+.no-slots {
+  text-align: center;
+  padding: 40px;
+  color: #777;
 }
 
-/* Responsive */
+/* =========================================
+   RESPONSIVE
+========================================= */
+
 @media (max-width: 768px) {
-  .book-page {
-    padding: 20px 0;
-  }
-
   .book-card {
     padding: 20px;
   }
@@ -727,39 +300,7 @@ input::placeholder {
     grid-template-columns: 1fr;
   }
 
-  .slot-card {
-    padding: 16px;
-  }
-
-  .summary-total {
-    flex-direction: column;
-    gap: 8px;
-    text-align: center;
-  }
-
-  .btn-book {
-    padding: 14px;
-  }
   .form-row {
     grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  .booking-form {
-    padding: 16px;
-  }
-
-  .options-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .selected-slot-summary p {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
   }
 }

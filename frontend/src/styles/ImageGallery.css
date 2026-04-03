@@ -6,12 +6,14 @@
 .image-gallery-empty {
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   border-radius: 16px;
-  height: 300px;
+  min-height: 300px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: #94a3b8;
+  text-align: center;
+  padding: 24px;
 }
 
 .empty-image {
@@ -39,19 +41,18 @@
   height: 100%;
   object-fit: cover;
   transition: transform 0.3s ease;
+  display: block;
 }
 
-.main-image-container:hover .main-image {
+.main-image-container:hover .main-image,
+.main-image-container:focus-within .main-image {
   transform: scale(1.05);
 }
 
 .image-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -59,12 +60,13 @@
   transition: opacity 0.3s ease;
 }
 
-.main-image-container:hover .image-overlay {
+.main-image-container:hover .image-overlay,
+.main-image-container:focus-within .image-overlay {
   opacity: 1;
 }
 
 .zoom-icon {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.92);
   padding: 12px;
   border-radius: 50%;
   font-size: 24px;
@@ -80,6 +82,15 @@
   padding-bottom: 8px;
 }
 
+.thumbnail-gallery::-webkit-scrollbar {
+  height: 6px;
+}
+
+.thumbnail-gallery::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
 .thumbnail {
   width: 80px;
   height: 80px;
@@ -89,31 +100,31 @@
   border: 2px solid transparent;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  background: #f1f5f9;
 }
 
 .thumbnail img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
-.thumbnail:hover {
+.thumbnail:hover,
+.thumbnail:focus-within {
   transform: translateY(-2px);
   border-color: #ff6b4a;
 }
 
 .thumbnail.active {
   border-color: #ff6b4a;
-  box-shadow: 0 0 0 2px rgba(255, 107, 74, 0.3);
+  box-shadow: 0 0 0 2px rgba(255, 107, 74, 0.22);
 }
 
 /* Modal za punu sliku */
 .image-modal {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.9);
   display: flex;
   align-items: center;
@@ -121,6 +132,7 @@
   z-index: 2000;
   cursor: pointer;
   animation: fadeIn 0.2s ease;
+  padding: 24px;
 }
 
 .modal-content {
@@ -136,6 +148,7 @@
   max-height: 85vh;
   object-fit: contain;
   border-radius: 12px;
+  display: block;
 }
 
 .modal-close {
@@ -153,16 +166,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: background 0.2s ease;
 }
 
 .modal-close:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.32);
 }
 
 .modal-info {
   position: absolute;
-  bottom: -40px;
+  bottom: -42px;
   left: 0;
   right: 0;
   text-align: center;
@@ -170,9 +183,13 @@
   font-size: 14px;
 }
 
+.modal-info p {
+  color: white;
+}
+
 .image-details {
   font-size: 12px;
-  opacity: 0.7;
+  opacity: 0.75;
   margin-top: 4px;
 }
 
@@ -180,6 +197,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -190,6 +208,7 @@
     opacity: 0;
     transform: scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: scale(1);

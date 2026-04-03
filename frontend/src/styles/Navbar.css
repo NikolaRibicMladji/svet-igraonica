@@ -1,6 +1,7 @@
 /* ============================================
-   NAVBAR - GLAVNI KONTEJNER
+   NAVBAR
 ============================================ */
+
 .navbar {
   background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(10px);
@@ -21,43 +22,39 @@
   padding: 0 24px;
 }
 
-/* ============================================
-   LOGO
-============================================ */
+/* LOGO */
+
 .navbar-logo {
   font-size: 1.5rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #ff6b4a 0%, #ff8c6e 100%);
+  background: linear-gradient(135deg, #ff6b4a, #ff8c6e);
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   background-clip: text;
+  -webkit-text-fill-color: transparent;
   text-decoration: none;
   letter-spacing: -0.5px;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s ease;
 }
 
 .navbar-logo:hover {
   opacity: 0.9;
-  -webkit-text-fill-color: transparent;
 }
 
-/* ============================================
-   NAV LINKOVI
-============================================ */
+/* LINKS */
+
 .navbar-links {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 26px;
 }
 
 .navbar-links > a {
-  color: #4a5568;
-  text-decoration: none;
+  color: #475569;
   font-weight: 500;
   font-size: 0.95rem;
-  transition: all 0.2s ease;
-  padding: 8px 4px;
+  padding: 6px 4px;
   position: relative;
+  transition: color 0.2s ease;
 }
 
 .navbar-links > a::after {
@@ -68,140 +65,80 @@
   width: 0;
   height: 2px;
   background: linear-gradient(135deg, #ff6b4a, #ff8c6e);
-  transition: width 0.3s ease;
-}
-
-.navbar-links > a:hover::after {
-  width: 100%;
+  transition: width 0.25s ease;
 }
 
 .navbar-links > a:hover {
   color: #ff6b4a;
 }
 
-/* ============================================
-   USER BADGE (KOMBINOVANI PRIKAZ)
-============================================ */
-.user-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 107, 74, 0.08),
-    rgba(255, 140, 110, 0.05)
-  );
-  padding: 6px 16px 6px 12px;
-  border-radius: 40px;
-  transition: all 0.2s ease;
+.navbar-links > a:hover::after {
+  width: 100%;
 }
 
-.user-badge:hover {
-  background: rgba(255, 107, 74, 0.12);
-  transform: translateY(-1px);
-}
+/* AUTH */
 
-.user-avatar {
-  font-size: 1.1rem;
-}
-
-.user-name {
-  font-weight: 600;
-  color: #ff6b4a;
-  font-size: 0.9rem;
-}
-
-.user-role {
-  font-size: 0.65rem;
-  color: #64748b;
-  background: #f1f5f9;
-  padding: 2px 8px;
-  border-radius: 20px;
-  font-weight: 500;
-  letter-spacing: 0.3px;
-}
-
-/* ============================================
-   DUGME ZA ODJAVU
-============================================ */
-.logout-btn {
-  background: linear-gradient(135deg, #f44336, #d32f2f);
-  color: white;
-  border: none;
-  padding: 8px 20px;
-  border-radius: 40px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.85rem;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(244, 67, 54, 0.2);
-}
-
-.logout-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(244, 67, 54, 0.3);
-  background: linear-gradient(135deg, #d32f2f, #c62828);
-}
-
-/* ============================================
-   AUTH LINKOVI (PRIJAVA/REGISTRACIJA)
-============================================ */
 .auth-links {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .btn-login,
 .btn-register {
-  padding: 8px 24px;
+  padding: 8px 20px;
   border-radius: 40px;
-  text-decoration: none;
   font-weight: 600;
   font-size: 0.85rem;
   transition: all 0.2s ease;
 }
 
 .btn-login {
-  background: transparent;
-  color: #ff6b4a;
   border: 2px solid #ff6b4a;
+  color: #ff6b4a;
 }
 
 .btn-login:hover {
   background: #ff6b4a;
   color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 107, 74, 0.3);
+  transform: translateY(-1px);
 }
 
 .btn-register {
   background: linear-gradient(135deg, #ff6b4a, #ff8c6e);
   color: white;
-  border: none;
 }
 
 .btn-register:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 107, 74, 0.3);
-  background: linear-gradient(135deg, #e85a3a, #ff7a5a);
+  transform: translateY(-1px);
 }
 
-/* ============================================
-   HAMBURGER MENI (MOBILNI)
-============================================ */
+/* LOGOUT */
+
+.logout-btn {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 40px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(244, 67, 54, 0.3);
+}
+
+/* HAMBURGER */
+
 .hamburger {
   display: none;
   flex-direction: column;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
-  transition: background 0.2s;
-}
-
-.hamburger:hover {
-  background: rgba(255, 107, 74, 0.1);
 }
 
 .hamburger span {
@@ -210,35 +147,17 @@
   background: #ff6b4a;
   margin: 3px 0;
   transition: all 0.3s ease;
-  border-radius: 2px;
 }
 
-.hamburger.open span:nth-child(1) {
-  transform: rotate(45deg) translate(5px, 5px);
-}
+/* MOBILE */
 
-.hamburger.open span:nth-child(2) {
-  opacity: 0;
-}
-
-.hamburger.open span:nth-child(3) {
-  transform: rotate(-45deg) translate(7px, -6px);
-}
-
-/* ============================================
-   RESPONZIVNOST - TABLETI I MOBILNI
-============================================ */
 @media (max-width: 768px) {
-  .navbar {
-    padding: 12px 0;
+  .hamburger {
+    display: flex;
   }
 
   .navbar-container {
     padding: 0 16px;
-  }
-
-  .hamburger {
-    display: flex;
   }
 
   .navbar-links {
@@ -249,11 +168,10 @@
     right: 0;
     background: white;
     flex-direction: column;
-    padding: 24px 20px;
-    gap: 16px;
+    padding: 20px;
+    gap: 14px;
     border-bottom: 1px solid #e2e8f0;
-    box-shadow: 0 20px 30px -12px rgba(0, 0, 0, 0.1);
-    animation: slideDown 0.3s ease;
+    box-shadow: 0 20px 30px rgba(0, 0, 0, 0.1);
   }
 
   .navbar-links.open {
@@ -263,72 +181,27 @@
   .navbar-links > a {
     width: 100%;
     text-align: center;
-    padding: 12px;
-    border-radius: 12px;
-  }
-
-  .navbar-links > a::after {
-    display: none;
+    padding: 10px;
+    border-radius: 10px;
   }
 
   .navbar-links > a:hover {
     background: rgba(255, 107, 74, 0.1);
   }
 
-  .user-badge {
-    width: 100%;
-    justify-content: center;
-    padding: 10px;
-    margin: 4px 0;
-  }
-
-  .logout-btn {
-    width: 100%;
-    text-align: center;
-    padding: 12px;
-    margin-top: 8px;
-  }
-
   .auth-links {
     flex-direction: column;
     width: 100%;
-    gap: 12px;
   }
 
   .btn-login,
-  .btn-register {
-    text-align: center;
-    padding: 12px;
+  .btn-register,
+  .logout-btn {
     width: 100%;
+    text-align: center;
   }
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ============================================
-   DODATNE ANIMACIJE
-============================================ */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* ============================================
-   MOBILNI (MANJI OD 480px)
-============================================ */
 @media (max-width: 480px) {
   .navbar-logo {
     font-size: 1.2rem;
@@ -336,20 +209,6 @@
 
   .navbar-links {
     top: 60px;
-    padding: 20px 16px;
-    gap: 12px;
-  }
-
-  .user-badge {
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .user-name {
-    font-size: 0.85rem;
-  }
-
-  .user-role {
-    font-size: 0.6rem;
+    padding: 16px;
   }
 }

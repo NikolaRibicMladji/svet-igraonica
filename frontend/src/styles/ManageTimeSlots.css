@@ -1,15 +1,15 @@
 /* ============================================
-   MANAGE TIME SLOTS - KALENDAR U SREDINI
+   MANAGE TIME SLOTS
 ============================================ */
 
 .manage-slots-page {
   padding: 40px 0;
   max-width: 900px;
   margin: 0 auto;
-  overflow-x: hidden;
 }
 
-/* Header */
+/* HEADER */
+
 .manage-slots-header {
   display: flex;
   justify-content: space-between;
@@ -40,8 +40,8 @@
 }
 
 .playroom-selector select {
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
   border: 1px solid #e2e8f0;
   background: white;
   font-size: 14px;
@@ -49,18 +49,16 @@
 }
 
 /* ============================================
-   KALENDAR - CENTRIRAN, ŠIRI NEGO DUGI
+   CALENDAR
 ============================================ */
+
 .calendar-container {
   background: white;
   border-radius: 20px;
-  padding: 80px;
-  margin-bottom: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 40px;
+  margin-bottom: 20px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
   width: 100%;
-  max-width: 100%;
-  margin-left: auto;
-  margin-right: auto;
   overflow-x: auto;
 }
 
@@ -73,32 +71,32 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding: 0 8px;
+  margin-bottom: 16px;
+  padding: 0 6px;
 }
 
 .calendar-header h2 {
-  margin: 0;
   font-size: 1.2rem;
   font-weight: 600;
   color: #ff6b4a;
 }
 
 .month-nav {
-  background: none;
+  background: #f1f5f9;
   border: none;
-  font-size: 18px;
+  font-size: 16px;
   cursor: pointer;
-  padding: 4px 12px;
+  padding: 6px 12px;
   border-radius: 20px;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 
 .month-nav:hover {
-  background: #f0f0f0;
+  background: #e2e8f0;
 }
 
-/* Dani u nedelji */
+/* WEEKDAYS */
+
 .calendar-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -107,26 +105,26 @@
   font-size: 0.7rem;
   color: #64748b;
   padding: 8px 0;
-  margin-bottom: 4px;
 }
 
-/* Grid dana */
+/* DAYS GRID */
+
 .calendar-days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 6px;
 }
 
 .calendar-day {
   aspect-ratio: 1 / 1;
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   background: #f8fafc;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   font-size: 0.85rem;
   font-weight: 500;
 }
@@ -155,24 +153,24 @@
 
 .day-number {
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .day-slots-info {
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   margin-top: 2px;
+  color: #64748b;
 }
 
 /* ============================================
-   TERMINI ZA IZABRANI DAN
+   SELECTED DAY SLOTS
 ============================================ */
+
 .selected-day-slots {
   background: white;
   border-radius: 20px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  width: 100%;
-  overflow-x: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
 }
 
 .selected-day-slots h3 {
@@ -186,25 +184,25 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 100%;
 }
+
+/* SLOT CARD */
 
 .slot-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 14px 16px;
   border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   flex-wrap: wrap;
   gap: 10px;
-  width: 100%;
 }
 
 .slot-card.slot-free {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
+  cursor: pointer;
 }
 
 .slot-card.slot-free:hover {
@@ -226,8 +224,8 @@
 
 .slot-info {
   display: flex;
-  gap: 16px;
-  color: #666;
+  gap: 14px;
+  color: #64748b;
   font-size: 0.8rem;
 }
 
@@ -248,24 +246,23 @@
   color: white;
 }
 
-/* Modal */
+/* MODAL */
+
 .booking-modal {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: 16px;
 }
 
 .modal-content {
   background: white;
   border-radius: 20px;
-  width: 90%;
+  width: 100%;
   max-width: 400px;
   max-height: 90vh;
   overflow-y: auto;
@@ -276,15 +273,13 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #eee;
   background: #ff6b4a;
   color: white;
   border-radius: 20px 20px 0 0;
 }
 
 .modal-header h3 {
-  margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
 }
 
 .close-btn {
@@ -300,26 +295,19 @@
 }
 
 .modal-body p {
-  margin: 8px 0;
+  margin: 6px 0;
 }
 
 .modal-body .form-group {
-  margin: 16px 0;
+  margin: 14px 0;
 }
 
-.modal-body .form-group label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 500;
-}
-
-.modal-body .form-group input,
-.modal-body .form-group textarea {
+.modal-body input,
+.modal-body textarea {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid #ddd;
   border-radius: 10px;
-  font-size: 0.9rem;
 }
 
 .price-summary {
@@ -333,17 +321,17 @@
 
 .modal-footer {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   padding: 16px 20px;
   border-top: 1px solid #eee;
 }
 
 .btn-cancel {
   flex: 1;
-  background: #f0f0f0;
+  background: #f1f5f9;
   padding: 10px;
-  border: none;
   border-radius: 10px;
+  border: none;
   cursor: pointer;
 }
 
@@ -352,10 +340,12 @@
   background: #ff6b4a;
   color: white;
   padding: 10px;
-  border: none;
   border-radius: 10px;
+  border: none;
   cursor: pointer;
 }
+
+/* STATES */
 
 .success-message {
   background: #e8f5e9;
@@ -369,10 +359,11 @@
 .no-slots {
   text-align: center;
   padding: 30px;
-  color: #666;
+  color: #64748b;
 }
 
-/* Responsive */
+/* RESPONSIVE */
+
 @media (max-width: 768px) {
   .manage-slots-page {
     padding: 20px 16px;
@@ -381,6 +372,10 @@
   .manage-slots-header {
     flex-direction: column;
     text-align: center;
+  }
+
+  .calendar-container {
+    padding: 20px;
   }
 
   .slot-card {

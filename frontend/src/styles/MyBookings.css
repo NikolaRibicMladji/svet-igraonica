@@ -4,7 +4,7 @@
 
 .my-bookings-page h1 {
   margin-bottom: 30px;
-  color: #333;
+  color: #1e293b;
 }
 
 .bookings-list {
@@ -15,9 +15,17 @@
 
 .booking-card {
   background: white;
-  border-radius: 10px;
+  border-radius: 16px;
   padding: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.booking-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .booking-header {
@@ -25,20 +33,22 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 15px;
-  padding-bottom: 10px;
+  padding-bottom: 12px;
   border-bottom: 1px solid #eee;
+  gap: 12px;
 }
 
 .booking-header h3 {
-  color: #4caf50;
+  color: #ff6b4a;
   margin: 0;
 }
 
 .status-badge {
-  padding: 5px 10px;
-  border-radius: 20px;
+  padding: 6px 12px;
+  border-radius: 999px;
   font-size: 12px;
-  font-weight: bold;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .status-pending {
@@ -57,28 +67,38 @@
 }
 
 .status-completed {
-  background-color: #e3f2fd;
-  color: #2196f3;
+  background-color: #e8f5e9;
+  color: #2e7d32;
 }
 
 .booking-details p {
   margin: 8px 0;
-  color: #666;
+  color: #475569;
+  line-height: 1.5;
 }
 
 .btn-cancel {
   margin-top: 15px;
   background-color: #f44336;
   color: white;
-  padding: 8px 16px;
+  padding: 10px 16px;
   border: none;
-  border-radius: 5px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+  font-weight: 600;
 }
 
-.btn-cancel:hover {
+.btn-cancel:hover:not(:disabled) {
   background-color: #da190b;
+  transform: translateY(-1px);
+}
+
+.btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .status-badge.clickable {
@@ -88,16 +108,7 @@
 
 .status-badge.clickable:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
-  background-color: #e3f2fd;
-}
-
-.status-completed {
-  background-color: #e8f5e9;
-  color: #2e7d32;
-}
-
-.status-completed.clickable:hover {
+  box-shadow: 0 2px 8px rgba(46, 125, 50, 0.25);
   background-color: #c8e6c9;
 }
 
@@ -113,6 +124,9 @@
   .booking-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 10px;
+  }
+
+  .btn-cancel {
+    width: 100%;
   }
 }

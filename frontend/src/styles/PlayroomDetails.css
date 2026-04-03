@@ -1,5 +1,5 @@
 /* ============================================
-   PLAYROOM DETAILS - UNAPREĐENI STILOVI
+   PLAYROOM DETAILS
 ============================================ */
 
 .playroom-details {
@@ -16,7 +16,7 @@
   cursor: pointer;
   margin-bottom: 20px;
   padding: 0;
-  transition: color 0.2s;
+  transition: color 0.2s ease;
 }
 
 .btn-back:hover {
@@ -34,8 +34,9 @@
 }
 
 /* ============================================
-   PROFILNA SLIKA
+   PROFILE IMAGE
 ============================================ */
+
 .profile-image-container {
   margin-bottom: 24px;
   text-align: center;
@@ -53,174 +54,9 @@
 }
 
 /* ============================================
-   GALERIJA SLIKA - MALE SLIČICE
+   HEADER + RATING
 ============================================ */
-.details-gallery {
-  margin: 24px 0;
-  width: 100%;
-  overflow-x: hidden;
-}
 
-.details-gallery h3 {
-  margin-bottom: 16px;
-  color: #ff6b4a;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 80px));
-  gap: 12px;
-  justify-content: start;
-  width: 100%;
-}
-
-.gallery-item {
-  cursor: pointer;
-  border-radius: 10px;
-  overflow: hidden;
-  background: #f1f5f9;
-  width: 80px;
-  height: 80px;
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
-}
-
-.gallery-item:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.gallery-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* ============================================
-   VIDEO
-============================================ */
-.details-video-gallery {
-  margin: 24px 0;
-}
-
-.video-gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
-  margin-top: 12px;
-}
-
-.video-gallery-item {
-  position: relative;
-  cursor: pointer;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #1e293b;
-  transition: transform 0.2s;
-}
-
-.video-gallery-item:hover {
-  transform: scale(1.02);
-}
-
-.video-thumbnail {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  background: #0f172a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.video-thumbnail img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.video-play-icon {
-  font-size: 48px;
-  color: white;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-.video-title {
-  padding: 8px 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #334155;
-  background: white;
-  text-align: center;
-}
-.video-placeholder {
-  font-size: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-}
-
-.play-button-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-  cursor: pointer;
-}
-
-.video-thumbnail:hover .play-button-overlay {
-  background: rgba(0, 0, 0, 0.6);
-}
-
-.play-icon {
-  width: 60px;
-  height: 60px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  color: #ff6b4a;
-  transition: transform 0.2s;
-}
-
-.video-thumbnail:hover .play-icon {
-  transform: scale(1.1);
-  background: white;
-}
-
-.video-player-inline {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: 12px;
-  background: #000;
-}
-
-.video-title {
-  padding: 8px 12px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: #334155;
-  background: white;
-  text-align: center;
-}
-
-/* ============================================
-   HEADER I OCENA
-============================================ */
 .details-header {
   display: flex;
   justify-content: space-between;
@@ -259,7 +95,7 @@
   color: #2196f3;
   font-size: 14px;
   cursor: pointer;
-  transition: color 0.2s;
+  transition: color 0.2s ease;
 }
 
 .review-count-link-large:hover {
@@ -268,8 +104,9 @@
 }
 
 /* ============================================
-   LOKACIJA
+   LOCATION
 ============================================ */
+
 .details-location {
   color: #64748b;
   margin-bottom: 20px;
@@ -280,54 +117,111 @@
 }
 
 /* ============================================
-   INFO GRID
+   THREE COLUMN INFO
 ============================================ */
-.details-info-grid {
+
+.details-info-three-columns {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-  background-color: #f8fafc;
-  padding: 16px 20px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  background: #f8fafc;
+  padding: 20px;
   border-radius: 16px;
   margin-bottom: 25px;
 }
 
+.info-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .info-item {
+  background: white;
+  padding: 12px 16px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   color: #334155;
   font-size: 0.95rem;
 }
 
 .info-item strong {
-  color: #1e293b;
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 4px;
 }
 
 /* ============================================
-   OPIS
+   SOCIAL LINKS
 ============================================ */
-.details-description {
+
+.social-links h4 {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+
+.social-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.social-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 40px;
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.social-btn.instagram {
+  background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af);
+  color: white;
+}
+
+.social-btn.facebook {
+  background: #1877f2;
+  color: white;
+}
+
+.social-btn.tiktok {
+  background: #000000;
+  color: white;
+}
+
+.social-btn.website {
+  background: #334155;
+  color: white;
+}
+
+.social-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================
+   PRICE / BOOK BUTTONS
+============================================ */
+
+.details-price {
   margin: 20px 0;
 }
 
-.details-description h3,
-.details-price h3,
-.details-features h3,
-.details-working-hours h3,
-.details-gallery h3,
-.details-video h3 {
-  margin: 20px 0 12px;
-  color: #334155;
-  font-size: 1.1rem;
-  font-weight: 600;
+.price-buttons {
+  display: flex;
+  gap: 16px;
+  margin: 20px 0;
+  flex-wrap: wrap;
 }
 
-.details-description p {
-  line-height: 1.6;
-  color: #475569;
-}
-
-/* ============================================
-   CENOVNIK
-============================================ */
 .btn-price {
   background: linear-gradient(135deg, #2196f3, #1976d2);
   color: white;
@@ -336,46 +230,62 @@
   border-radius: 40px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   flex: 1;
   text-align: center;
-  margin-top: 14px;
 }
 
-.btn-price:hover {
+.btn-book {
+  background: linear-gradient(135deg, #ff6b4a, #ff8c6e);
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 40px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+  text-align: center;
+}
+
+.btn-price:hover,
+.btn-book:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
-}
-
-.price-list {
-  background-color: #f8fafc;
-  padding: 16px;
-  border-radius: 16px;
-}
-
-.price-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.price-item:last-child {
-  border-bottom: none;
-}
-
-.price-item span:first-child {
-  color: #475569;
-}
-
-.price-item strong {
-  color: #ff6b4a;
-  font-size: 1rem;
+  box-shadow: 0 4px 12px rgba(255, 107, 74, 0.3);
 }
 
 /* ============================================
-   BESPLATNE POGODNOSTI
+   DESCRIPTION / FEATURES / HOURS
 ============================================ */
+
+.detail-item.full-width {
+  width: 100%;
+  margin: 20px 0;
+}
+
+.detail-item.full-width label {
+  display: block;
+  margin-bottom: 10px;
+  color: #334155;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.description-text {
+  line-height: 1.6;
+  color: #475569;
+}
+
+.details-features h3,
+.details-working-hours h3,
+.details-gallery h3,
+.details-video-gallery h3 {
+  margin: 20px 0 12px;
+  color: #334155;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
 .features-list {
   display: flex;
   flex-wrap: wrap;
@@ -403,9 +313,6 @@
   padding: 12px 0;
 }
 
-/* ============================================
-   RADNO VREME
-============================================ */
 .hours-list {
   background-color: #f8fafc;
   padding: 16px;
@@ -427,6 +334,7 @@
   font-weight: 600;
   color: #334155;
 }
+
 .hour-item .closed {
   color: #f44336;
   font-weight: 500;
@@ -437,36 +345,155 @@
 }
 
 /* ============================================
-   DUGME ZA REZERVACIJU
+   IMAGE GALLERY
 ============================================ */
-.btn-book-large {
+
+.details-gallery {
+  margin: 24px 0;
   width: 100%;
-  background: linear-gradient(135deg, #ff9800, #f57c00);
-  color: white;
-  padding: 14px;
-  border: none;
-  border-radius: 40px;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  margin-top: 30px;
-  transition: all 0.2s;
+  overflow-x: hidden;
 }
 
-.btn-book-large:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 80px));
+  gap: 12px;
+  justify-content: start;
+  width: 100%;
+}
+
+.gallery-item {
+  cursor: pointer;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f1f5f9;
+  width: 80px;
+  height: 80px;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.gallery-item:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* ============================================
-   MODAL ZA CENOVNIK
+   VIDEO GALLERY
 ============================================ */
+
+.details-video-gallery {
+  margin: 24px 0;
+}
+
+.video-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.video-gallery-item {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #1e293b;
+  transition: transform 0.2s ease;
+}
+
+.video-gallery-item:hover {
+  transform: scale(1.02);
+}
+
+.video-thumbnail {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.video-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-placeholder {
+  font-size: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+}
+
+.play-button-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+  cursor: pointer;
+}
+
+.video-thumbnail:hover .play-button-overlay {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.play-icon {
+  width: 60px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #ff6b4a;
+  transition: transform 0.2s ease;
+}
+
+.video-thumbnail:hover .play-icon {
+  transform: scale(1.1);
+  background: white;
+}
+
+.video-player-inline {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  background: #000;
+}
+
+.video-title {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #334155;
+  background: white;
+  text-align: center;
+}
+
+/* ============================================
+   PRICE MODAL
+============================================ */
+
 .price-modal {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
   display: flex;
@@ -474,13 +501,14 @@
   justify-content: center;
   z-index: 1000;
   animation: fadeIn 0.2s ease;
+  padding: 16px;
 }
 
 .price-modal-content {
   background: white;
   border-radius: 24px;
   max-width: 500px;
-  width: 90%;
+  width: 100%;
   max-height: 80vh;
   overflow-y: auto;
   animation: slideUp 0.3s ease;
@@ -509,7 +537,7 @@
   font-size: 24px;
   cursor: pointer;
   color: white;
-  transition: transform 0.2s;
+  transition: transform 0.2s ease;
 }
 
 .price-modal-close:hover {
@@ -537,37 +565,33 @@
   font-weight: 600;
 }
 
+.price-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #e2e8f0;
+  gap: 10px;
+}
+
+.price-item:last-child {
+  border-bottom: none;
+}
+
+.price-item span:first-child {
+  color: #475569;
+}
+
+.price-item strong {
+  color: #ff6b4a;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
 .price-desc,
 .price-type {
   font-size: 0.7rem;
   color: #94a3b8;
   margin-left: 8px;
-}
-
-.price-buttons {
-  display: flex;
-  gap: 16px;
-  margin: 20px 0;
-  flex-wrap: wrap;
-}
-
-.btn-book {
-  background: linear-gradient(135deg, #ff6b4a, #ff8c6e);
-  color: white;
-  padding: 12px 24px;
-  border: none;
-  border-radius: 40px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  flex: 1;
-  text-align: center;
-}
-
-.btn-price:hover,
-.btn-book:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 107, 74, 0.3);
 }
 
 .free-features {
@@ -585,93 +609,15 @@
   font-size: 0.8rem;
 }
 
-/* Tri kolone */
-.details-info-three-columns {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  background: #f8fafc;
-  padding: 20px;
-  border-radius: 16px;
-  margin-bottom: 25px;
-}
-
-.info-column {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.info-item {
-  background: white;
-  padding: 12px 16px;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.info-item strong {
-  display: block;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  color: #64748b;
-  margin-bottom: 4px;
-}
-
-/* Društvene mreže */
-.social-links h4 {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  color: #64748b;
-  margin-bottom: 12px;
-}
-
-.social-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.social-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 40px;
-  text-decoration: none;
-  font-size: 0.8rem;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.social-btn.instagram {
-  background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af);
-  color: white;
-}
-.social-btn.facebook {
-  background: #1877f2;
-  color: white;
-}
-.social-btn.tiktok {
-  background: #000000;
-  color: white;
-}
-.social-btn.website {
-  background: #334155;
-  color: white;
-}
-
-.social-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
 /* ============================================
-   ANIMACIJE
+   ANIMATIONS
 ============================================ */
+
 @keyframes fadeIn {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -682,6 +628,7 @@
     transform: translateY(30px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -689,8 +636,9 @@
 }
 
 /* ============================================
-   RESPONZIVNOST
+   RESPONSIVE
 ============================================ */
+
 @media (max-width: 768px) {
   .playroom-details {
     padding: 24px 0;
@@ -705,8 +653,9 @@
   }
 
   .profile-image-detail {
-    width: 160px;
-    height: 120px;
+    width: 100%;
+    max-width: 420px;
+    height: 280px;
   }
 
   .gallery-grid {
@@ -717,11 +666,6 @@
   .gallery-item {
     width: 70px;
     height: 70px;
-  }
-
-  .details-info-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
   }
 
   .price-item {
@@ -736,16 +680,18 @@
   }
 
   .price-modal-content {
-    width: 95%;
+    width: 100%;
   }
 
   .details-info-three-columns {
     grid-template-columns: 1fr;
     gap: 16px;
   }
+
   .social-buttons {
     justify-content: center;
   }
+
   .info-column {
     text-align: center;
   }
@@ -753,6 +699,10 @@
   .price-buttons {
     flex-direction: column;
     gap: 12px;
+  }
+
+  .video-gallery-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -775,8 +725,8 @@
   }
 
   .profile-image-detail {
-    width: 140px;
-    height: 100px;
+    width: 100%;
+    height: 220px;
   }
 
   .gallery-grid {
@@ -802,7 +752,8 @@
     font-size: 0.75rem;
   }
 
-  .btn-book-large {
+  .btn-book,
+  .btn-price {
     padding: 12px;
     font-size: 0.9rem;
   }

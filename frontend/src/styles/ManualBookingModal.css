@@ -1,9 +1,6 @@
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
   display: flex;
@@ -11,12 +8,13 @@
   justify-content: center;
   z-index: 1000;
   animation: fadeIn 0.2s ease;
+  padding: 16px;
 }
 
 .modal-content {
   background: white;
   border-radius: 24px;
-  width: 90%;
+  width: 100%;
   max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
@@ -28,6 +26,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -38,6 +37,7 @@
     transform: translateY(30px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -67,7 +67,7 @@
   font-size: 24px;
   cursor: pointer;
   color: white;
-  transition: transform 0.2s;
+  transition: transform 0.2s ease;
 }
 
 .modal-close:hover {
@@ -113,42 +113,33 @@
   border-radius: 12px;
   font-size: 1rem;
   font-family: inherit;
-  transition: border-color 0.2s;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .form-input:focus,
 .form-textarea:focus {
   outline: none;
   border-color: #ff6b4a;
+  box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.1);
 }
 
-.price-summary-modal {
+.total-price {
   background: #fff5f0;
-  padding: 20px;
+  padding: 18px 20px;
   border-radius: 16px;
   margin-top: 20px;
-}
-
-.price-row {
   display: flex;
   justify-content: space-between;
-  padding: 8px 0;
-  color: #5a6e7a;
-}
-
-.price-total {
-  display: flex;
-  justify-content: space-between;
-  padding-top: 12px;
-  margin-top: 8px;
-  border-top: 2px solid #ffe0d0;
+  align-items: center;
   font-weight: 700;
-  font-size: 1.1rem;
+  color: #2c3e50;
 }
 
-.total-amount {
+.total-price strong {
   color: #ff6b4a;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
 }
 
 .modal-footer {
@@ -160,8 +151,8 @@
   border-radius: 0 0 24px 24px;
 }
 
-.btn-cancel,
-.btn-confirm {
+.btn-secondary,
+.btn-primary {
   flex: 1;
   padding: 12px;
   border: none;
@@ -169,41 +160,54 @@
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
-.btn-cancel {
+.btn-secondary {
   background: #e2e8f0;
   color: #2c3e50;
 }
 
-.btn-cancel:hover {
+.btn-secondary:hover:not(:disabled) {
   background: #cbd5e0;
 }
 
-.btn-confirm {
+.btn-primary {
   background: #ff6b4a;
   color: white;
 }
 
-.btn-confirm:hover:not(:disabled) {
+.btn-primary:hover:not(:disabled) {
   background: #e85a3a;
   transform: translateY(-1px);
 }
 
-.btn-confirm:disabled {
+.btn-secondary:disabled,
+.btn-primary:disabled,
+.modal-close:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
+}
+
+.error-message {
+  background: #ffebee;
+  color: #c62828;
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
 }
 
 @media (max-width: 480px) {
   .modal-content {
-    width: 95%;
+    width: 100%;
     border-radius: 20px;
   }
 
   .modal-header {
     padding: 16px 20px;
+    border-radius: 20px 20px 0 0;
   }
 
   .modal-body {
@@ -212,5 +216,13 @@
 
   .modal-footer {
     flex-direction: column;
+    padding: 16px 20px;
+    border-radius: 0 0 20px 20px;
+  }
+
+  .total-price {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
   }
 }

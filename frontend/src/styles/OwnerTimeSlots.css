@@ -1,13 +1,21 @@
 /* ============================================
-   GLAVNI KONTEJNER
+   OWNER TIME SLOTS
 ============================================ */
+
 .owner-slots-page {
   padding: 40px 0;
   min-height: 100vh;
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
-.owner-slots-page h1 {
+/* HEADER */
+
+.page-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.page-header h1 {
   margin-bottom: 8px;
   color: #1e293b;
   font-size: 2rem;
@@ -15,15 +23,13 @@
   letter-spacing: -0.02em;
 }
 
-.subtitle {
+.page-header p {
   color: #64748b;
-  margin-bottom: 32px;
   font-size: 0.95rem;
 }
 
-/* ============================================
-   PORUKE
-============================================ */
+/* ALERTS */
+
 .success-message {
   background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
   color: #2e7d32;
@@ -53,19 +59,19 @@
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-/* ============================================
-   FILTERI
-============================================ */
-.filters {
+/* FILTERS */
+
+.filters-card {
   display: flex;
   gap: 24px;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
   background: white;
   padding: 24px;
@@ -76,7 +82,7 @@
 
 .filter-group {
   flex: 1;
-  min-width: 200px;
+  min-width: 220px;
 }
 
 .filter-group label {
@@ -89,8 +95,8 @@
   letter-spacing: 0.5px;
 }
 
-.playroom-select,
-.date-input {
+.filter-group select,
+.filter-group input[type="date"] {
   width: 100%;
   padding: 12px 16px;
   border: 2px solid #e2e8f0;
@@ -99,272 +105,54 @@
   transition: all 0.2s ease;
   background: white;
   cursor: pointer;
+  font-family: inherit;
 }
 
-.playroom-select:hover,
-.date-input:hover {
+.filter-group select:hover,
+.filter-group input[type="date"]:hover {
   border-color: #ff6b4a;
 }
 
-.playroom-select:focus,
-.date-input:focus {
+.filter-group select:focus,
+.filter-group input[type="date"]:focus {
   outline: none;
   border-color: #ff6b4a;
   box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.1);
 }
 
-/* ============================================
-   STATISTIKE
-============================================ */
-.stats-summary {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 32px;
-  flex-wrap: wrap;
-}
+/* PLAYROOM SUMMARY */
 
-.stat-card {
+.playroom-summary {
   background: white;
+  border-radius: 20px;
   padding: 20px 24px;
-  border-radius: 20px;
-  text-align: center;
-  flex: 1;
-  min-width: 120px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.03);
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-}
-
-.stat-number {
-  display: block;
-  font-size: 2.2rem;
-  font-weight: 800;
+.playroom-summary h2 {
+  margin-bottom: 6px;
   color: #ff6b4a;
-  line-height: 1.2;
 }
 
-.stat-label {
-  font-size: 0.8rem;
+.playroom-summary p {
   color: #64748b;
-  margin-top: 6px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  margin: 0;
 }
 
-/* ============================================
-   NASLOV DATUMA
-============================================ */
-.date-title {
-  margin: 24px 0 20px;
-  color: #ff6b4a;
-  font-size: 1.2rem;
-  font-weight: 600;
-  padding-left: 8px;
-  border-left: 3px solid #ff6b4a;
-}
+/* STATES */
 
-/* ============================================
-   GRID TERMINA
-============================================ */
-.slots-grid-owner {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 24px;
-  margin-top: 8px;
-}
-
-.slot-card-owner {
-  background: white;
-  border-radius: 20px;
-  padding: 20px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
-  border-left: 4px solid;
-  transition: all 0.25s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.slot-card-owner::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #ff6b4a, #ff9a6e);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.slot-card-owner:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
-}
-
-.slot-card-owner:hover::before {
-  opacity: 1;
-}
-
-.slot-card-owner.slobodno {
-  border-left-color: #2ecc71;
-}
-
-.slot-card-owner.zauzeto {
-  border-left-color: #e74c3c;
-  opacity: 0.85;
-}
-
-/* VREMENSKI TERMIN */
-.slot-time-large {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 1.2rem;
-  font-weight: 700;
-  margin-bottom: 12px;
-  color: #1e293b;
-}
-
-.time-icon {
-  font-size: 1.3rem;
-}
-
-/* CENA */
-.slot-price-large {
-  margin-bottom: 12px;
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.price-amount {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #ff6b4a;
-}
-
-.price-unit {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  font-weight: 400;
-}
-
-/* STATUS BADGE */
-.status-badge-large {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: 40px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  margin-bottom: 16px;
-  letter-spacing: 0.3px;
-}
-
-.status-badge-large.slobodno {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-.status-badge-large.zauzeto {
-  background: #ffebee;
-  color: #c62828;
-}
-
-/* INFORMACIJE O REZERVACIJI */
-.booking-info {
-  background: #f8fafc;
-  padding: 14px;
-  border-radius: 14px;
-  margin: 12px 0;
-  font-size: 0.85rem;
-  border: 1px solid #eef2f6;
-}
-
-.booking-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.booking-icon {
+.loading-slots,
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #64748b;
   font-size: 1rem;
 }
 
-.booking-title {
-  font-weight: 700;
-  color: #1e293b;
-  font-size: 0.85rem;
-}
-
-.booking-info p {
-  margin: 8px 0;
-  color: #334155;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.booking-info strong {
-  color: #475569;
-  min-width: 70px;
-}
-
-.booking-note {
-  background: #fff5f0;
-  padding: 8px 12px;
-  border-radius: 10px;
-  margin-top: 10px;
-  font-size: 0.8rem;
-  border-left: 3px solid #ff6b4a;
-}
-
-/* DUGME ZA RUČNU REZERVACIJU */
-.btn-book-manual {
-  width: 100%;
-  background: linear-gradient(135deg, #ff6b4a 0%, #ff8c6e 100%);
-  color: white;
-  padding: 12px;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 0.9rem;
-  transition: all 0.2s ease;
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.btn-book-manual:hover {
-  background: linear-gradient(135deg, #e85a3a 0%, #ff7a5a 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 107, 74, 0.3);
-}
-
-.btn-book-manual:active {
-  transform: translateY(0);
-}
-
-/* EMPTY STATE */
 .empty-state {
   text-align: center;
-  padding: 60px 40px;
+  padding: 48px 28px;
   background: white;
   border-radius: 24px;
   margin-top: 20px;
@@ -378,19 +166,13 @@
 }
 
 .empty-state p:first-child {
-  font-size: 1.2rem;
-  font-weight: 500;
+  font-size: 1.15rem;
+  font-weight: 600;
   color: #1e293b;
 }
 
-.empty-hint {
-  font-size: 0.85rem;
-  color: #94a3b8;
-  margin-top: 8px;
-}
-
 .empty-state .btn-primary {
-  margin-top: 24px;
+  margin-top: 20px;
   background: linear-gradient(135deg, #ff6b4a, #ff8c6e);
   color: white;
   border: none;
@@ -398,7 +180,7 @@
   border-radius: 40px;
   cursor: pointer;
   font-weight: 600;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .empty-state .btn-primary:hover {
@@ -406,55 +188,160 @@
   box-shadow: 0 6px 16px rgba(255, 107, 74, 0.3);
 }
 
-/* ERROR STATE */
-.error-state {
-  text-align: center;
-  padding: 60px 40px;
+/* GRID */
+
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 24px;
+  margin-top: 8px;
+}
+
+/* SLOT CARD */
+
+.slot-card {
   background: white;
-  border-radius: 24px;
-  margin-top: 20px;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  border-left: 4px solid;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-.error-state h1 {
-  margin-bottom: 12px;
-  color: #e74c3c;
-}
-
-/* LOADING */
-.loading {
-  text-align: center;
-  padding: 60px;
-  color: #64748b;
-  font-size: 1rem;
-}
-
-.loading::after {
+.slot-card::before {
   content: "";
-  display: inline-block;
-  width: 30px;
-  height: 30px;
-  margin-left: 12px;
-  border: 3px solid #e2e8f0;
-  border-top: 3px solid #ff6b4a;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  vertical-align: middle;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #ff6b4a, #ff9a6e);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+.slot-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
 }
 
-/* ============================================
-   RESPONZIVNOST
-============================================ */
+.slot-card:hover::before {
+  opacity: 1;
+}
+
+.slot-card.slobodno {
+  border-left-color: #2ecc71;
+}
+
+.slot-card.zauzeto {
+  border-left-color: #e74c3c;
+  opacity: 0.9;
+}
+
+/* SLOT HEADER */
+
+.slot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.slot-header h3 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.slot-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 40px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.slot-status.slobodno {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.slot-status.zauzeto {
+  background: #ffebee;
+  color: #c62828;
+}
+
+/* SLOT BODY */
+
+.slot-body p {
+  margin: 8px 0;
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+/* BOOKING INFO */
+
+.booking-info {
+  background: #f8fafc;
+  padding: 14px;
+  border-radius: 14px;
+  margin: 14px 0 0;
+  font-size: 0.85rem;
+  border: 1px solid #eef2f6;
+}
+
+.booking-info h4 {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #1e293b;
+  font-size: 0.9rem;
+}
+
+.booking-info p {
+  margin: 8px 0;
+  color: #334155;
+  word-break: break-word;
+}
+
+/* BUTTON */
+
+.btn-primary {
+  width: 100%;
+  background: linear-gradient(135deg, #ff6b4a 0%, #ff8c6e 100%);
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  margin-top: 10px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #e85a3a 0%, #ff7a5a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 107, 74, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* RESPONSIVE */
+
 @media (max-width: 1024px) {
-  .slots-grid-owner {
+  .slots-grid {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
   }
@@ -465,11 +352,11 @@
     padding: 24px 0;
   }
 
-  .owner-slots-page h1 {
+  .page-header h1 {
     font-size: 1.6rem;
   }
 
-  .filters {
+  .filters-card {
     flex-direction: column;
     gap: 16px;
     padding: 20px;
@@ -479,43 +366,22 @@
     min-width: 100%;
   }
 
-  .stats-summary {
-    gap: 12px;
-  }
-
-  .stat-card {
-    padding: 14px 16px;
-    min-width: 80px;
-  }
-
-  .stat-number {
-    font-size: 1.6rem;
-  }
-
-  .slots-grid-owner {
+  .slots-grid {
     grid-template-columns: 1fr;
     gap: 16px;
   }
 
-  .slot-card-owner {
+  .slot-card {
     padding: 16px;
   }
 
-  .slot-time-large {
-    font-size: 1rem;
-  }
-
-  .price-amount {
-    font-size: 1.1rem;
+  .slot-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .booking-info p {
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .booking-info strong {
-    min-width: auto;
+    display: block;
   }
 
   .empty-state {
@@ -524,39 +390,23 @@
 }
 
 @media (max-width: 480px) {
-  .owner-slots-page h1 {
+  .page-header h1 {
     font-size: 1.4rem;
   }
 
-  .subtitle {
+  .page-header p {
     font-size: 0.85rem;
   }
 
-  .filters {
+  .filters-card {
     padding: 16px;
   }
 
-  .stats-summary {
-    flex-direction: column;
-    gap: 8px;
+  .slot-header h3 {
+    font-size: 1rem;
   }
 
-  .stat-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 16px;
-  }
-
-  .stat-number {
-    font-size: 1.4rem;
-  }
-
-  .stat-label {
-    margin-top: 0;
-  }
-
-  .btn-book-manual {
+  .btn-primary {
     padding: 10px;
     font-size: 0.85rem;
   }
