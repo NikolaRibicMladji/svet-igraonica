@@ -79,7 +79,9 @@ exports.login = async (req, res, next) => {
 
     const normalizedEmail = email?.trim().toLowerCase();
 
-    const user = await User.findOne({ email: normalizedEmail });
+    const user = await User.findOne({ email: normalizedEmail }).select(
+      "+password",
+    );
     if (!user) {
       return res.status(400).json({
         success: false,
