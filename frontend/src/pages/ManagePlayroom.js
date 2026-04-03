@@ -4,6 +4,7 @@ import { getMyPlayrooms, updatePlayroom } from "../services/playroomService";
 import { useAuth } from "../context/AuthContext";
 import PlayroomForm from "../components/PlayroomForm";
 import "../styles/ManagePlayroom.css";
+import PlayroomCoverFallback from "../components/PlayroomCoverFallback";
 
 const DAY_LABELS = {
   ponedeljak: "Ponedeljak",
@@ -210,14 +211,16 @@ const ManagePlayroom = () => {
               </p>
             </div>
 
-            {playroom.profilnaSlika?.url && (
-              <div className="detail-item full-width">
-                <label>🖼️ Profilna slika</label>
-                <div className="profile-image">
+            <div className="detail-item full-width">
+              <label>🖼️ Profilna slika</label>
+              <div className="profile-image">
+                {playroom.profilnaSlika?.url ? (
                   <img src={playroom.profilnaSlika.url} alt="Profilna slika" />
-                </div>
+                ) : (
+                  <PlayroomCoverFallback naziv={playroom.naziv} />
+                )}
               </div>
-            )}
+            </div>
 
             {Array.isArray(playroom.videoGalerija) &&
               playroom.videoGalerija.length > 0 && (

@@ -477,13 +477,31 @@
 ============================================ */
 
 .error-message {
-  background: #ffebee;
-  color: #c62828;
-  padding: 14px 18px;
-  border-radius: 16px;
-  margin-bottom: 24px;
-  border-left: 4px solid #f44336;
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  max-width: 420px;
+  width: calc(100% - 40px);
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  font-size: 0.95rem;
   font-weight: 500;
+}
+
+@media (max-width: 600px) {
+  .error-message {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    font-size: 0.9rem;
+  }
 }
 
 .success-message {

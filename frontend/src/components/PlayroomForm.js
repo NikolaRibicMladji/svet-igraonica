@@ -161,6 +161,16 @@ const PlayroomForm = ({
     setFormData(initialFormData);
   }, [initialFormData]);
 
+  useEffect(() => {
+    if (!error) return;
+
+    const timer = setTimeout(() => {
+      setError("");
+    }, 6000);
+
+    return () => clearTimeout(timer);
+  }, [error]);
+
   const handleCenaRoditeljaChange = (e) => {
     const { name, value } = e.target;
     setCenaRoditelja((prev) => ({
