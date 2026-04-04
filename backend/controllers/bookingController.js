@@ -1,18 +1,14 @@
 const Booking = require("../models/Booking");
 const TimeSlot = require("../models/TimeSlot");
 const Playroom = require("../models/Playroom");
+const bookingService = require("../services/bookingService");
 const User = require("../models/User");
-const { reserveSlot } = require("../services/bookingService");
+
 const BOOKING_STATUS = require("../constants/bookingStatus");
 const ROLES = require("../constants/roles");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const generateAccessToken = require("../utils/generateToken");
-const {
-  sendBookingConfirmation,
-  sendBookingCancellation,
-  sendBookingConfirmationToOwner,
-} = require("../utils/emailService");
 
 const REFRESH_TOKEN_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -26,7 +22,7 @@ const REFRESH_TOKEN_COOKIE_OPTIONS = {
 // @access  Private
 exports.createBooking = async (req, res, next) => {
   try {
-    const booking = await reserveSlot({
+    const booking = await bookingService.createBookingWithEmails({
       slotId: req.body.slotId,
       user: req.user || null,
       payload: {
@@ -40,46 +36,6 @@ exports.createBooking = async (req, res, next) => {
         napomena: req.body.napomena,
       },
     });
-
-    try {
-      const populatedBooking = await Booking.findById(booking._id)
-        .populate("playroomId", "naziv adresa grad vlasnikId")
-        .populate("roditeljId", "ime prezime email telefon")
-        .populate("timeSlotId");
-
-      const userForEmail = populatedBooking.roditeljId || {
-        ime: populatedBooking.imeRoditelja,
-        prezime: populatedBooking.prezimeRoditelja,
-        email: populatedBooking.emailRoditelja,
-        telefon: populatedBooking.telefonRoditelja,
-      };
-
-      const playroom = populatedBooking.playroomId;
-      const timeSlot = {
-        datum: populatedBooking.datum,
-        vremeOd: populatedBooking.vremeOd,
-        vremeDo: populatedBooking.vremeDo,
-      };
-
-      if (userForEmail.email) {
-        await sendBookingConfirmation(
-          populatedBooking,
-          userForEmail,
-          playroom,
-          timeSlot,
-        );
-      }
-
-      if (playroom?.vlasnikId) {
-        await sendBookingConfirmationToOwner(
-          populatedBooking,
-          playroom,
-          timeSlot,
-        );
-      }
-    } catch (emailError) {
-      console.error("Greška pri slanju email potvrde:", emailError);
-    }
 
     return res.status(201).json({
       success: true,
@@ -143,7 +99,7 @@ exports.createGuestBooking = async (req, res, next) => {
 
     res.cookie("refreshToken", refreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
 
-    const booking = await reserveSlot({
+    const booking = await bookingService.createBookingWithEmails({
       slotId,
       user: newUser,
       payload: {
@@ -156,46 +112,6 @@ exports.createGuestBooking = async (req, res, next) => {
         napomena,
       },
     });
-
-    try {
-      const populatedBooking = await Booking.findById(booking._id)
-        .populate("playroomId", "naziv adresa grad vlasnikId")
-        .populate("roditeljId", "ime prezime email telefon")
-        .populate("timeSlotId");
-
-      const userForEmail = populatedBooking.roditeljId || {
-        ime: populatedBooking.imeRoditelja,
-        prezime: populatedBooking.prezimeRoditelja,
-        email: populatedBooking.emailRoditelja,
-        telefon: populatedBooking.telefonRoditelja,
-      };
-
-      const playroom = populatedBooking.playroomId;
-      const timeSlot = {
-        datum: populatedBooking.datum,
-        vremeOd: populatedBooking.vremeOd,
-        vremeDo: populatedBooking.vremeDo,
-      };
-
-      if (userForEmail.email) {
-        await sendBookingConfirmation(
-          populatedBooking,
-          userForEmail,
-          playroom,
-          timeSlot,
-        );
-      }
-
-      if (playroom?.vlasnikId) {
-        await sendBookingConfirmationToOwner(
-          populatedBooking,
-          playroom,
-          timeSlot,
-        );
-      }
-    } catch (emailError) {
-      console.error("Greška pri slanju email potvrde:", emailError);
-    }
 
     return res.status(201).json({
       success: true,
@@ -315,27 +231,7 @@ exports.cancelBooking = async (req, res, next) => {
       await timeSlot.save();
     }
 
-    try {
-      const userForEmail = booking.roditeljId || {
-        ime: booking.imeRoditelja,
-        prezime: booking.prezimeRoditelja,
-        email: booking.emailRoditelja,
-        telefon: booking.telefonRoditelja,
-      };
-
-      const playroom = booking.playroomId;
-      const slotForEmail = {
-        datum: booking.datum,
-        vremeOd: booking.vremeOd,
-        vremeDo: booking.vremeDo,
-      };
-
-      if (userForEmail.email) {
-        await sendBookingCancellation(userForEmail, playroom, slotForEmail);
-      }
-    } catch (emailError) {
-      console.error("Greška pri slanju emaila o otkazivanju:", emailError);
-    }
+    await bookingService.sendCancellationEmail(booking);
 
     res.status(200).json({
       success: true,
@@ -391,32 +287,7 @@ exports.confirmBooking = async (req, res, next) => {
     booking.status = BOOKING_STATUS.POTVRDJENO;
     await booking.save();
 
-    try {
-      const userForEmail = booking.roditeljId || {
-        ime: booking.imeRoditelja,
-        prezime: booking.prezimeRoditelja,
-        email: booking.emailRoditelja,
-        telefon: booking.telefonRoditelja,
-      };
-
-      const playroom = booking.playroomId;
-      const slotForEmail = {
-        datum: booking.datum,
-        vremeOd: booking.vremeOd,
-        vremeDo: booking.vremeDo,
-      };
-
-      if (userForEmail.email) {
-        await sendBookingConfirmation(
-          booking,
-          userForEmail,
-          playroom,
-          slotForEmail,
-        );
-      }
-    } catch (emailError) {
-      console.error("Greška pri slanju emaila potvrde:", emailError);
-    }
+    await bookingService.sendConfirmationEmail(booking);
 
     res.status(200).json({
       success: true,

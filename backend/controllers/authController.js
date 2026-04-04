@@ -1,8 +1,6 @@
 const User = require("../models/User");
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
-const generateAccessToken = require("../utils/generateToken");
 const ROLES = require("../constants/roles");
+const authService = require("../services/authService");
 
 const REFRESH_TOKEN_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -16,42 +14,11 @@ const REFRESH_TOKEN_COOKIE_OPTIONS = {
 // @access  Public
 exports.register = async (req, res, next) => {
   try {
-    const { ime, prezime, email, password, telefon, role, deca } = req.body;
-
-    const normalizedEmail = email?.trim().toLowerCase();
-
-    const userExists = await User.findOne({ email: normalizedEmail });
-    if (userExists) {
-      return res.status(400).json({
-        success: false,
-        message: "Korisnik sa ovom email adresom već postoji",
-      });
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    const userRole = role === ROLES.VLASNIK ? ROLES.VLASNIK : ROLES.RODITELJ;
-
-    const user = await User.create({
-      ime: ime?.trim(),
-      prezime: prezime?.trim(),
-      email: normalizedEmail,
-      password: hashedPassword,
-      telefon: telefon?.trim(),
-      role: userRole,
-      deca: Array.isArray(deca) ? deca : [],
-    });
-
-    const accessToken = generateAccessToken(user);
-
-    const refreshToken = jwt.sign(
-      { id: user._id },
-      process.env.REFRESH_TOKEN_SECRET,
-      { expiresIn: "7d" },
+    const { user, accessToken, refreshToken } = await authService.registerUser(
+      req.body,
     );
 
-    res.cookie("refreshToken", refreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
+    res.cookie("refreshToken", refreshToken, authService.cookieOptions);
 
     res.status(201).json({
       success: true,
@@ -75,37 +42,12 @@ exports.register = async (req, res, next) => {
 // @access  Public
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-
-    const normalizedEmail = email?.trim().toLowerCase();
-
-    const user = await User.findOne({ email: normalizedEmail }).select(
-      "+password",
-    );
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: "Pogrešan email ili lozinka",
-      });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({
-        success: false,
-        message: "Pogrešan email ili lozinka",
-      });
-    }
-
-    const accessToken = generateAccessToken(user);
-
-    const refreshToken = jwt.sign(
-      { id: user._id },
-      process.env.REFRESH_TOKEN_SECRET,
-      { expiresIn: "7d" },
+    const { user, accessToken, refreshToken } = await authService.loginUser(
+      req.body.email,
+      req.body.password,
     );
 
-    res.cookie("refreshToken", refreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
+    res.cookie("refreshToken", refreshToken, authService.cookieOptions);
 
     res.status(200).json({
       success: true,
@@ -145,36 +87,18 @@ exports.logout = (req, res) => {
 // @access  Public
 exports.refreshToken = async (req, res, next) => {
   try {
-    const refreshToken = req.cookies.refreshToken;
-
-    if (!refreshToken) {
-      return res.status(401).json({
-        success: false,
-        message: "Niste autorizovani (nema refresh tokena)",
-      });
-    }
-
-    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-
-    const user = await User.findById(decoded.id);
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Korisnik više ne postoji",
-      });
-    }
-
-    const newAccessToken = generateAccessToken(user);
+    const { accessToken } = await authService.refreshUserToken(
+      req.cookies.refreshToken,
+    );
 
     res.status(200).json({
       success: true,
-      accessToken: newAccessToken,
+      accessToken,
     });
   } catch (error) {
     return res.status(403).json({
       success: false,
-      message: "Refresh token nije validan",
+      message: error.message,
     });
   }
 };

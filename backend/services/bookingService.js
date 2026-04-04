@@ -124,6 +124,109 @@ const reserveSlot = async ({ slotId, user, payload }) => {
   }
 };
 
+const {
+  sendBookingConfirmation,
+  sendBookingCancellation,
+  sendBookingConfirmationToOwner,
+} = require("../utils/emailService");
+
+// 🔥 CENTRALIZOVANO SLANJE EMAILOVA
+const handleBookingEmails = async (bookingId) => {
+  try {
+    const booking = await Booking.findById(bookingId)
+      .populate("playroomId", "naziv adresa grad vlasnikId")
+      .populate("roditeljId", "ime prezime email telefon")
+      .populate("timeSlotId");
+
+    if (!booking) return;
+
+    const userForEmail = booking.roditeljId || {
+      ime: booking.imeRoditelja,
+      prezime: booking.prezimeRoditelja,
+      email: booking.emailRoditelja,
+      telefon: booking.telefonRoditelja,
+    };
+
+    const playroom = booking.playroomId;
+
+    const timeSlot = {
+      datum: booking.datum,
+      vremeOd: booking.vremeOd,
+      vremeDo: booking.vremeDo,
+    };
+
+    if (userForEmail.email) {
+      await sendBookingConfirmation(booking, userForEmail, playroom, timeSlot);
+    }
+
+    if (playroom?.vlasnikId) {
+      await sendBookingConfirmationToOwner(booking, playroom, timeSlot);
+    }
+  } catch (err) {
+    console.error("EMAIL ERROR:", err.message);
+  }
+};
+
+const createBookingWithEmails = async (data) => {
+  const booking = await reserveSlot(data);
+
+  // 🔥 email ide ovde, ne u controller
+  await handleBookingEmails(booking._id);
+
+  return booking;
+};
+
+const sendCancellationEmail = async (booking) => {
+  try {
+    const userForEmail = booking.roditeljId || {
+      ime: booking.imeRoditelja,
+      prezime: booking.prezimeRoditelja,
+      email: booking.emailRoditelja,
+    };
+
+    const playroom = booking.playroomId;
+
+    const slot = {
+      datum: booking.datum,
+      vremeOd: booking.vremeOd,
+      vremeDo: booking.vremeDo,
+    };
+
+    if (userForEmail.email) {
+      await sendBookingCancellation(userForEmail, playroom, slot);
+    }
+  } catch (error) {
+    console.error("Greška pri slanju emaila (cancel):", error.message);
+  }
+};
+
+const sendConfirmationEmail = async (booking) => {
+  try {
+    const userForEmail = booking.roditeljId || {
+      ime: booking.imeRoditelja,
+      prezime: booking.prezimeRoditelja,
+      email: booking.emailRoditelja,
+    };
+
+    const playroom = booking.playroomId;
+
+    const slot = {
+      datum: booking.datum,
+      vremeOd: booking.vremeOd,
+      vremeDo: booking.vremeDo,
+    };
+
+    if (userForEmail.email) {
+      await sendBookingConfirmation(booking, userForEmail, playroom, slot);
+    }
+  } catch (error) {
+    console.error("Greška pri slanju emaila (confirm):", error.message);
+  }
+};
+
 module.exports = {
   reserveSlot,
+  createBookingWithEmails,
+  sendCancellationEmail,
+  sendConfirmationEmail,
 };
