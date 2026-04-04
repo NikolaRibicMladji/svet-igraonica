@@ -3,6 +3,7 @@ const Playroom = require("../models/Playroom");
 const Booking = require("../models/Booking");
 const { generateTimeSlotsForPlayroom } = require("../utils/generateTimeSlots");
 const BOOKING_STATUS = require("../constants/bookingStatus");
+const timeSlotService = require("../services/timeSlotService");
 
 // @desc    Kreiraj novi termin (samo vlasnik igraonice)
 // @route   POST /api/timeslots
@@ -39,7 +40,7 @@ exports.createTimeSlot = async (req, res, next) => {
     const slotDate = new Date(datum);
     slotDate.setHours(0, 0, 0, 0);
 
-    const existing = await TimeSlot.findOne({
+    const existing = await timeSlotService.findDuplicateSlot({
       playroomId,
       datum: slotDate,
       vremeOd,
@@ -233,19 +234,11 @@ exports.updateTimeSlot = async (req, res, next) => {
     }
 
     if (aktivno !== undefined) {
-      const existingBooking = await Booking.findOne({
-        timeSlotId: timeSlot._id,
-        status: { $ne: BOOKING_STATUS.OTKAZANO },
-      });
-
-      if (existingBooking && aktivno === false) {
-        return res.status(400).json({
-          success: false,
-          message: "Ne možeš deaktivirati termin koji ima rezervaciju",
-        });
+      if (aktivno === false) {
+        await timeSlotService.deactivateSlotIfAllowed(timeSlot);
+      } else {
+        timeSlot.aktivno = true;
       }
-
-      timeSlot.aktivno = aktivno;
     }
 
     await timeSlot.save();
@@ -285,19 +278,7 @@ exports.deleteTimeSlot = async (req, res, next) => {
       });
     }
 
-    const existingBooking = await Booking.findOne({
-      timeSlotId: timeSlot._id,
-      status: { $ne: BOOKING_STATUS.OTKAZANO },
-    });
-
-    if (existingBooking) {
-      return res.status(400).json({
-        success: false,
-        message: "Ne možeš obrisati termin koji ima rezervaciju",
-      });
-    }
-
-    await timeSlot.deleteOne();
+    await timeSlotService.deleteSlotIfAllowed(timeSlot);
 
     res.status(200).json({
       success: true,
@@ -373,10 +354,20 @@ exports.getAvailableTimeSlots = async (req, res, next) => {
       vanRadnogVremena: false,
     }).sort({ vremeOd: 1 });
 
-    const slotsWithStatus = timeSlots.map((slot) => ({
-      ...slot.toObject(),
-      status: slot.zauzeto ? "zauzeto" : "slobodno",
-    }));
+    const now = new Date();
+
+    const slotsWithStatus = timeSlots.map((slot) => {
+      const slotEnd = new Date(slot.datum);
+      const [h, m] = slot.vremeDo.split(":").map(Number);
+      slotEnd.setHours(h, m, 0, 0);
+
+      const isPast = slotEnd <= now;
+
+      return {
+        ...slot.toObject(),
+        status: isPast ? "prošao" : slot.zauzeto ? "zauzeto" : "slobodno",
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -485,6 +476,7 @@ exports.manualBookTimeSlot = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { brojDece, napomena } = req.body;
+    let lockedSlot = null;
 
     const timeSlot = await TimeSlot.findById(id);
     if (!timeSlot) {
@@ -505,22 +497,10 @@ exports.manualBookTimeSlot = async (req, res, next) => {
       });
     }
 
-    const existingBooking = await Booking.findOne({
-      timeSlotId: timeSlot._id,
-      status: { $ne: BOOKING_STATUS.OTKAZANO },
-    });
-
-    if (existingBooking) {
+    if (!lockedSlot) {
       return res.status(400).json({
         success: false,
-        message: "Termin već ima rezervaciju",
-      });
-    }
-
-    if (timeSlot.zauzeto) {
-      return res.status(400).json({
-        success: false,
-        message: "Termin je već zauzet",
+        message: "Termin je već zauzet ili nije dostupan",
       });
     }
 
@@ -533,15 +513,17 @@ exports.manualBookTimeSlot = async (req, res, next) => {
       });
     }
 
-    const ukupnaCena = timeSlot.cena * parsedBrojDece;
+    lockedSlot = await timeSlotService.manualLockSlot(timeSlot._id);
+
+    const ukupnaCena = lockedSlot.cena * parsedBrojDece;
 
     const booking = await Booking.create({
       roditeljId: req.user.id,
-      timeSlotId: timeSlot._id,
-      playroomId: timeSlot.playroomId,
-      datum: timeSlot.datum,
-      vremeOd: timeSlot.vremeOd,
-      vremeDo: timeSlot.vremeDo,
+      timeSlotId: lockedSlot._id,
+      playroomId: lockedSlot.playroomId,
+      datum: lockedSlot.datum,
+      vremeOd: lockedSlot.vremeOd,
+      vremeDo: lockedSlot.vremeDo,
       brojDece: parsedBrojDece,
       brojRoditelja: 0,
       ukupnaCena,
@@ -555,16 +537,15 @@ exports.manualBookTimeSlot = async (req, res, next) => {
       telefonRoditelja: req.user.telefon || "nije uneto",
     });
 
-    timeSlot.zauzeto = true;
-    timeSlot.slobodno = 0;
-    await timeSlot.save();
-
     res.status(200).json({
       success: true,
       data: booking,
       message: `Termin je uspešno zauzet. Ukupno: ${ukupnaCena} RSD`,
     });
   } catch (error) {
+    if (lockedSlot) {
+      await timeSlotService.manualUnlockSlot(lockedSlot._id);
+    }
     next(error);
   }
 };

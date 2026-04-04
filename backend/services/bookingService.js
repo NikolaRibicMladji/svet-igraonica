@@ -46,22 +46,7 @@ const reserveSlot = async ({ slotId, user, payload }) => {
     }
 
     // 🔐 atomic lock slota
-    slot = await TimeSlot.findOneAndUpdate(
-      {
-        _id: slotId,
-        zauzeto: false,
-        slobodno: { $gt: 0 },
-        aktivno: true,
-        vanRadnogVremena: false,
-      },
-      {
-        $set: {
-          zauzeto: true,
-          slobodno: 0,
-        },
-      },
-      { new: true },
-    );
+    slot = await lockSlot(slotId);
 
     if (!slot) {
       const error = new Error("Termin je već zauzet ili ne postoji");
@@ -78,10 +63,7 @@ const reserveSlot = async ({ slotId, user, payload }) => {
     slotDateTime.setHours(endHour || 0, endMinute || 0, 0, 0);
 
     if (slotDateTime <= new Date()) {
-      await TimeSlot.findByIdAndUpdate(slot._id, {
-        zauzeto: false,
-        slobodno: slot.maxDece || 20,
-      });
+      await unlockSlot(slot._id);
 
       const error = new Error("Ne možeš rezervisati prošli termin");
       error.statusCode = 400;
@@ -114,10 +96,7 @@ const reserveSlot = async ({ slotId, user, payload }) => {
   } catch (err) {
     // 🔁 rollback
     if (slot) {
-      await TimeSlot.findByIdAndUpdate(slot._id, {
-        zauzeto: false,
-        slobodno: slot.maxDece || 20,
-      });
+      await unlockSlot(slot._id);
     }
 
     throw err;
@@ -224,9 +203,45 @@ const sendConfirmationEmail = async (booking) => {
   }
 };
 
+const lockSlot = async (slotId) => {
+  return TimeSlot.findOneAndUpdate(
+    {
+      _id: slotId,
+      zauzeto: false,
+      slobodno: { $gt: 0 },
+      aktivno: true,
+      vanRadnogVremena: false,
+    },
+    {
+      $set: {
+        zauzeto: true,
+        slobodno: 0,
+      },
+    },
+    { new: true },
+  );
+};
+
+const unlockSlot = async (slotId) => {
+  const slot = await TimeSlot.findById(slotId);
+
+  if (!slot) return null;
+
+  return TimeSlot.findByIdAndUpdate(
+    slotId,
+    {
+      zauzeto: false,
+      slobodno: slot.maxDece || 20,
+    },
+    { new: true },
+  );
+};
+
 module.exports = {
   reserveSlot,
   createBookingWithEmails,
   sendCancellationEmail,
   sendConfirmationEmail,
+  lockSlot,
+  unlockSlot,
 };

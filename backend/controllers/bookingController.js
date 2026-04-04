@@ -226,9 +226,7 @@ exports.cancelBooking = async (req, res, next) => {
 
     const timeSlot = await TimeSlot.findById(booking.timeSlotId);
     if (timeSlot) {
-      timeSlot.zauzeto = false;
-      timeSlot.slobodno = timeSlot.maxDece || 20;
-      await timeSlot.save();
+      await bookingService.unlockSlot(timeSlot._id, timeSlot.maxDece || 20);
     }
 
     await bookingService.sendCancellationEmail(booking);
