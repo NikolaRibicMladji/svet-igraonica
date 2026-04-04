@@ -15,28 +15,42 @@ for (const key of requiredEnv) {
   }
 }
 
-// Connect DB
-connectDB();
-
-// Cron (ne u testu)
-if (process.env.NODE_ENV !== "test") {
-  require("./jobs/completeBookings");
-}
-
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => {
-  console.log(
-    `🚀 Server pokrenut na portu ${PORT} u ${
-      process.env.NODE_ENV || "development"
-    } modu`,
-  );
-});
+let server;
 
-// 🔥 GRACEFUL SHUTDOWN (production must-have)
+const startServer = async () => {
+  try {
+    await connectDB();
+
+    // Cron (ne u testu)
+    if (process.env.NODE_ENV !== "test") {
+      require("./jobs/completeBookings");
+    }
+
+    server = app.listen(PORT, () => {
+      console.log(
+        `🚀 Server pokrenut na portu ${PORT} u ${
+          process.env.NODE_ENV || "development"
+        } modu`,
+      );
+    });
+  } catch (error) {
+    console.error("❌ Greška pri pokretanju servera:", error.message);
+    process.exit(1);
+  }
+};
+
+startServer();
+
+// 🔥 GRACEFUL SHUTDOWN
 process.on("unhandledRejection", (err) => {
   console.error("❌ UNHANDLED REJECTION:", err.message);
-  server.close(() => process.exit(1));
+  if (server) {
+    server.close(() => process.exit(1));
+  } else {
+    process.exit(1);
+  }
 });
 
 process.on("uncaughtException", (err) => {

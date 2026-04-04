@@ -3,19 +3,9 @@ const TimeSlot = require("../models/TimeSlot");
 const Playroom = require("../models/Playroom");
 const bookingService = require("../services/bookingService");
 const User = require("../models/User");
+const authService = require("../services/authService");
 
 const BOOKING_STATUS = require("../constants/bookingStatus");
-const ROLES = require("../constants/roles");
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
-const generateAccessToken = require("../utils/generateToken");
-
-const REFRESH_TOKEN_COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "strict",
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-};
 
 // @desc    Kreiraj novu rezervaciju (ulogovan korisnik)
 // @route   POST /api/bookings
@@ -51,6 +41,8 @@ exports.createBooking = async (req, res, next) => {
 // @route   POST /api/bookings/guest
 // @access  Public
 exports.createGuestBooking = async (req, res, next) => {
+  let createdUser = null;
+
   try {
     const {
       slotId,
@@ -64,49 +56,27 @@ exports.createGuestBooking = async (req, res, next) => {
       napomena,
     } = req.body;
 
-    const normalizedEmail = email.trim().toLowerCase();
-
-    const existingUser = await User.findOne({ email: normalizedEmail });
-
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Korisnik sa ovom email adresom već postoji. Prijavite se da biste završili rezervaciju.",
+    const { user, accessToken, refreshToken } =
+      await authService.registerGuestParent({
+        ime,
+        prezime,
+        email,
+        password,
+        telefon,
       });
-    }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    createdUser = user;
 
-    const newUser = await User.create({
-      ime: ime.trim(),
-      prezime: prezime.trim(),
-      email: normalizedEmail,
-      password: hashedPassword,
-      telefon: telefon.trim(),
-      role: ROLES.RODITELJ,
-      deca: [],
-    });
-
-    const accessToken = generateAccessToken(newUser);
-
-    const refreshToken = jwt.sign(
-      { id: newUser._id },
-      process.env.REFRESH_TOKEN_SECRET,
-      { expiresIn: "7d" },
-    );
-
-    res.cookie("refreshToken", refreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
+    res.cookie("refreshToken", refreshToken, authService.cookieOptions);
 
     const booking = await bookingService.createBookingWithEmails({
       slotId,
-      user: newUser,
+      user,
       payload: {
-        imeRoditelja: ime.trim(),
-        prezimeRoditelja: prezime.trim(),
-        emailRoditelja: normalizedEmail,
-        telefon: telefon.trim(),
+        imeRoditelja: user.ime,
+        prezimeRoditelja: user.prezime,
+        emailRoditelja: user.email,
+        telefon: user.telefon,
         brojDece,
         brojRoditelja,
         napomena,
@@ -118,16 +88,27 @@ exports.createGuestBooking = async (req, res, next) => {
       message: "Uspešna registracija i rezervacija",
       accessToken,
       user: {
-        id: newUser._id,
-        ime: newUser.ime,
-        prezime: newUser.prezime,
-        email: newUser.email,
-        telefon: newUser.telefon,
-        role: newUser.role,
+        id: user._id,
+        ime: user.ime,
+        prezime: user.prezime,
+        email: user.email,
+        telefon: user.telefon,
+        role: user.role,
       },
       data: booking,
     });
   } catch (error) {
+    if (createdUser?._id) {
+      try {
+        await User.findByIdAndDelete(createdUser._id);
+      } catch (rollbackError) {
+        console.error(
+          "Rollback nije uspeo nakon pada guest rezervacije:",
+          rollbackError.message,
+        );
+      }
+    }
+
     next(error);
   }
 };
@@ -221,12 +202,19 @@ exports.cancelBooking = async (req, res, next) => {
       });
     }
 
+    if (booking.status === BOOKING_STATUS.ZAVRSENO) {
+      return res.status(400).json({
+        success: false,
+        message: "Završena rezervacija ne može biti otkazana",
+      });
+    }
+
     booking.status = BOOKING_STATUS.OTKAZANO;
     await booking.save();
 
     const timeSlot = await TimeSlot.findById(booking.timeSlotId);
     if (timeSlot) {
-      await bookingService.unlockSlot(timeSlot._id, timeSlot.maxDece || 20);
+      await bookingService.unlockSlot(timeSlot._id);
     }
 
     await bookingService.sendCancellationEmail(booking);
@@ -279,6 +267,27 @@ exports.confirmBooking = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: "Rezervacija je već potvrđena",
+      });
+    }
+
+    if (booking.status === BOOKING_STATUS.ZAVRSENO) {
+      return res.status(400).json({
+        success: false,
+        message: "Završena rezervacija ne može biti ponovo potvrđena",
+      });
+    }
+
+    const bookingEnd = new Date(booking.datum);
+    const [endHour, endMinute] = String(booking.vremeDo || "00:00")
+      .split(":")
+      .map((v) => parseInt(v, 10));
+
+    bookingEnd.setHours(endHour || 0, endMinute || 0, 0, 0);
+
+    if (bookingEnd <= new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "Prošli termin ne može biti potvrđen",
       });
     }
 

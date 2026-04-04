@@ -7,17 +7,6 @@ const reserveSlot = async ({ slotId, user, payload }) => {
   let slot = null;
 
   try {
-    // 🔒 spreči dupli booking
-    const existing = await Booking.findOne({
-      timeSlotId: slotId,
-      status: { $ne: BOOKING_STATUS.OTKAZANO },
-    });
-
-    if (existing) {
-      throw new ErrorResponse("Termin je već rezervisan", 400);
-    }
-
-    // 🧾 validacija podataka
     if (
       !payload?.imeRoditelja ||
       !payload?.prezimeRoditelja ||
@@ -38,14 +27,15 @@ const reserveSlot = async ({ slotId, user, payload }) => {
       throw new ErrorResponse("Broj roditelja mora biti validan", 400);
     }
 
-    // 🔐 atomic lock slota
     slot = await lockSlot(slotId);
 
     if (!slot) {
-      throw new ErrorResponse("Termin je već zauzet ili ne postoji", 400);
+      throw new ErrorResponse(
+        "Termin je već zauzet, neaktivan ili ne postoji",
+        400,
+      );
     }
 
-    // ⏰ prošli termin
     const slotDateTime = new Date(slot.datum);
     const [endHour, endMinute] = String(slot.vremeDo || "00:00")
       .split(":")
@@ -54,15 +44,11 @@ const reserveSlot = async ({ slotId, user, payload }) => {
     slotDateTime.setHours(endHour || 0, endMinute || 0, 0, 0);
 
     if (slotDateTime <= new Date()) {
-      await unlockSlot(slot._id);
-
       throw new ErrorResponse("Ne možeš rezervisati prošli termin", 400);
     }
 
-    // 💰 cena
     const ukupnaCena = (slot.cena || 0) * brojDece;
 
-    // 📝 booking
     const booking = await Booking.create({
       roditeljId: user?._id || null,
       playroomId: slot.playroomId,
@@ -83,7 +69,6 @@ const reserveSlot = async ({ slotId, user, payload }) => {
 
     return booking;
   } catch (err) {
-    // 🔁 rollback
     if (slot) {
       await unlockSlot(slot._id);
     }
@@ -216,14 +201,12 @@ const unlockSlot = async (slotId) => {
 
   if (!slot) return null;
 
-  return TimeSlot.findByIdAndUpdate(
-    slotId,
-    {
-      zauzeto: false,
-      slobodno: slot.maxDece || 20,
-    },
-    { new: true },
-  );
+  slot.zauzeto = false;
+  slot.slobodno = 1;
+
+  await slot.save();
+
+  return slot;
 };
 
 module.exports = {

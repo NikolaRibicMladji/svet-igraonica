@@ -1,6 +1,5 @@
 const cron = require("node-cron");
 const Booking = require("../models/Booking");
-
 const BOOKING_STATUS = require("../constants/bookingStatus");
 
 // Funkcija za završavanje termina koji su prošli
@@ -11,21 +10,38 @@ const completeExpiredBookings = async () => {
       `🔍 Proveravam termine koji su završeni... (${now.toLocaleString("sr-RS")})`,
     );
 
-    // Pronađi sve rezervacije koje su potvrđene, a termin im je prošao
     const bookings = await Booking.find({
       status: BOOKING_STATUS.POTVRDJENO,
-      datum: { $lt: now }, // datum je prošao
-    }).populate("timeSlotId");
+    }).select("_id datum vremeDo status");
 
     let completedCount = 0;
+    let skippedCount = 0;
 
     for (const booking of bookings) {
-      // Proveri da li je vreme termina prošlo
-      const [hour, minute] = booking.vremeDo.split(":");
-      const endTime = new Date(booking.datum);
-      endTime.setHours(parseInt(hour), parseInt(minute), 0, 0);
+      if (!booking.vremeDo || typeof booking.vremeDo !== "string") {
+        skippedCount++;
+        console.warn(
+          `⚠️ Rezervacija ${booking._id} preskočena: nedostaje ili nije validno vremeDo`,
+        );
+        continue;
+      }
 
-      if (endTime < now) {
+      const [hour, minute] = booking.vremeDo
+        .split(":")
+        .map((v) => parseInt(v, 10));
+
+      if (Number.isNaN(hour) || Number.isNaN(minute)) {
+        skippedCount++;
+        console.warn(
+          `⚠️ Rezervacija ${booking._id} preskočena: neispravan format vremeDo (${booking.vremeDo})`,
+        );
+        continue;
+      }
+
+      const endTime = new Date(booking.datum);
+      endTime.setHours(hour, minute, 0, 0);
+
+      if (endTime <= now) {
         booking.status = BOOKING_STATUS.ZAVRSENO;
         await booking.save();
         completedCount++;
@@ -38,8 +54,14 @@ const completeExpiredBookings = async () => {
     } else {
       console.log("📭 Nema termina za završavanje");
     }
+
+    if (skippedCount > 0) {
+      console.log(
+        `⚠️ Preskočeno ${skippedCount} rezervacija zbog loših podataka`,
+      );
+    }
   } catch (error) {
-    console.error("❌ Greška pri završavanju termina:", error);
+    console.error("❌ Greška pri završavanju termina:", error.message);
   }
 };
 

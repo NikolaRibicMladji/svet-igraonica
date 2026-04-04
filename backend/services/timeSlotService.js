@@ -52,11 +52,11 @@ const deleteSlotIfAllowed = async (timeSlot) => {
 };
 
 const manualLockSlot = async (slotId) => {
-  return lockSlot(slotId);
+  return await lockSlot(slotId);
 };
 
 const manualUnlockSlot = async (slotId) => {
-  return unlockSlot(slotId);
+  return await unlockSlot(slotId);
 };
 
 module.exports = {

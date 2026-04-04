@@ -93,4 +93,40 @@ exports.refreshUserToken = async (refreshToken) => {
   return { accessToken };
 };
 
+exports.registerGuestParent = async (data) => {
+  const { ime, prezime, email, password, telefon } = data;
+
+  const normalizedEmail = email?.trim().toLowerCase();
+
+  const userExists = await User.findOne({ email: normalizedEmail });
+  if (userExists) {
+    const error = new Error(
+      "Korisnik sa ovom email adresom već postoji. Prijavite se da biste završili rezervaciju.",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
+  const user = await User.create({
+    ime: ime?.trim(),
+    prezime: prezime?.trim(),
+    email: normalizedEmail,
+    password: hashedPassword,
+    telefon: telefon?.trim(),
+    role: ROLES.RODITELJ,
+    deca: [],
+  });
+
+  const { accessToken, refreshToken } = generateAuthResponse(user);
+
+  return {
+    user,
+    accessToken,
+    refreshToken,
+  };
+};
+
 exports.cookieOptions = REFRESH_TOKEN_COOKIE_OPTIONS;

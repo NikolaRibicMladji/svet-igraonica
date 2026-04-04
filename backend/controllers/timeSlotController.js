@@ -60,7 +60,7 @@ exports.createTimeSlot = async (req, res, next) => {
       vremeOd,
       vremeDo,
       maxDece: playroom.kapacitet?.deca || 20,
-      slobodno: playroom.kapacitet?.deca || 20,
+      slobodno: 1,
       zauzeto: false,
       aktivno: true,
       vanRadnogVremena: false,
@@ -112,10 +112,23 @@ exports.getTimeSlotsByPlayroom = async (req, res, next) => {
       vanRadnogVremena: false,
     }).sort({ vremeOd: 1 });
 
+    const now = new Date();
+
+    const filteredSlots = timeSlots.filter((slot) => {
+      const slotEnd = new Date(slot.datum);
+      const [h, m] = String(slot.vremeDo || "00:00")
+        .split(":")
+        .map(Number);
+
+      slotEnd.setHours(h || 0, m || 0, 0, 0);
+
+      return slotEnd > now;
+    });
+
     res.status(200).json({
       success: true,
-      count: timeSlots.length,
-      data: timeSlots,
+      count: filteredSlots.length,
+      data: filteredSlots,
     });
   } catch (error) {
     next(error);
@@ -198,26 +211,26 @@ exports.updateTimeSlot = async (req, res, next) => {
     if (maxDece !== undefined) {
       const parsedMaxDece = Number(maxDece);
 
-      if (Number.isNaN(parsedMaxDece) || parsedMaxDece < 0) {
+      if (Number.isNaN(parsedMaxDece) || parsedMaxDece < 1) {
         return res.status(400).json({
           success: false,
-          message: "maxDece mora biti validan broj",
+          message: "maxDece mora biti validan broj veći od 0",
         });
       }
 
-      const rezervisano = Math.max(0, timeSlot.maxDece - timeSlot.slobodno);
+      const hasActiveBooking = await timeSlotService.hasActiveBookingForSlot(
+        timeSlot._id,
+      );
 
-      if (parsedMaxDece < rezervisano) {
+      if (hasActiveBooking) {
         return res.status(400).json({
           success: false,
           message:
-            "Novi kapacitet ne može biti manji od već rezervisanog broja mesta",
+            "Ne možeš menjati kapacitet termina koji ima aktivnu rezervaciju",
         });
       }
 
       timeSlot.maxDece = parsedMaxDece;
-      timeSlot.slobodno = Math.max(0, parsedMaxDece - rezervisano);
-      timeSlot.zauzeto = timeSlot.slobodno === 0;
     }
 
     if (cena !== undefined) {
@@ -230,6 +243,17 @@ exports.updateTimeSlot = async (req, res, next) => {
         });
       }
 
+      const hasActiveBooking = await timeSlotService.hasActiveBookingForSlot(
+        timeSlot._id,
+      );
+
+      if (hasActiveBooking) {
+        return res.status(400).json({
+          success: false,
+          message: "Ne možeš menjati cenu termina koji ima aktivnu rezervaciju",
+        });
+      }
+
       timeSlot.cena = parsedCena;
     }
 
@@ -237,6 +261,20 @@ exports.updateTimeSlot = async (req, res, next) => {
       if (aktivno === false) {
         await timeSlotService.deactivateSlotIfAllowed(timeSlot);
       } else {
+        const slotEnd = new Date(timeSlot.datum);
+        const [endHour, endMinute] = String(timeSlot.vremeDo || "00:00")
+          .split(":")
+          .map((v) => parseInt(v, 10));
+
+        slotEnd.setHours(endHour || 0, endMinute || 0, 0, 0);
+
+        if (slotEnd <= new Date()) {
+          return res.status(400).json({
+            success: false,
+            message: "Prošli termin ne može biti ponovo aktiviran",
+          });
+        }
+
         timeSlot.aktivno = true;
       }
     }
@@ -356,18 +394,21 @@ exports.getAvailableTimeSlots = async (req, res, next) => {
 
     const now = new Date();
 
-    const slotsWithStatus = timeSlots.map((slot) => {
-      const slotEnd = new Date(slot.datum);
-      const [h, m] = slot.vremeDo.split(":").map(Number);
-      slotEnd.setHours(h, m, 0, 0);
+    const slotsWithStatus = timeSlots
+      .map((slot) => {
+        const slotEnd = new Date(slot.datum);
+        const [h, m] = slot.vremeDo.split(":").map(Number);
+        slotEnd.setHours(h, m, 0, 0);
 
-      const isPast = slotEnd <= now;
+        const isPast = slotEnd <= now;
 
-      return {
-        ...slot.toObject(),
-        status: isPast ? "prošao" : slot.zauzeto ? "zauzeto" : "slobodno",
-      };
-    });
+        return {
+          ...slot.toObject(),
+          isPast,
+          status: isPast ? "prošao" : slot.zauzeto ? "zauzeto" : "slobodno",
+        };
+      })
+      .filter((slot) => !slot.isPast);
 
     res.status(200).json({
       success: true,
@@ -473,12 +514,14 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
 // @route   POST /api/timeslots/:id/manual-book
 // @access  Private (vlasnik)
 exports.manualBookTimeSlot = async (req, res, next) => {
+  let lockedSlot = null;
+
   try {
     const { id } = req.params;
     const { brojDece, napomena } = req.body;
-    let lockedSlot = null;
 
     const timeSlot = await TimeSlot.findById(id);
+
     if (!timeSlot) {
       return res.status(404).json({
         success: false,
@@ -487,6 +530,14 @@ exports.manualBookTimeSlot = async (req, res, next) => {
     }
 
     const playroom = await Playroom.findById(timeSlot.playroomId);
+
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronađena",
+      });
+    }
+
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
@@ -494,13 +545,6 @@ exports.manualBookTimeSlot = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "Nemate pravo da zauzmete ovaj termin",
-      });
-    }
-
-    if (!lockedSlot) {
-      return res.status(400).json({
-        success: false,
-        message: "Termin je već zauzet ili nije dostupan",
       });
     }
 
@@ -513,9 +557,32 @@ exports.manualBookTimeSlot = async (req, res, next) => {
       });
     }
 
+    // Ne dozvoli ručno zauzimanje termina koji je već prošao
+    const slotEnd = new Date(timeSlot.datum);
+    const [endHour, endMinute] = String(timeSlot.vremeDo || "00:00")
+      .split(":")
+      .map((v) => parseInt(v, 10));
+
+    slotEnd.setHours(endHour || 0, endMinute || 0, 0, 0);
+
+    if (slotEnd <= new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "Ne možeš ručno zauzeti prošli termin",
+      });
+    }
+
+    // Zaključaj slot TEK OVDE
     lockedSlot = await timeSlotService.manualLockSlot(timeSlot._id);
 
-    const ukupnaCena = lockedSlot.cena * parsedBrojDece;
+    if (!lockedSlot) {
+      return res.status(400).json({
+        success: false,
+        message: "Termin je već zauzet, neaktivan ili ne postoji",
+      });
+    }
+
+    const ukupnaCena = (lockedSlot.cena || 0) * parsedBrojDece;
 
     const booking = await Booking.create({
       roditeljId: req.user.id,
@@ -537,7 +604,7 @@ exports.manualBookTimeSlot = async (req, res, next) => {
       telefonRoditelja: req.user.telefon || "nije uneto",
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: booking,
       message: `Termin je uspešno zauzet. Ukupno: ${ukupnaCena} RSD`,
@@ -546,6 +613,7 @@ exports.manualBookTimeSlot = async (req, res, next) => {
     if (lockedSlot) {
       await timeSlotService.manualUnlockSlot(lockedSlot._id);
     }
+
     next(error);
   }
 };
