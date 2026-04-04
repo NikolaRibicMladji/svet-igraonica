@@ -1,6 +1,7 @@
 const TimeSlot = require("../models/TimeSlot");
 const Booking = require("../models/Booking");
 const BOOKING_STATUS = require("../constants/bookingStatus");
+const ErrorResponse = require("../utils/errorResponse");
 
 const reserveSlot = async ({ slotId, user, payload }) => {
   let slot = null;
@@ -13,9 +14,7 @@ const reserveSlot = async ({ slotId, user, payload }) => {
     });
 
     if (existing) {
-      const error = new Error("Termin je već rezervisan");
-      error.statusCode = 400;
-      throw error;
+      throw new ErrorResponse("Termin je već rezervisan", 400);
     }
 
     // 🧾 validacija podataka
@@ -25,33 +24,25 @@ const reserveSlot = async ({ slotId, user, payload }) => {
       !payload?.emailRoditelja ||
       !payload?.telefon
     ) {
-      const error = new Error("Nedostaju podaci za rezervaciju");
-      error.statusCode = 400;
-      throw error;
+      throw new ErrorResponse("Nedostaju podaci za rezervaciju", 400);
     }
 
     const brojDece = Number(payload.brojDece || 1);
     const brojRoditelja = Number(payload.brojRoditelja || 0);
 
     if (Number.isNaN(brojDece) || brojDece < 1) {
-      const error = new Error("Broj dece mora biti validan");
-      error.statusCode = 400;
-      throw error;
+      throw new ErrorResponse("Broj dece mora biti validan", 400);
     }
 
     if (Number.isNaN(brojRoditelja) || brojRoditelja < 0) {
-      const error = new Error("Broj roditelja mora biti validan");
-      error.statusCode = 400;
-      throw error;
+      throw new ErrorResponse("Broj roditelja mora biti validan", 400);
     }
 
     // 🔐 atomic lock slota
     slot = await lockSlot(slotId);
 
     if (!slot) {
-      const error = new Error("Termin je već zauzet ili ne postoji");
-      error.statusCode = 400;
-      throw error;
+      throw new ErrorResponse("Termin je već zauzet ili ne postoji", 400);
     }
 
     // ⏰ prošli termin
@@ -65,9 +56,7 @@ const reserveSlot = async ({ slotId, user, payload }) => {
     if (slotDateTime <= new Date()) {
       await unlockSlot(slot._id);
 
-      const error = new Error("Ne možeš rezervisati prošli termin");
-      error.statusCode = 400;
-      throw error;
+      throw new ErrorResponse("Ne možeš rezervisati prošli termin", 400);
     }
 
     // 💰 cena

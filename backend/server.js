@@ -6,6 +6,15 @@ const app = require("./app");
 // Load env
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
+const requiredEnv = ["MONGO_URI", "JWT_SECRET", "REFRESH_TOKEN_SECRET"];
+
+for (const key of requiredEnv) {
+  if (!process.env[key]) {
+    console.error(`❌ Nedostaje obavezna ENV promenljiva: ${key}`);
+    process.exit(1);
+  }
+}
+
 // Connect DB
 connectDB();
 
