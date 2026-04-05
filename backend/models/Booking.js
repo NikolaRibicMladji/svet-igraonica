@@ -21,7 +21,6 @@ const BookingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "TimeSlot",
       required: true,
-      index: true,
     },
 
     datum: {
@@ -112,7 +111,7 @@ BookingSchema.index({ playroomId: 1, datum: 1 });
 // ⚡ Brži query za user istoriju
 BookingSchema.index({ roditeljId: 1, createdAt: -1 });
 
-BookingSchema.index({ timeSlotId: 1 });
+BookingSchema.index({ timeSlotId: 1 }, { unique: true });
 
 BookingSchema.index({ playroomId: 1, status: 1, datum: 1 });
 

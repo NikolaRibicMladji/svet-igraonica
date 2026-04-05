@@ -82,6 +82,14 @@
   box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.1);
 }
 
+.info-message {
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
 .btn-submit {
   background: linear-gradient(135deg, #ff6b4a, #ff8c6e);
   color: white;

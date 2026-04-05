@@ -116,6 +116,7 @@ const OwnerTimeSlots = () => {
   };
 
   const handleManualBooking = async (bookingData) => {
+    if (loadingSlots) return;
     if (!selectedSlot?._id) {
       setError("Termin nije izabran.");
       return;
@@ -130,6 +131,8 @@ const OwnerTimeSlots = () => {
       if (result?.success) {
         setMessage(result.message || "Termin je uspešno zauzet.");
         closeManualBooking();
+
+        await new Promise((resolve) => setTimeout(resolve, 200));
         await loadTimeSlots();
 
         setTimeout(() => {

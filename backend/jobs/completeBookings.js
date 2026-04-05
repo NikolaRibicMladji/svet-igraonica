@@ -18,6 +18,14 @@ const completeExpiredBookings = async () => {
     let skippedCount = 0;
 
     for (const booking of bookings) {
+      if (!booking.datum || Number.isNaN(new Date(booking.datum).getTime())) {
+        skippedCount++;
+        console.warn(
+          `⚠️ Rezervacija ${booking._id} preskočena: datum nije validan`,
+        );
+        continue;
+      }
+
       if (!booking.vremeDo || typeof booking.vremeDo !== "string") {
         skippedCount++;
         console.warn(
@@ -45,7 +53,6 @@ const completeExpiredBookings = async () => {
         booking.status = BOOKING_STATUS.ZAVRSENO;
         await booking.save();
         completedCount++;
-        console.log(`✅ Rezervacija ${booking._id} označena kao završena`);
       }
     }
 

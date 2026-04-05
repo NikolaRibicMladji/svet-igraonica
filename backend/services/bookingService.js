@@ -2,11 +2,15 @@ const TimeSlot = require("../models/TimeSlot");
 const Booking = require("../models/Booking");
 const BOOKING_STATUS = require("../constants/bookingStatus");
 const ErrorResponse = require("../utils/errorResponse");
+const mongoose = require("mongoose");
 
 const reserveSlot = async ({ slotId, user, payload }) => {
-  let slot = null;
+  const session = await mongoose.startSession();
+  let booking = null;
 
   try {
+    session.startTransaction();
+
     if (
       !payload?.imeRoditelja ||
       !payload?.prezimeRoditelja ||
@@ -27,7 +31,25 @@ const reserveSlot = async ({ slotId, user, payload }) => {
       throw new ErrorResponse("Broj roditelja mora biti validan", 400);
     }
 
-    slot = await lockSlot(slotId);
+    const slot = await TimeSlot.findOneAndUpdate(
+      {
+        _id: slotId,
+        zauzeto: false,
+        slobodno: { $gt: 0 },
+        aktivno: true,
+        vanRadnogVremena: false,
+      },
+      {
+        $set: {
+          zauzeto: true,
+          slobodno: 0,
+        },
+      },
+      {
+        new: true,
+        session,
+      },
+    );
 
     if (!slot) {
       throw new ErrorResponse(
@@ -49,31 +71,38 @@ const reserveSlot = async ({ slotId, user, payload }) => {
 
     const ukupnaCena = (slot.cena || 0) * brojDece;
 
-    const booking = await Booking.create({
-      roditeljId: user?._id || null,
-      playroomId: slot.playroomId,
-      timeSlotId: slot._id,
-      datum: slot.datum,
-      vremeOd: slot.vremeOd,
-      vremeDo: slot.vremeDo,
-      brojDece,
-      brojRoditelja,
-      ukupnaCena,
-      status: BOOKING_STATUS.CEKANJE,
-      napomena: payload.napomena || "",
-      imeRoditelja: payload.imeRoditelja,
-      prezimeRoditelja: payload.prezimeRoditelja,
-      emailRoditelja: payload.emailRoditelja,
-      telefonRoditelja: payload.telefon,
-    });
+    const created = await Booking.create(
+      [
+        {
+          roditeljId: user?._id || null,
+          playroomId: slot.playroomId,
+          timeSlotId: slot._id,
+          datum: slot.datum,
+          vremeOd: slot.vremeOd,
+          vremeDo: slot.vremeDo,
+          brojDece,
+          brojRoditelja,
+          ukupnaCena,
+          status: BOOKING_STATUS.CEKANJE,
+          napomena: payload.napomena || "",
+          imeRoditelja: payload.imeRoditelja,
+          prezimeRoditelja: payload.prezimeRoditelja,
+          emailRoditelja: payload.emailRoditelja,
+          telefonRoditelja: payload.telefon,
+        },
+      ],
+      { session },
+    );
 
+    booking = created[0];
+
+    await session.commitTransaction();
     return booking;
   } catch (err) {
-    if (slot) {
-      await unlockSlot(slot._id);
-    }
-
+    await session.abortTransaction();
     throw err;
+  } finally {
+    session.endSession();
   }
 };
 

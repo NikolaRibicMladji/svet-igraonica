@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { addReview, deleteReview, getReviews } from "../services/reviewService";
 import { useAuth } from "../context/AuthContext";
 import "../styles/Reviews.css";
+import api from "../services/api";
 
 const REVIEWS_PER_PAGE = 10;
 
@@ -18,11 +19,21 @@ const Reviews = ({ playroomId }) => {
   const [success, setSuccess] = useState("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [canReview, setCanReview] = useState(false);
 
   useEffect(() => {
     if (!playroomId) return;
-    loadReviews();
-  }, [playroomId, page]);
+
+    const init = async () => {
+      await loadReviews();
+
+      if (isAuthenticated && user?.role === "roditelj") {
+        await checkIfUserCanReview();
+      }
+    };
+
+    init();
+  }, [playroomId, page, isAuthenticated]);
 
   const loadReviews = async () => {
     setLoading(true);
@@ -52,8 +63,35 @@ const Reviews = ({ playroomId }) => {
     }
   };
 
+  const checkIfUserCanReview = async () => {
+    try {
+      const res = await api.get(`/bookings/my`);
+
+      if (res.data?.success) {
+        const hasCompleted = res.data.data.some(
+          (b) =>
+            (typeof b.playroomId === "object"
+              ? b.playroomId?._id
+              : b.playroomId) === playroomId && b.status === "zavrseno",
+        );
+
+        // 🔥 DA LI JE VEĆ OSTAVIO RECENZIJU
+        const hasReview = reviews.some(
+          (r) =>
+            (typeof r.userId === "object" ? r.userId?._id : r.userId) ===
+            user.id,
+        );
+
+        setCanReview(hasCompleted && !hasReview);
+      }
+    } catch (err) {
+      console.error("Greška pri proveri review prava:", err);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
 
     if (!isAuthenticated) {
       setError("Morate biti prijavljeni da biste ostavili recenziju.");
@@ -83,6 +121,7 @@ const Reviews = ({ playroomId }) => {
         setRating(5);
         setPage(1);
         await loadReviews();
+        setCanReview(false);
 
         setTimeout(() => {
           setSuccess("");
@@ -102,6 +141,7 @@ const Reviews = ({ playroomId }) => {
   };
 
   const handleDelete = async (id) => {
+    if (deletingId) return;
     const confirmed = window.confirm(
       "Da li ste sigurni da želite da obrišete ovu recenziju?",
     );
@@ -122,6 +162,7 @@ const Reviews = ({ playroomId }) => {
           setPage((prev) => prev - 1);
         } else {
           await loadReviews();
+          setCanReview(true);
         }
 
         setTimeout(() => {
@@ -173,41 +214,43 @@ const Reviews = ({ playroomId }) => {
         <h3>⭐ Recenzije ({total})</h3>
       </div>
 
-      {isAuthenticated &&
-        (user?.role === "roditelj" || user?.role === "admin") && (
-          <div className="review-form">
-            <h4>Ostavite vašu recenziju</h4>
+      {isAuthenticated && (user?.role === "admin" || canReview) && (
+        <div className="review-form">
+          <h4>Ostavite vašu recenziju</h4>
 
-            {error && <div className="error-message">{error}</div>}
-            {success && <div className="success-message">{success}</div>}
+          {error && <div className="error-message">{error}</div>}
+          {success && <div className="success-message">{success}</div>}
 
-            <form onSubmit={handleSubmit}>
-              <div className="rating-input">
-                <label>Vaša ocena:</label>
-                <div className="stars">{renderStars(rating, true)}</div>
-              </div>
+          <form onSubmit={handleSubmit}>
+            <div className="rating-input">
+              <label>Vaša ocena:</label>
+              <div className="stars">{renderStars(rating, true)}</div>
+            </div>
 
-              <div className="comment-input">
-                <textarea
-                  rows="4"
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Podelite vaše iskustvo sa ovom igraonicom..."
-                  required
-                  maxLength={1000}
-                />
-              </div>
+            <div className="comment-input">
+              <textarea
+                rows="4"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Podelite vaše iskustvo sa ovom igraonicom..."
+                required
+                maxLength={500}
+              />
+            </div>
 
-              <button
-                type="submit"
-                className="btn-submit"
-                disabled={submitting}
-              >
-                {submitting ? "Slanje..." : "📝 Ostavi recenziju"}
-              </button>
-            </form>
-          </div>
-        )}
+            <button type="submit" className="btn-submit" disabled={submitting}>
+              {submitting ? "Slanje..." : "📝 Ostavi recenziju"}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {isAuthenticated && user?.role === "roditelj" && !canReview && (
+        <div className="info-message">
+          Recenziju možete ostaviti tek nakon završene rezervacije za ovu
+          igraonicu.
+        </div>
+      )}
 
       {!isAuthenticated && error && (
         <div className="error-message">{error}</div>

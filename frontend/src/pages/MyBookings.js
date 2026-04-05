@@ -41,6 +41,7 @@ const MyBookings = () => {
   };
 
   const handleCancel = async (id) => {
+    if (cancellingId) return;
     const confirmed = window.confirm(
       "Da li ste sigurni da želite da otkažete ovu rezervaciju?",
     );
@@ -197,7 +198,11 @@ const MyBookings = () => {
                     type="button"
                     className="btn-cancel"
                     onClick={() => handleCancel(booking._id)}
-                    disabled={cancellingId === booking._id}
+                    disabled={
+                      cancellingId === booking._id ||
+                      booking.status === "otkazano" ||
+                      booking.status === "zavrseno"
+                    }
                   >
                     {cancellingId === booking._id
                       ? "Otkazujem..."

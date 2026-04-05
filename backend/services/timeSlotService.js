@@ -1,7 +1,6 @@
 const TimeSlot = require("../models/TimeSlot");
 const Booking = require("../models/Booking");
 const BOOKING_STATUS = require("../constants/bookingStatus");
-const { lockSlot, unlockSlot } = require("./bookingService");
 
 const findDuplicateSlot = async ({ playroomId, datum, vremeOd, vremeDo }) => {
   return TimeSlot.findOne({
@@ -51,19 +50,9 @@ const deleteSlotIfAllowed = async (timeSlot) => {
   return true;
 };
 
-const manualLockSlot = async (slotId) => {
-  return await lockSlot(slotId);
-};
-
-const manualUnlockSlot = async (slotId) => {
-  return await unlockSlot(slotId);
-};
-
 module.exports = {
   findDuplicateSlot,
   hasActiveBookingForSlot,
   deactivateSlotIfAllowed,
   deleteSlotIfAllowed,
-  manualLockSlot,
-  manualUnlockSlot,
 };

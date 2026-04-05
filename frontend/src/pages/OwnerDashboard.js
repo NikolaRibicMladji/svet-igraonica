@@ -34,6 +34,20 @@ const OwnerDashboard = () => {
     }
   }, [selectedPlayroomId]);
 
+  useEffect(() => {
+    if (authLoading) return;
+
+    const interval = setInterval(() => {
+      fetchBookings();
+
+      if (selectedPlayroomId) {
+        fetchStats(selectedPlayroomId);
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [authLoading, selectedPlayroomId]);
+
   const fetchMyPlayrooms = async () => {
     try {
       setLoading(true);
@@ -102,6 +116,8 @@ const OwnerDashboard = () => {
   };
 
   const handleConfirm = async (bookingId) => {
+    if (confirmingId) return;
+
     try {
       setConfirmingId(bookingId);
       setError("");
@@ -127,16 +143,16 @@ const OwnerDashboard = () => {
     }
   };
 
+  const getPlayroomId = (booking) =>
+    typeof booking.playroomId === "object"
+      ? booking.playroomId?._id
+      : booking.playroomId;
+
   const filteredBookings = useMemo(() => {
     if (!selectedPlayroomId) return bookings;
 
     return bookings.filter((booking) => {
-      const playroomId =
-        typeof booking.playroomId === "object"
-          ? booking.playroomId?._id
-          : booking.playroomId;
-
-      return playroomId === selectedPlayroomId;
+      return getPlayroomId(booking) === selectedPlayroomId;
     });
   }, [bookings, selectedPlayroomId]);
 
@@ -306,7 +322,9 @@ const OwnerDashboard = () => {
                 <button
                   className="btn-confirm-booking"
                   onClick={() => handleConfirm(booking._id)}
-                  disabled={confirmingId === booking._id}
+                  disabled={
+                    confirmingId === booking._id || booking.status !== "cekanje"
+                  }
                 >
                   {confirmingId === booking._id
                     ? "Potvrđujem..."

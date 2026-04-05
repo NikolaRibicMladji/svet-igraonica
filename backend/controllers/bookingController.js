@@ -161,12 +161,19 @@ exports.getOwnerBookings = async (req, res, next) => {
 // @route   PUT /api/bookings/:id/cancel
 // @access  Private (roditelj ili vlasnik ili admin)
 exports.cancelBooking = async (req, res, next) => {
+  const session = await mongoose.startSession();
+
   try {
+    session.startTransaction();
+
     const booking = await Booking.findById(req.params.id)
       .populate("playroomId", "naziv adresa grad vlasnikId")
-      .populate("roditeljId", "ime prezime email telefon");
+      .populate("roditeljId", "ime prezime email telefon")
+      .session(session);
 
     if (!booking) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({
         success: false,
         message: "Rezervacija nije pronađena",
@@ -183,12 +190,11 @@ exports.cancelBooking = async (req, res, next) => {
     let isPlayroomOwner = false;
     if (booking.playroomId?.vlasnikId) {
       isPlayroomOwner = booking.playroomId.vlasnikId.toString() === req.user.id;
-    } else {
-      const playroom = await Playroom.findById(booking.playroomId);
-      isPlayroomOwner = playroom?.vlasnikId?.toString() === req.user.id;
     }
 
     if (!isOwnerOfBooking && !isPlayroomOwner && !isAdmin) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(403).json({
         success: false,
         message: "Nemate pravo da otkažete ovu rezervaciju",
@@ -196,6 +202,8 @@ exports.cancelBooking = async (req, res, next) => {
     }
 
     if (booking.status === BOOKING_STATUS.OTKAZANO) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({
         success: false,
         message: "Rezervacija je već otkazana",
@@ -203,27 +211,42 @@ exports.cancelBooking = async (req, res, next) => {
     }
 
     if (booking.status === BOOKING_STATUS.ZAVRSENO) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({
         success: false,
         message: "Završena rezervacija ne može biti otkazana",
       });
     }
 
+    // 🔥 UPDATE BOOKING
     booking.status = BOOKING_STATUS.OTKAZANO;
-    await booking.save();
+    await booking.save({ session });
 
-    const timeSlot = await TimeSlot.findById(booking.timeSlotId);
-    if (timeSlot) {
-      await bookingService.unlockSlot(timeSlot._id);
-    }
+    // 🔥 UNLOCK SLOT (ATOMIC)
+    await TimeSlot.findByIdAndUpdate(
+      booking.timeSlotId,
+      {
+        $set: {
+          zauzeto: false,
+          slobodno: 1,
+        },
+      },
+      { session },
+    );
+
+    await session.commitTransaction();
+    session.endSession();
 
     await bookingService.sendCancellationEmail(booking);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Rezervacija je otkazana",
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     next(error);
   }
 };
