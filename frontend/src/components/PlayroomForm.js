@@ -22,6 +22,7 @@ const PlayroomForm = ({
   const {
     formData,
     error,
+    errors,
     uploading,
     uploadingVideo,
     slike,
@@ -76,9 +77,17 @@ const PlayroomForm = ({
 
       {error && <div className="error-message">{error}</div>}
 
-      <BasicInfoSection formData={formData} handleChange={handleChange} />
+      <BasicInfoSection
+        formData={formData}
+        handleChange={handleChange}
+        errors={errors}
+      />
 
-      <CapacitySection formData={formData} handleChange={handleChange} />
+      <CapacitySection
+        formData={formData}
+        handleChange={handleChange}
+        errors={errors}
+      />
 
       <ImagesSection
         uploading={uploading}
@@ -100,19 +109,19 @@ const PlayroomForm = ({
         handleRemoveVideo={handleRemoveVideo}
       />
 
-      <div className="form-section">
-        <h3>💰 Osnovna cena</h3>
-        <div className="form-group">
-          <label>Osnovna cena po detetu (RSD) *</label>
-          <input
-            type="number"
-            min="0"
-            name="osnovnaCena"
-            value={formData.osnovnaCena}
-            onChange={handleChange}
-            required
-          />
-        </div>
+      <div className="form-group">
+        <label>Osnovna cena po detetu (RSD) *</label>
+        <input
+          type="number"
+          min="0"
+          name="osnovnaCena"
+          value={formData.osnovnaCena}
+          onChange={handleChange}
+          className={errors.osnovnaCena ? "input-error" : ""}
+        />
+        {errors.osnovnaCena && (
+          <div className="field-error">{errors.osnovnaCena}</div>
+        )}
       </div>
 
       <ParentPricingSection

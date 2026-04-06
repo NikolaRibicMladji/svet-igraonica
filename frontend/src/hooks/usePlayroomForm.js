@@ -85,6 +85,15 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
   const [videoNaziv, setVideoNaziv] = useState("");
 
   const [error, setError] = useState("");
+  const [errors, setErrors] = useState({});
+  const clearFieldError = (fieldName) => {
+    setErrors((prev) => {
+      if (!prev[fieldName]) return prev;
+      const next = { ...prev };
+      delete next[fieldName];
+      return next;
+    });
+  };
   const [paketi, setPaketi] = useState(
     Array.isArray(initialData?.paketi) ? initialData.paketi : [],
   );
@@ -195,6 +204,7 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
     });
 
     setError("");
+    setErrors({});
   }, [initialData, initialFormData]);
 
   useEffect(() => {
@@ -315,6 +325,7 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
 
     if (name.includes(".")) {
       const [parent, child] = name.split(".");
+
       setFormData((prev) => ({
         ...prev,
         [parent]: {
@@ -322,6 +333,8 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
           [child]: value,
         },
       }));
+
+      clearFieldError(name);
       return;
     }
 
@@ -329,6 +342,8 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
       ...prev,
       [name]: value,
     }));
+
+    clearFieldError(name);
   };
 
   const handleRadnoVremeChange = (dan, tip, value) => {
@@ -523,46 +538,56 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
   };
 
   const validateForm = () => {
-    if (!sanitizeText(formData.naziv)) return "Naziv igraonice je obavezan.";
-    if (!sanitizeText(formData.adresa)) return "Adresa je obavezna.";
-    if (!sanitizeText(formData.grad)) return "Grad je obavezan.";
-    if (!sanitizeText(formData.opis)) return "Opis je obavezan.";
-    if (!sanitizeText(formData.kontaktTelefon))
-      return "Kontakt telefon je obavezan.";
-    if (!/^[0-9+ ]+$/.test(formData.kontaktTelefon)) {
-      return "Telefon može sadržati samo brojeve.";
-    }
-    if (!sanitizeText(formData.kontaktEmail))
-      return "Kontakt email je obavezan.";
-    if (!/\S+@\S+\.\S+/.test(formData.kontaktEmail)) {
-      return "Email nije validan.";
+    const newErrors = {};
+
+    if (!sanitizeText(formData.naziv)) {
+      newErrors.naziv = "Naziv je obavezan.";
     }
 
-    const kapacitetDece = Number(formData.kapacitet.deca);
-    if (!Number.isFinite(kapacitetDece) || kapacitetDece < 1) {
-      return "Kapacitet dece mora biti najmanje 1.";
+    if (!sanitizeText(formData.adresa)) {
+      newErrors.adresa = "Adresa je obavezna.";
     }
 
-    const osnovnaCena = Number(formData.osnovnaCena);
-    if (!Number.isFinite(osnovnaCena) || osnovnaCena < 0) {
-      return "Osnovna cena mora biti validan broj.";
+    if (!sanitizeText(formData.grad)) {
+      newErrors.grad = "Grad je obavezan.";
     }
 
-    if (
-      cenaRoditelja.tip !== "ne_naplacuje" &&
-      (!Number.isFinite(Number(cenaRoditelja.iznos)) ||
-        Number(cenaRoditelja.iznos) < 0)
-    ) {
-      return "Cena za roditelje mora biti validan broj.";
+    if (!sanitizeText(formData.opis)) {
+      newErrors.opis = "Opis je obavezan.";
     }
 
-    for (const [dan, vreme] of Object.entries(radnoVreme)) {
-      if (vreme?.radi && vreme.od && vreme.do && vreme.od >= vreme.do) {
-        return `Radno vreme nije ispravno za dan: ${dan}.`;
+    if (!sanitizeText(formData.kontaktTelefon)) {
+      newErrors.kontaktTelefon = "Telefon je obavezan.";
+    } else if (!/^[0-9+ ]+$/.test(formData.kontaktTelefon)) {
+      newErrors.kontaktTelefon = "Telefon može sadržati samo brojeve.";
+    }
+
+    if (!sanitizeText(formData.kontaktEmail)) {
+      newErrors.kontaktEmail = "Email je obavezan.";
+    } else if (!/\S+@\S+\.\S+/.test(formData.kontaktEmail)) {
+      newErrors.kontaktEmail = "Email nije validan.";
+    }
+
+    if (!formData.kapacitet.deca) {
+      newErrors["kapacitet.deca"] = "Kapacitet dece je obavezan.";
+    } else {
+      const kapacitetDece = Number(formData.kapacitet.deca);
+      if (!Number.isFinite(kapacitetDece) || kapacitetDece < 1) {
+        newErrors["kapacitet.deca"] = "Kapacitet dece mora biti najmanje 1.";
       }
     }
 
-    return "";
+    if (!formData.osnovnaCena && formData.osnovnaCena !== 0) {
+      newErrors.osnovnaCena = "Osnovna cena je obavezna.";
+    } else {
+      const osnovnaCena = Number(formData.osnovnaCena);
+      if (!Number.isFinite(osnovnaCena) || osnovnaCena < 0) {
+        newErrors.osnovnaCena = "Osnovna cena mora biti validan broj.";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e) => {
@@ -570,11 +595,7 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
     window.scrollTo({ top: 0, behavior: "smooth" });
     setError("");
 
-    const validationMessage = validateForm();
-    if (validationMessage) {
-      setError(validationMessage);
-      return;
-    }
+    if (!validateForm()) return;
 
     const submitData = {
       ...formData,
@@ -648,6 +669,7 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
   return {
     formData,
     error,
+    errors,
     uploading,
     uploadingVideo,
     slike,

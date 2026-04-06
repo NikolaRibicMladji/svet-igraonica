@@ -1,6 +1,6 @@
 import React from "react";
 
-const CapacitySection = ({ formData, handleChange }) => {
+const CapacitySection = ({ formData, handleChange, errors }) => {
   return (
     <div className="form-section">
       <h3>👥 Kapacitet</h3>
@@ -14,8 +14,11 @@ const CapacitySection = ({ formData, handleChange }) => {
             name="kapacitet.deca"
             value={formData.kapacitet.deca}
             onChange={handleChange}
-            required
+            className={errors["kapacitet.deca"] ? "input-error" : ""}
           />
+          {errors["kapacitet.deca"] && (
+            <div className="field-error">{errors["kapacitet.deca"]}</div>
+          )}
         </div>
 
         <div className="form-group">

@@ -1,6 +1,6 @@
 import React from "react";
 
-const BasicInfoSection = ({ formData, handleChange }) => {
+const BasicInfoSection = ({ formData, handleChange, errors }) => {
   return (
     <div className="form-section">
       <h3>📋 Osnovni podaci</h3>
@@ -12,8 +12,9 @@ const BasicInfoSection = ({ formData, handleChange }) => {
           name="naziv"
           value={formData.naziv}
           onChange={handleChange}
-          required
+          className={errors.naziv ? "input-error" : ""}
         />
+        {errors.naziv && <div className="field-error">{errors.naziv}</div>}
       </div>
 
       <div className="form-row">
@@ -24,8 +25,9 @@ const BasicInfoSection = ({ formData, handleChange }) => {
             name="adresa"
             value={formData.adresa}
             onChange={handleChange}
-            required
+            className={errors.adresa ? "input-error" : ""}
           />
+          {errors.adresa && <div className="field-error">{errors.adresa}</div>}
         </div>
 
         <div className="form-group">
@@ -35,8 +37,9 @@ const BasicInfoSection = ({ formData, handleChange }) => {
             name="grad"
             value={formData.grad}
             onChange={handleChange}
-            required
+            className={errors.grad ? "input-error" : ""}
           />
+          {errors.grad && <div className="field-error">{errors.grad}</div>}
         </div>
       </div>
 
@@ -47,8 +50,9 @@ const BasicInfoSection = ({ formData, handleChange }) => {
           rows="4"
           value={formData.opis}
           onChange={handleChange}
-          required
+          className={errors.opis ? "input-error" : ""}
         />
+        {errors.opis && <div className="field-error">{errors.opis}</div>}
       </div>
 
       <div className="form-row">
@@ -59,8 +63,11 @@ const BasicInfoSection = ({ formData, handleChange }) => {
             name="kontaktTelefon"
             value={formData.kontaktTelefon}
             onChange={handleChange}
-            required
+            className={errors.kontaktTelefon ? "input-error" : ""}
           />
+          {errors.kontaktTelefon && (
+            <div className="field-error">{errors.kontaktTelefon}</div>
+          )}
         </div>
 
         <div className="form-group">
@@ -70,8 +77,11 @@ const BasicInfoSection = ({ formData, handleChange }) => {
             name="kontaktEmail"
             value={formData.kontaktEmail}
             onChange={handleChange}
-            required
+            className={errors.kontaktEmail ? "input-error" : ""}
           />
+          {errors.kontaktEmail && (
+            <div className="field-error">{errors.kontaktEmail}</div>
+          )}
         </div>
       </div>
     </div>
