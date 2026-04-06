@@ -68,6 +68,15 @@ const UserSchema = new mongoose.Schema(
       type: [deteSchema],
       default: [],
     },
+    passwordResetToken: {
+      type: String,
+      default: undefined,
+    },
+
+    passwordResetExpires: {
+      type: Date,
+      default: undefined,
+    },
   },
   {
     timestamps: true,

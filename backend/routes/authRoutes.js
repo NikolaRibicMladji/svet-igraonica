@@ -7,6 +7,8 @@ const {
   logout,
   refreshToken,
   getMe,
+  forgotPassword,
+  resetPassword,
 } = require("../controllers/authController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -23,6 +25,8 @@ router.post("/register", validate(registerSchema), register);
 router.post("/login", validate(loginSchema), login);
 router.post("/logout", logout);
 router.post("/refresh", refreshToken);
+router.post("/forgot-password", forgotPassword);
+router.put("/reset-password/:token", resetPassword);
 
 // 🔒 PRIVATNE RUTE
 router.get("/me", protect, getMe);

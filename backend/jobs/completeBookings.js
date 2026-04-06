@@ -81,6 +81,6 @@ cron.schedule("*/10 * * * *", () => {
   completeExpiredBookings();
 });
 
-console.log("📅 Cron job za završavanje termina aktivan (svakih 30 minuta)");
+console.log("📅 Cron job za završavanje termina aktivan (svakih 10 minuta)");
 
 module.exports = { completeExpiredBookings };

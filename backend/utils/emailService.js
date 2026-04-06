@@ -202,3 +202,5 @@ exports.sendCancellationToOwner = async (
     html: `<p>Rezervacija otkazana</p>`,
   });
 };
+
+exports.sendMail = sendMail;

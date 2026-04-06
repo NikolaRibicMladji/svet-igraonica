@@ -1,3 +1,7 @@
+const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
+const User = require("../models/User");
+const { sendMail } = require("../utils/emailService");
 const authService = require("../services/authService");
 
 // @desc    Registracija korisnika
@@ -99,4 +103,126 @@ exports.getMe = async (req, res) => {
     success: true,
     user: req.user,
   });
+};
+
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Email adresa je obavezna.",
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    // Ne otkrivamo da li korisnik postoji
+    if (!user) {
+      return res.status(200).json({
+        success: true,
+        message:
+          "Ako nalog sa tom email adresom postoji, poslali smo link za reset lozinke.",
+      });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
+
+    user.passwordResetToken = hashedToken;
+    user.passwordResetExpires = Date.now() + 15 * 60 * 1000; // 15 minuta
+
+    await user.save({ validateBeforeSave: false });
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
+    await sendMail({
+      from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: "Reset lozinke - Svet Igraonica",
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;">
+          <h2 style="color:#ff6b4a;">Reset lozinke</h2>
+          <p>Zatražili ste promenu lozinke za vaš nalog.</p>
+          <p>Kliknite na dugme ispod da postavite novu lozinku:</p>
+          <p style="margin:24px 0;">
+            <a href="${resetUrl}" style="display:inline-block;padding:12px 20px;background:#ff6b4a;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:bold;">
+              Promeni lozinku
+            </a>
+          </p>
+          <p>Ako niste vi tražili reset lozinke, slobodno ignorišite ovaj email.</p>
+          <p>Link važi 15 minuta.</p>
+        </div>
+      `,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Ako nalog sa tom email adresom postoji, poslali smo link za reset lozinke.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const { password, confirmPassword } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Lozinka mora imati najmanje 6 karaktera.",
+      });
+    }
+
+    if (!confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Potvrda lozinke je obavezna.",
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Lozinke se ne podudaraju.",
+      });
+    }
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() },
+    }).select("+password");
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Token nije validan ili je istekao.",
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Lozinka je uspešno promenjena.",
+    });
+  } catch (error) {
+    next(error);
+  }
 };
