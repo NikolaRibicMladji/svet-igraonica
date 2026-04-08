@@ -4,6 +4,24 @@ const BOOKING_STATUS = require("../constants/bookingStatus");
 const ErrorResponse = require("../utils/errorResponse");
 const mongoose = require("mongoose");
 
+const buildDateTime = (date, time) => {
+  const [hour, minute] = String(time || "00:00")
+    .split(":")
+    .map((v) => parseInt(v, 10));
+
+  const d = new Date(date);
+
+  return new Date(
+    d.getFullYear(),
+    d.getMonth(),
+    d.getDate(),
+    hour || 0,
+    minute || 0,
+    0,
+    0,
+  );
+};
+
 const reserveSlot = async ({
   slotId,
   user,
@@ -15,6 +33,11 @@ const reserveSlot = async ({
   let booking = null;
 
   try {
+    console.log("📌 RESERVE SLOT:", {
+      slotId,
+      user: user?._id || null,
+      time: new Date().toISOString(),
+    });
     if (ownSession) {
       session.startTransaction();
     }
@@ -54,12 +77,7 @@ const reserveSlot = async ({
       throw new ErrorResponse("Termin je već zauzet ili ne postoji", 400);
     }
 
-    const slotEnd = new Date(slot.datum);
-    const [endHour, endMinute] = String(slot.vremeDo || "00:00")
-      .split(":")
-      .map((v) => parseInt(v, 10));
-
-    slotEnd.setHours(endHour || 0, endMinute || 0, 0, 0);
+    const slotEnd = buildDateTime(slot.datum, slot.vremeDo);
 
     if (slotEnd <= new Date()) {
       throw new ErrorResponse("Ne možeš rezervisati prošli termin", 400);
@@ -93,6 +111,13 @@ const reserveSlot = async ({
     if (ownSession) {
       await session.commitTransaction();
     }
+
+    console.log("✅ BOOKING CREATED:", {
+      bookingId: booking._id,
+      slotId,
+      user: user?._id || null,
+      time: new Date().toISOString(),
+    });
 
     return booking;
   } catch (err) {
@@ -143,7 +168,20 @@ const handleBookingEmails = async (bookingId) => {
     }
 
     if (playroom?.vlasnikId) {
-      await sendBookingConfirmationToOwner(booking, playroom, timeSlot);
+      const vlasnik = await Booking.populate(booking, {
+        path: "playroomId",
+        populate: { path: "vlasnikId", select: "ime prezime email" },
+      });
+
+      if (vlasnik?.playroomId?.vlasnikId?.email) {
+        await sendBookingConfirmationToOwner(
+          booking,
+          userForEmail,
+          playroom,
+          timeSlot,
+          vlasnik.playroomId.vlasnikId,
+        );
+      }
     }
   } catch (err) {
     console.error("EMAIL ERROR:", err.message);
@@ -158,6 +196,201 @@ const createBookingWithEmails = async (data) => {
       await handleBookingEmails(booking._id);
     } catch (error) {
       console.error("Greška pri slanju booking emailova:", error.message);
+    }
+  });
+
+  return booking;
+};
+
+const getBookingWithRelations = async (bookingId, session = null) => {
+  let query = Booking.findById(bookingId)
+    .populate("playroomId", "naziv adresa grad vlasnikId")
+    .populate("roditeljId", "ime prezime email telefon")
+    .populate("timeSlotId");
+
+  if (session) {
+    query = query.session(session);
+  }
+
+  return query;
+};
+
+const canUserManageBooking = (booking, user) => {
+  if (!booking || !user) return false;
+
+  const isAdmin = user.role === "admin";
+
+  const isOwnerOfBooking =
+    booking.roditeljId &&
+    booking.roditeljId._id &&
+    booking.roditeljId._id.toString() === user.id;
+
+  const isPlayroomOwner =
+    booking.playroomId?.vlasnikId &&
+    booking.playroomId.vlasnikId.toString() === user.id;
+
+  return {
+    isAdmin,
+    isOwnerOfBooking,
+    isPlayroomOwner,
+  };
+};
+
+const canConfirmPastBooking = (booking) => {
+  const bookingEnd = buildDateTime(booking.datum, booking.vremeDo);
+
+  return bookingEnd > new Date();
+};
+
+const cancelBookingById = async ({ bookingId, currentUser }) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const booking = await getBookingWithRelations(bookingId, session);
+
+    if (!booking) {
+      throw new ErrorResponse("Rezervacija nije pronađena", 404);
+    }
+
+    const { isAdmin, isOwnerOfBooking, isPlayroomOwner } = canUserManageBooking(
+      booking,
+      currentUser,
+    );
+
+    if (!isOwnerOfBooking && !isPlayroomOwner && !isAdmin) {
+      throw new ErrorResponse("Nemate pravo da otkažete ovu rezervaciju", 403);
+    }
+
+    if (booking.status === BOOKING_STATUS.OTKAZANO) {
+      throw new ErrorResponse("Rezervacija je već otkazana", 400);
+    }
+
+    if (booking.status === BOOKING_STATUS.ZAVRSENO) {
+      throw new ErrorResponse(
+        "Završena rezervacija ne može biti otkazana",
+        400,
+      );
+    }
+
+    booking.status = BOOKING_STATUS.OTKAZANO;
+    await booking.save({ session });
+
+    const unlockedSlot = await unlockSlot(booking.timeSlotId, session);
+
+    if (!unlockedSlot) {
+      throw new ErrorResponse("Slot za ovu rezervaciju nije pronađen", 404);
+    }
+
+    await session.commitTransaction();
+
+    console.log("❌ BOOKING CANCELED:", {
+      bookingId,
+      user: currentUser?.id || null,
+      time: new Date().toISOString(),
+    });
+
+    setImmediate(async () => {
+      try {
+        await sendCancellationEmail(booking);
+
+        if (booking.playroomId?.vlasnikId?.email) {
+          await require("../utils/emailService").sendCancellationToOwner(
+            booking,
+            booking.roditeljId,
+            booking.playroomId,
+            {
+              datum: booking.datum,
+              vremeOd: booking.vremeOd,
+              vremeDo: booking.vremeDo,
+            },
+            booking.playroomId.vlasnikId,
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Greška pri slanju emaila nakon otkazivanja rezervacije:",
+          error.message,
+        );
+      }
+    });
+
+    return booking;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
+
+const confirmBookingById = async ({ bookingId, currentUser }) => {
+  const booking = await getBookingWithRelations(bookingId);
+
+  if (!booking) {
+    throw new ErrorResponse("Rezervacija nije pronađena", 404);
+  }
+
+  const { isAdmin, isPlayroomOwner } = canUserManageBooking(
+    booking,
+    currentUser,
+  );
+
+  if (!isPlayroomOwner && !isAdmin) {
+    throw new ErrorResponse("Nemate pravo da potvrdite ovu rezervaciju", 403);
+  }
+
+  if (booking.status === BOOKING_STATUS.OTKAZANO) {
+    throw new ErrorResponse("Otkazana rezervacija ne može biti potvrđena", 400);
+  }
+
+  if (booking.status === BOOKING_STATUS.POTVRDJENO) {
+    throw new ErrorResponse("Rezervacija je već potvrđena", 400);
+  }
+
+  if (booking.status === BOOKING_STATUS.ZAVRSENO) {
+    throw new ErrorResponse(
+      "Završena rezervacija ne može biti ponovo potvrđena",
+      400,
+    );
+  }
+
+  if (!canConfirmPastBooking(booking)) {
+    throw new ErrorResponse("Prošli termin ne može biti potvrđen", 400);
+  }
+
+  booking.status = BOOKING_STATUS.POTVRDJENO;
+  await booking.save();
+
+  console.log("✅ BOOKING CONFIRMED:", {
+    bookingId,
+    user: currentUser?.id || null,
+    time: new Date().toISOString(),
+  });
+
+  setImmediate(async () => {
+    try {
+      await sendConfirmationEmail(booking);
+
+      if (booking.playroomId?.vlasnikId?.email) {
+        await sendBookingConfirmationToOwner(
+          booking,
+          booking.roditeljId,
+          booking.playroomId,
+          {
+            datum: booking.datum,
+            vremeOd: booking.vremeOd,
+            vremeDo: booking.vremeDo,
+          },
+          booking.playroomId.vlasnikId,
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Greška pri slanju emaila nakon potvrde rezervacije:",
+        error.message,
+      );
     }
   });
 
@@ -217,7 +450,6 @@ const lockSlot = async (slotId) => {
     {
       _id: slotId,
       zauzeto: false,
-
       aktivno: true,
       vanRadnogVremena: false,
     },
@@ -258,4 +490,7 @@ module.exports = {
   sendConfirmationEmail,
   lockSlot,
   unlockSlot,
+  cancelBookingById,
+  confirmBookingById,
+  getBookingWithRelations,
 };

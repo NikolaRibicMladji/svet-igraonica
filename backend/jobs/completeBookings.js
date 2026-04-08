@@ -46,12 +46,24 @@ const completeExpiredBookings = async () => {
         continue;
       }
 
-      const endTime = new Date(booking.datum);
-      endTime.setHours(hour, minute, 0, 0);
+      const endTime = new Date(
+        new Date(booking.datum).getFullYear(),
+        new Date(booking.datum).getMonth(),
+        new Date(booking.datum).getDate(),
+        hour,
+        minute,
+        0,
+        0,
+      );
 
       if (endTime <= now) {
         booking.status = BOOKING_STATUS.ZAVRSENO;
         await booking.save();
+        const TimeSlot = require("../models/TimeSlot");
+
+        await TimeSlot.findByIdAndUpdate(booking.timeSlotId, {
+          $set: { zauzeto: false },
+        });
         completedCount++;
       }
     }

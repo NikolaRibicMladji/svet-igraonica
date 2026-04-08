@@ -1,10 +1,10 @@
-const TimeSlot = require("../models/TimeSlot");
 const Playroom = require("../models/Playroom");
 const Booking = require("../models/Booking");
 const { generateTimeSlotsForPlayroom } = require("../utils/generateTimeSlots");
 const BOOKING_STATUS = require("../constants/bookingStatus");
 const timeSlotService = require("../services/timeSlotService");
 const mongoose = require("mongoose");
+const TimeSlot = require("../models/TimeSlot");
 
 // @desc    Kreiraj novi termin (samo vlasnik igraonice)
 // @route   POST /api/timeslots
@@ -34,35 +34,32 @@ exports.createTimeSlot = async (req, res, next) => {
     const slotDate = new Date(datum);
     slotDate.setHours(0, 0, 0, 0);
 
-    const existing = await timeSlotService.findDuplicateSlot({
-      playroomId,
-      datum: slotDate,
-      vremeOd,
-      vremeDo,
-    });
-
-    if (existing) {
-      return res.status(400).json({
-        success: false,
-        message: "Termin već postoji",
+    try {
+      const timeSlot = await TimeSlot.create({
+        playroomId,
+        datum: slotDate,
+        vremeOd,
+        vremeDo,
+        cena: Number(cena) || 0,
+        zauzeto: false,
+        aktivno: true,
+        vanRadnogVremena: false,
       });
+
+      return res.status(201).json({
+        success: true,
+        data: timeSlot,
+      });
+    } catch (err) {
+      if (err.code === 11000) {
+        return res.status(400).json({
+          success: false,
+          message: "Termin već postoji",
+        });
+      }
+
+      throw err;
     }
-
-    const timeSlot = await TimeSlot.create({
-      playroomId,
-      datum: slotDate,
-      vremeOd,
-      vremeDo,
-      cena: Number(cena) || 0,
-      zauzeto: false,
-      aktivno: true,
-      vanRadnogVremena: false,
-    });
-
-    res.status(201).json({
-      success: true,
-      data: timeSlot,
-    });
   } catch (error) {
     next(error);
   }
@@ -107,12 +104,14 @@ exports.getTimeSlotsByPlayroom = async (req, res, next) => {
     const now = new Date();
 
     const filteredSlots = timeSlots.filter((slot) => {
-      const slotEnd = new Date(slot.datum);
-      const [h, m] = String(slot.vremeDo || "00:00")
-        .split(":")
-        .map(Number);
-
-      slotEnd.setHours(h || 0, m || 0, 0, 0);
+      const slotEnd = new Date(
+        new Date(slot.datum).getFullYear(),
+        new Date(slot.datum).getMonth(),
+        new Date(slot.datum).getDate(),
+        ...String(slot.vremeDo || "00:00")
+          .split(":")
+          .map((v) => parseInt(v, 10)),
+      );
 
       return slotEnd > now;
     });
@@ -177,7 +176,7 @@ exports.getTimeSlotById = async (req, res, next) => {
 // @access  Private (vlasnik ili admin)
 exports.updateTimeSlot = async (req, res, next) => {
   try {
-    const timeSlot = await TimeSlot.findById(req.params.id);
+    let timeSlot = await TimeSlot.findById(req.params.id);
 
     if (!timeSlot) {
       return res.status(404).json({
@@ -203,30 +202,39 @@ exports.updateTimeSlot = async (req, res, next) => {
     if (cena !== undefined) {
       const parsedCena = Number(cena);
 
-      const hasActiveBooking = await timeSlotService.hasActiveBookingForSlot(
-        timeSlot._id,
+      const updated = await TimeSlot.findOneAndUpdate(
+        {
+          _id: timeSlot._id,
+          zauzeto: false,
+        },
+        {
+          $set: { cena: parsedCena },
+        },
+        { new: true },
       );
 
-      if (hasActiveBooking) {
+      if (!updated) {
         return res.status(400).json({
           success: false,
-          message: "Ne možeš menjati cenu termina koji ima aktivnu rezervaciju",
+          message: "Ne možeš menjati cenu termina koji ima rezervaciju",
         });
       }
 
-      timeSlot.cena = parsedCena;
+      timeSlot = updated;
     }
 
     if (aktivno !== undefined) {
       if (aktivno === false) {
-        await timeSlotService.deactivateSlotIfAllowed(timeSlot);
+        timeSlot = await timeSlotService.deactivateSlotIfAllowed(timeSlot);
       } else {
-        const slotEnd = new Date(timeSlot.datum);
-        const [endHour, endMinute] = String(timeSlot.vremeDo || "00:00")
-          .split(":")
-          .map((v) => parseInt(v, 10));
-
-        slotEnd.setHours(endHour || 0, endMinute || 0, 0, 0);
+        const slotEnd = new Date(
+          new Date(timeSlot.datum).getFullYear(),
+          new Date(timeSlot.datum).getMonth(),
+          new Date(timeSlot.datum).getDate(),
+          ...String(timeSlot.vremeDo || "00:00")
+            .split(":")
+            .map((v) => parseInt(v, 10)),
+        );
 
         if (slotEnd <= new Date()) {
           return res.status(400).json({
@@ -236,12 +244,11 @@ exports.updateTimeSlot = async (req, res, next) => {
         }
 
         timeSlot.aktivno = true;
+        await timeSlot.save();
       }
     }
 
-    await timeSlot.save();
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: timeSlot,
     });
@@ -356,9 +363,12 @@ exports.getAvailableTimeSlots = async (req, res, next) => {
 
     const slotsWithStatus = timeSlots
       .map((slot) => {
-        const slotEnd = new Date(slot.datum);
-        const [h, m] = slot.vremeDo.split(":").map(Number);
-        slotEnd.setHours(h, m, 0, 0);
+        const slotEnd = new Date(
+          new Date(slot.datum).getFullYear(),
+          new Date(slot.datum).getMonth(),
+          new Date(slot.datum).getDate(),
+          ...slot.vremeDo.split(":").map((v) => parseInt(v, 10)),
+        );
 
         const isPast = slotEnd <= now;
 
@@ -520,12 +530,14 @@ exports.manualBookTimeSlot = async (req, res, next) => {
       });
     }
 
-    const slotEnd = new Date(timeSlot.datum);
-    const [endHour, endMinute] = String(timeSlot.vremeDo || "00:00")
-      .split(":")
-      .map((v) => parseInt(v, 10));
-
-    slotEnd.setHours(endHour || 0, endMinute || 0, 0, 0);
+    const slotEnd = new Date(
+      new Date(timeSlot.datum).getFullYear(),
+      new Date(timeSlot.datum).getMonth(),
+      new Date(timeSlot.datum).getDate(),
+      ...String(timeSlot.vremeDo || "00:00")
+        .split(":")
+        .map((v) => parseInt(v, 10)),
+    );
 
     if (slotEnd <= new Date()) {
       await session.abortTransaction();

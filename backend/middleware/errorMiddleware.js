@@ -1,9 +1,12 @@
 const errorHandler = (err, req, res, next) => {
   console.error("❌ ERROR:", {
+    requestId: req.requestId,
     message: err.message,
     stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
     path: req.originalUrl,
     method: req.method,
+    user: req.user?.id || null,
+    time: new Date().toISOString(),
   });
 
   let statusCode = err.statusCode || 500;

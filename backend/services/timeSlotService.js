@@ -21,32 +21,42 @@ const hasActiveBookingForSlot = async (timeSlotId) => {
 };
 
 const deactivateSlotIfAllowed = async (timeSlot) => {
-  const hasBooking = await hasActiveBookingForSlot(timeSlot._id);
+  const updated = await TimeSlot.findOneAndUpdate(
+    {
+      _id: timeSlot._id,
+      zauzeto: false,
+    },
+    {
+      $set: { aktivno: false },
+    },
+    { new: true },
+  );
 
-  if (hasBooking) {
+  if (!updated) {
     const error = new Error(
-      "Ne možeš deaktivirati termin koji ima rezervaciju",
+      "Ne možeš deaktivirati termin koji ima rezervaciju ili je zauzet",
     );
     error.statusCode = 400;
     throw error;
   }
 
-  timeSlot.aktivno = false;
-  await timeSlot.save();
-
-  return timeSlot;
+  return updated;
 };
 
 const deleteSlotIfAllowed = async (timeSlot) => {
-  const hasBooking = await hasActiveBookingForSlot(timeSlot._id);
+  const deleted = await TimeSlot.findOneAndDelete({
+    _id: timeSlot._id,
+    zauzeto: false,
+  });
 
-  if (hasBooking) {
-    const error = new Error("Ne možeš obrisati termin koji ima rezervaciju");
+  if (!deleted) {
+    const error = new Error(
+      "Ne možeš obrisati termin koji ima rezervaciju ili je zauzet",
+    );
     error.statusCode = 400;
     throw error;
   }
 
-  await timeSlot.deleteOne();
   return true;
 };
 

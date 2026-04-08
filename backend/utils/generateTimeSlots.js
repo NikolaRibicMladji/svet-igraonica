@@ -114,7 +114,7 @@ const createSlotPayload = (playroom, date, vremeOd, vremeDo) => ({
   datum: getStartOfDay(date),
   vremeOd,
   vremeDo,
- 
+
   cena: playroom.osnovnaCena ?? DEFAULT_PRICE,
   zauzeto: false,
   aktivno: true,
@@ -189,15 +189,23 @@ const generateTimeSlotsForPlayroom = async (playroomId, days = 30) => {
           continue;
         }
 
-        await TimeSlot.create(
-          createSlotPayload(
-            playroom,
-            currentDate,
-            slotData.vremeOd,
-            slotData.vremeDo,
-          ),
-        );
-        createdCount++;
+        try {
+          await TimeSlot.create(
+            createSlotPayload(
+              playroom,
+              currentDate,
+              slotData.vremeOd,
+              slotData.vremeDo,
+            ),
+          );
+          createdCount++;
+        } catch (err) {
+          if (err.code === 11000) {
+            existingCount++;
+          } else {
+            throw err;
+          }
+        }
       }
     }
 
@@ -339,15 +347,23 @@ const generateTimeSlotsForDay = async (playroomId, datum) => {
         continue;
       }
 
-      await TimeSlot.create(
-        createSlotPayload(
-          playroom,
-          targetDate,
-          slotData.vremeOd,
-          slotData.vremeDo,
-        ),
-      );
-      createdCount++;
+      try {
+        await TimeSlot.create(
+          createSlotPayload(
+            playroom,
+            targetDate,
+            slotData.vremeOd,
+            slotData.vremeDo,
+          ),
+        );
+        createdCount++;
+      } catch (err) {
+        if (err.code === 11000) {
+          existingCount++;
+        } else {
+          throw err;
+        }
+      }
     }
 
     return {
@@ -414,15 +430,23 @@ const syncTimeSlotsWithWorkingHours = async (playroomId, days = 30) => {
         const existingSlot = existingMap.get(slotData.key);
 
         if (!existingSlot) {
-          await TimeSlot.create(
-            createSlotPayload(
-              playroom,
-              currentDate,
-              slotData.vremeOd,
-              slotData.vremeDo,
-            ),
-          );
-          createdCount++;
+          try {
+            await TimeSlot.create(
+              createSlotPayload(
+                playroom,
+                currentDate,
+                slotData.vremeOd,
+                slotData.vremeDo,
+              ),
+            );
+            createdCount++;
+          } catch (err) {
+            if (err.code === 11000) {
+              // slot je u međuvremenu već kreiran
+            } else {
+              throw err;
+            }
+          }
           continue;
         }
 

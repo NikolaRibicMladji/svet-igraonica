@@ -45,7 +45,11 @@ startServer();
 
 // 🔥 GRACEFUL SHUTDOWN
 process.on("unhandledRejection", (err) => {
-  console.error("❌ UNHANDLED REJECTION:", err.message);
+  console.error("❌ UNHANDLED REJECTION:", {
+    message: err.message,
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    time: new Date().toISOString(),
+  });
   if (server) {
     server.close(() => process.exit(1));
   } else {
@@ -54,6 +58,10 @@ process.on("unhandledRejection", (err) => {
 });
 
 process.on("uncaughtException", (err) => {
-  console.error("❌ UNCAUGHT EXCEPTION:", err.message);
+  console.error("❌ UNCAUGHT EXCEPTION:", {
+    message: err.message,
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    time: new Date().toISOString(),
+  });
   process.exit(1);
 });

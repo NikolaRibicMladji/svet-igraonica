@@ -31,6 +31,27 @@ const limiter = rateLimit({
 
 app.use("/api", limiter);
 
+// 🔥 REQUEST LOGGER
+app.use((req, res, next) => {
+  req.requestId = Math.random().toString(36).substring(2, 10);
+
+  const start = Date.now();
+
+  console.log(
+    `➡️ [${req.requestId}] ${req.method} ${req.originalUrl} - ${new Date().toLocaleString("sr-RS")}`,
+  );
+
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+
+    console.log(
+      `⬅️ [${req.requestId}] ${res.statusCode} ${req.method} ${req.originalUrl} (${duration}ms)`,
+    );
+  });
+
+  next();
+});
+
 // Core middleware
 app.use(cookieParser());
 
