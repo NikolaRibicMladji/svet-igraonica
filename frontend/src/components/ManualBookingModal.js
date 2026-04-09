@@ -12,6 +12,10 @@ const formatDate = (datum) => {
 
 const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
   const [napomena, setNapomena] = useState("");
+  const [ime, setIme] = useState("");
+  const [prezime, setPrezime] = useState("");
+  const [email, setEmail] = useState("");
+  const [telefon, setTelefon] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -51,7 +55,23 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
     setError("");
 
     try {
+      if (!ime || !prezime || !email || !telefon) {
+        setError("Sva polja su obavezna.");
+        setLoading(false);
+        return;
+      }
+
+      if (!/^[0-9]+$/.test(telefon)) {
+        setError("Telefon može sadržati samo brojeve.");
+        setLoading(false);
+        return;
+      }
+
       await onSubmit?.({
+        imeRoditelja: ime.trim(),
+        prezimeRoditelja: prezime.trim(),
+        emailRoditelja: email.trim(),
+        telefonRoditelja: telefon.trim(),
         napomena: napomena.trim(),
       });
     } catch (err) {
@@ -106,6 +126,46 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
           </div>
 
           {error && <div className="error-message">{error}</div>}
+
+          <div className="form-group">
+            <label>👤 Ime roditelja</label>
+            <input
+              type="text"
+              value={ime}
+              onChange={(e) => setIme(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>👤 Prezime roditelja</label>
+            <input
+              type="text"
+              value={prezime}
+              onChange={(e) => setPrezime(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>📧 Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>📱 Telefon</label>
+            <input
+              type="text"
+              value={telefon}
+              onChange={(e) => setTelefon(e.target.value)}
+              disabled={loading}
+            />
+          </div>
 
           <div className="form-group">
             <label htmlFor="manual-booking-napomena">

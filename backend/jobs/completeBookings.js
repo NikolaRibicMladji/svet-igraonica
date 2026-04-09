@@ -61,9 +61,15 @@ const completeExpiredBookings = async () => {
         await booking.save();
         const TimeSlot = require("../models/TimeSlot");
 
-        await TimeSlot.findByIdAndUpdate(booking.timeSlotId, {
-          $set: { zauzeto: false },
-        });
+        await TimeSlot.findOneAndUpdate(
+          {
+            _id: booking.timeSlotId,
+            zauzeto: true,
+          },
+          {
+            $set: { zauzeto: false },
+          },
+        );
         completedCount++;
       }
     }

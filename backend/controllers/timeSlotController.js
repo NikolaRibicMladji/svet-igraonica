@@ -495,7 +495,13 @@ exports.manualBookTimeSlot = async (req, res, next) => {
     session.startTransaction();
 
     const { id } = req.params;
-    const { napomena } = req.body;
+    const {
+      imeRoditelja,
+      prezimeRoditelja,
+      emailRoditelja,
+      telefonRoditelja,
+      napomena,
+    } = req.body;
 
     const timeSlot = await TimeSlot.findById(id).session(session);
 
@@ -575,28 +581,52 @@ exports.manualBookTimeSlot = async (req, res, next) => {
 
     const ukupnaCena = Number(lockedSlot.cena) || 0;
 
-    const created = await Booking.create(
-      [
-        {
-          roditeljId: req.user.id,
-          timeSlotId: lockedSlot._id,
-          playroomId: lockedSlot.playroomId,
-          datum: lockedSlot.datum,
-          vremeOd: lockedSlot.vremeOd,
-          vremeDo: lockedSlot.vremeDo,
-          ukupnaCena,
-          napomena:
-            napomena ||
-            `Ručna rezervacija od strane vlasnika ${req.user.ime} ${req.user.prezime}`,
-          status: BOOKING_STATUS.POTVRDJENO,
-          imeRoditelja: req.user.ime,
-          prezimeRoditelja: req.user.prezime,
-          emailRoditelja: req.user.email || "manual@booking.local",
-          telefonRoditelja: req.user.telefon || "nije uneto",
-        },
-      ],
-      { session },
-    );
+    let created;
+
+    try {
+      created = await Booking.create(
+        [
+          {
+            roditeljId: null,
+            timeSlotId: lockedSlot._id,
+            playroomId: lockedSlot.playroomId,
+            datum: lockedSlot.datum,
+            vremeOd: lockedSlot.vremeOd,
+            vremeDo: lockedSlot.vremeDo,
+            ukupnaCena,
+            napomena: napomena || "",
+            status: BOOKING_STATUS.POTVRDJENO,
+            imeRoditelja: imeRoditelja.trim(),
+            prezimeRoditelja: prezimeRoditelja.trim(),
+            emailRoditelja: emailRoditelja.trim().toLowerCase(),
+            telefonRoditelja: telefonRoditelja.trim(),
+          },
+        ],
+        { session },
+      );
+    } catch (err) {
+      if (err.code === 11000) {
+        await TimeSlot.findOneAndUpdate(
+          {
+            _id: lockedSlot._id,
+            zauzeto: true,
+          },
+          {
+            $set: { zauzeto: false },
+          },
+          { session },
+        );
+
+        await session.abortTransaction();
+
+        return res.status(400).json({
+          success: false,
+          message: "Termin je upravo zauzet",
+        });
+      }
+
+      throw err;
+    }
 
     await session.commitTransaction();
 

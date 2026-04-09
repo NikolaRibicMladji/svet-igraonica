@@ -18,7 +18,7 @@ const createBookingSchema = z.object({
     telefonRoditelja: z
       .string()
       .min(6, "Telefon mora imati bar 6 cifara")
-      .regex(/^[0-9+ ]+$/, "Telefon može sadržati samo brojeve")
+      .regex(/^[0-9]+$/, "Telefon može sadržati samo brojeve")
       .trim(),
 
     napomena: z
@@ -44,7 +44,7 @@ const createGuestBookingSchema = z
       telefon: z
         .string()
         .min(6, "Telefon mora imati bar 6 cifara")
-        .regex(/^[0-9+ ]+$/, "Telefon može sadržati samo brojeve")
+        .regex(/^[0-9]+$/, "Telefon može sadržati samo brojeve")
         .trim(),
 
       password: z.string().min(6, "Lozinka mora imati bar 6 karaktera"),
@@ -72,6 +72,16 @@ const bookingIdParamSchema = z.object({
     id: objectId,
   }),
   query: z.object({}).optional(),
+});
+
+const manualBookingSchema = z.object({
+  body: z.object({
+    imeRoditelja: z.string().min(2),
+    prezimeRoditelja: z.string().min(2),
+    emailRoditelja: z.string().email(),
+    telefonRoditelja: z.string().regex(/^[0-9]+$/),
+    napomena: z.string().optional(),
+  }),
 });
 
 module.exports = {

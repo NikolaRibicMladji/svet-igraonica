@@ -98,7 +98,17 @@ const Book = () => {
       const result = await getAvailableTimeSlots(id, selectedDate);
 
       if (result?.success) {
-        setTimeSlots(Array.isArray(result.data) ? result.data : []);
+        const availableSlots = Array.isArray(result.data)
+          ? result.data.filter((slot) => {
+              if (!slot?._id) return false;
+              if (slot?.zauzeto) return false;
+              if (slot?.isPast) return false;
+              if (slot?.status && slot.status !== "slobodno") return false;
+              return true;
+            })
+          : [];
+
+        setTimeSlots(availableSlots);
       } else {
         setTimeSlots([]);
         setError(result?.error || "Greška pri učitavanju termina.");
@@ -147,8 +157,13 @@ const Book = () => {
       return;
     }
 
-    if (selectedSlot?.zauzeto) {
-      setError("Termin je zauzet. Izaberite drugi termin.");
+    if (
+      selectedSlot?.zauzeto ||
+      selectedSlot?.isPast ||
+      (selectedSlot?.status && selectedSlot.status !== "slobodno")
+    ) {
+      setError("Termin više nije dostupan. Izaberite drugi termin.");
+      setSelectedSlot(null);
       await loadTimeSlots();
       scrollToTop();
       return;
@@ -281,6 +296,16 @@ const Book = () => {
     );
   }
 
+  const trulyAvailableSlots = Array.isArray(timeSlots)
+    ? timeSlots.filter((slot) => {
+        if (!slot?._id) return false;
+        if (slot?.zauzeto) return false;
+        if (slot?.isPast) return false;
+        if (slot?.status && slot.status !== "slobodno") return false;
+        return true;
+      })
+    : [];
+
   return (
     <div className="container book-page" ref={topRef}>
       <button
@@ -319,14 +344,14 @@ const Book = () => {
 
           {loadingSlots ? (
             <div className="loading-slots">Učitavanje termina...</div>
-          ) : timeSlots.length === 0 ? (
+          ) : trulyAvailableSlots.length === 0 ? (
             <div className="no-slots">
               <p>😢 Nema dostupnih termina za izabrani datum.</p>
               <p>Molimo izaberite drugi datum.</p>
             </div>
           ) : (
             <div className="slots-grid">
-              {timeSlots.map((slot) => {
+              {trulyAvailableSlots.map((slot) => {
                 const status = getSlotStatus(slot);
                 const isSelected = selectedSlot?._id === slot._id;
 
@@ -337,7 +362,12 @@ const Book = () => {
                       isSelected ? "selected" : ""
                     }`}
                     onClick={() => {
-                      if (!status.disabled) {
+                      if (
+                        !status.disabled &&
+                        !slot?.zauzeto &&
+                        !slot?.isPast &&
+                        (!slot?.status || slot.status === "slobodno")
+                      ) {
                         setSelectedSlot(slot);
                         setError("");
                         scrollToBookingForm();
@@ -361,7 +391,7 @@ const Book = () => {
           )}
         </div>
 
-        {selectedSlot && !loadingSlots && timeSlots.length > 0 && (
+        {selectedSlot && !loadingSlots && trulyAvailableSlots.length > 0 && (
           <div className="booking-form" ref={bookingFormRef}>
             <h3>Detalji rezervacije</h3>
 

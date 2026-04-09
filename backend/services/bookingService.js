@@ -91,26 +91,42 @@ const reserveSlot = async ({
 
     const ukupnaCena = Number(slot.cena) || 0;
 
-    const created = await Booking.create(
-      [
-        {
-          roditeljId: user?._id || null,
-          playroomId: slot.playroomId,
-          timeSlotId: slot._id,
-          datum: slot.datum,
-          vremeOd: slot.vremeOd,
-          vremeDo: slot.vremeDo,
-          ukupnaCena,
-          status: BOOKING_STATUS.CEKANJE,
-          napomena: payload.napomena || "",
-          imeRoditelja: payload.imeRoditelja.trim(),
-          prezimeRoditelja: payload.prezimeRoditelja.trim(),
-          emailRoditelja: payload.emailRoditelja.trim().toLowerCase(),
-          telefonRoditelja: payload.telefonRoditelja.trim(),
-        },
-      ],
-      { session },
-    );
+    let created;
+
+    try {
+      created = await Booking.create(
+        [
+          {
+            roditeljId: user?._id || null,
+            playroomId: slot.playroomId,
+            timeSlotId: slot._id,
+            datum: slot.datum,
+            vremeOd: slot.vremeOd,
+            vremeDo: slot.vremeDo,
+            ukupnaCena,
+            status: BOOKING_STATUS.CEKANJE,
+            napomena: payload.napomena || "",
+            imeRoditelja: payload.imeRoditelja.trim(),
+            prezimeRoditelja: payload.prezimeRoditelja.trim(),
+            emailRoditelja: payload.emailRoditelja.trim().toLowerCase(),
+            telefonRoditelja: payload.telefonRoditelja.trim(),
+          },
+        ],
+        { session },
+      );
+    } catch (err) {
+      if (err.code === 11000) {
+        await TimeSlot.findByIdAndUpdate(
+          slot._id,
+          { $set: { zauzeto: false } },
+          { session },
+        );
+
+        throw new ErrorResponse("Termin je upravo zauzet, pokušaj ponovo", 400);
+      }
+
+      throw err;
+    }
 
     booking = created[0];
 
