@@ -80,6 +80,12 @@ const reserveSlot = async ({
     const slotEnd = buildDateTime(slot.datum, slot.vremeDo);
 
     if (slotEnd <= new Date()) {
+      await TimeSlot.findByIdAndUpdate(
+        slot._id,
+        { $set: { zauzeto: false } },
+        { session },
+      );
+
       throw new ErrorResponse("Ne možeš rezervisati prošli termin", 400);
     }
 
@@ -142,7 +148,14 @@ const {
 const handleBookingEmails = async (bookingId) => {
   try {
     const booking = await Booking.findById(bookingId)
-      .populate("playroomId", "naziv adresa grad vlasnikId")
+      .populate({
+        path: "playroomId",
+        select: "naziv adresa grad vlasnikId",
+        populate: {
+          path: "vlasnikId",
+          select: "ime prezime email",
+        },
+      })
       .populate("roditeljId", "ime prezime email telefon")
       .populate("timeSlotId");
 
@@ -167,21 +180,14 @@ const handleBookingEmails = async (bookingId) => {
       await sendBookingConfirmation(booking, userForEmail, playroom, timeSlot);
     }
 
-    if (playroom?.vlasnikId) {
-      const vlasnik = await Booking.populate(booking, {
-        path: "playroomId",
-        populate: { path: "vlasnikId", select: "ime prezime email" },
-      });
-
-      if (vlasnik?.playroomId?.vlasnikId?.email) {
-        await sendBookingConfirmationToOwner(
-          booking,
-          userForEmail,
-          playroom,
-          timeSlot,
-          vlasnik.playroomId.vlasnikId,
-        );
-      }
+    if (playroom?.vlasnikId?.email) {
+      await sendBookingConfirmationToOwner(
+        booking,
+        userForEmail,
+        playroom,
+        timeSlot,
+        playroom.vlasnikId,
+      );
     }
   } catch (err) {
     console.error("EMAIL ERROR:", err.message);
@@ -204,7 +210,14 @@ const createBookingWithEmails = async (data) => {
 
 const getBookingWithRelations = async (bookingId, session = null) => {
   let query = Booking.findById(bookingId)
-    .populate("playroomId", "naziv adresa grad vlasnikId")
+    .populate({
+      path: "playroomId",
+      select: "naziv adresa grad vlasnikId",
+      populate: {
+        path: "vlasnikId",
+        select: "ime prezime email",
+      },
+    })
     .populate("roditeljId", "ime prezime email telefon")
     .populate("timeSlotId");
 
@@ -227,7 +240,8 @@ const canUserManageBooking = (booking, user) => {
 
   const isPlayroomOwner =
     booking.playroomId?.vlasnikId &&
-    booking.playroomId.vlasnikId.toString() === user.id;
+    (booking.playroomId.vlasnikId._id?.toString() === user.id ||
+      booking.playroomId.vlasnikId.toString() === user.id);
 
   return {
     isAdmin,
@@ -277,7 +291,10 @@ const cancelBookingById = async ({ bookingId, currentUser }) => {
     booking.status = BOOKING_STATUS.OTKAZANO;
     await booking.save({ session });
 
-    const unlockedSlot = await unlockSlot(booking.timeSlotId, session);
+    const unlockedSlot = await unlockSlot(
+      booking.timeSlotId?._id || booking.timeSlotId,
+      session,
+    );
 
     if (!unlockedSlot) {
       throw new ErrorResponse("Slot za ovu rezervaciju nije pronađen", 404);
@@ -486,6 +503,7 @@ const unlockSlot = async (slotId, session = null) => {
 module.exports = {
   reserveSlot,
   createBookingWithEmails,
+  handleBookingEmails,
   sendCancellationEmail,
   sendConfirmationEmail,
   lockSlot,

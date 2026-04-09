@@ -18,7 +18,7 @@ app.use(mongoSanitize());
 app.use(xss());
 
 // Rate limit
-const limiter = rateLimit({
+const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200,
   standardHeaders: true,
@@ -29,11 +29,36 @@ const limiter = rateLimit({
   },
 });
 
-app.use("/api", limiter);
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message:
+      "Previše pokušaja prijave ili registracije. Pokušajte ponovo kasnije.",
+  },
+});
+
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Previše zahteva za reset lozinke. Pokušajte ponovo kasnije.",
+  },
+});
 
 // 🔥 REQUEST LOGGER
 app.use((req, res, next) => {
   req.requestId = Math.random().toString(36).substring(2, 10);
+
+  if (process.env.NODE_ENV !== "development") {
+    return next();
+  }
 
   const start = Date.now();
 
@@ -51,7 +76,6 @@ app.use((req, res, next) => {
 
   next();
 });
-
 // Core middleware
 app.use(cookieParser());
 
@@ -80,14 +104,17 @@ app.get("/api/health", (req, res) => {
 });
 
 // API rute
-app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/playrooms", require("./routes/playroomRoutes"));
-app.use("/api/timeslots", require("./routes/timeSlotRoutes"));
-app.use("/api/bookings", require("./routes/bookingRoutes"));
-app.use("/api/admin", require("./routes/adminRoutes"));
-app.use("/api/reviews", require("./routes/reviewRoutes"));
-app.use("/api/upload", require("./routes/uploadRoutes"));
-app.use("/api/temp-upload", require("./routes/tempUploadRoutes"));
+app.use("/api/auth/forgot-password", passwordResetLimiter);
+app.use("/api/auth/reset-password", passwordResetLimiter);
+app.use("/api/auth", authLimiter, require("./routes/authRoutes"));
+
+app.use("/api/playrooms", apiLimiter, require("./routes/playroomRoutes"));
+app.use("/api/timeslots", apiLimiter, require("./routes/timeSlotRoutes"));
+app.use("/api/bookings", apiLimiter, require("./routes/bookingRoutes"));
+app.use("/api/admin", apiLimiter, require("./routes/adminRoutes"));
+app.use("/api/reviews", apiLimiter, require("./routes/reviewRoutes"));
+app.use("/api/upload", apiLimiter, require("./routes/uploadRoutes"));
+app.use("/api/temp-upload", apiLimiter, require("./routes/tempUploadRoutes"));
 
 // SPA fallback / dev root
 if (process.env.NODE_ENV === "production") {

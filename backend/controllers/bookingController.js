@@ -91,17 +91,7 @@ exports.createGuestBooking = async (req, res, next) => {
 
     setImmediate(async () => {
       try {
-        await bookingService.createBookingWithEmails({
-          slotId,
-          user: createdUser,
-          payload: {
-            imeRoditelja: createdUser.ime,
-            prezimeRoditelja: createdUser.prezime,
-            emailRoditelja: createdUser.email,
-            telefonRoditelja: createdUser.telefon,
-            napomena: napomena || "",
-          },
-        });
+        await bookingService.handleBookingEmails(createdBooking._id);
       } catch (emailError) {
         console.error(
           "Greška pri slanju emaila nakon guest rezervacije:",
