@@ -9,19 +9,17 @@ const registerSchema = z.object({
       .email("Neispravan format email adrese")
       .toLowerCase()
       .trim(),
-    password: z.string().min(6, "Lozinka mora imati bar 6 karaktera"),
-    telefon: z.string().min(8, "Telefon mora imati bar 8 cifara").trim(),
+    password: z
+      .string()
+      .min(6, "Lozinka mora imati bar 6 karaktera")
+      .max(50, "Lozinka je preduga"),
+    telefon: z
+      .string()
+      .trim()
+      .regex(/^[0-9]+$/, "Telefon može sadržati samo brojeve")
+      .min(8, "Telefon mora imati bar 8 cifara"),
 
     role: z.enum(["roditelj", "vlasnik"]).optional(),
-
-    deca: z
-      .array(
-        z.object({
-          ime: z.string().min(1, "Ime deteta je obavezno").trim(),
-          godiste: z.coerce.number().min(1900).max(new Date().getFullYear()),
-        }),
-      )
-      .optional(),
   }),
   params: z.object({}).optional(),
   query: z.object({}).optional(),

@@ -64,10 +64,6 @@ const UserSchema = new mongoose.Schema(
       index: true,
     },
 
-    deca: {
-      type: [deteSchema],
-      default: [],
-    },
     passwordResetToken: {
       type: String,
       default: undefined,
