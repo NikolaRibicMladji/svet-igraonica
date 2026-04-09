@@ -42,30 +42,6 @@ const Book = () => {
     confirmPassword: "",
   });
 
-  useEffect(() => {
-    if (!authLoading && isAuthenticated && user) {
-      setKorisnikPodaci((prev) => ({
-        ...prev,
-        ime: user.ime || prev.ime || "",
-        prezime: user.prezime || prev.prezime || "",
-        email: user.email || prev.email || "",
-        telefon: user.telefon || prev.telefon || "",
-        password: "",
-        confirmPassword: "",
-      }));
-    }
-  }, [authLoading, isAuthenticated, user]);
-
-  useEffect(() => {
-    loadPlayroom();
-  }, [loadPlayroom]);
-
-  useEffect(() => {
-    if (playroom?._id) {
-      loadTimeSlots();
-    }
-  }, [playroom?._id, loadTimeSlots]);
-
   const loadPlayroom = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -124,6 +100,30 @@ const Book = () => {
       setLoadingSlots(false);
     }
   }, [id, selectedDate]);
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user) {
+      setKorisnikPodaci((prev) => ({
+        ...prev,
+        ime: user.ime || prev.ime || "",
+        prezime: user.prezime || prev.prezime || "",
+        email: user.email || prev.email || "",
+        telefon: user.telefon || prev.telefon || "",
+        password: "",
+        confirmPassword: "",
+      }));
+    }
+  }, [authLoading, isAuthenticated, user]);
+
+  useEffect(() => {
+    loadPlayroom();
+  }, [loadPlayroom]);
+
+  useEffect(() => {
+    if (playroom?._id) {
+      loadTimeSlots();
+    }
+  }, [playroom?._id, loadTimeSlots]);
 
   const scrollToBookingForm = () => {
     setTimeout(() => {
