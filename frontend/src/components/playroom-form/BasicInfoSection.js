@@ -62,7 +62,16 @@ const BasicInfoSection = ({ formData, handleChange, errors }) => {
             type="tel"
             name="kontaktTelefon"
             value={formData.kontaktTelefon}
-            onChange={handleChange}
+            inputMode="numeric"
+            pattern="[0-9]*"
+            onChange={(e) => {
+              const value = e.target.value;
+
+              // dozvoli samo brojeve
+              if (/^\d*$/.test(value)) {
+                handleChange(e);
+              }
+            }}
             className={errors.kontaktTelefon ? "input-error" : ""}
           />
           {errors.kontaktTelefon && (

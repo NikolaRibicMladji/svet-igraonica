@@ -14,7 +14,7 @@ const CreatePlayroom = () => {
     if (result?.success) {
       navigate("/manage-playroom");
     } else {
-      alert(result?.error || "Greška pri kreiranju igraonice");
+      throw new Error(result?.error || "Greška pri kreiranju igraonice");
     }
   };
 

@@ -230,10 +230,6 @@ const PlayroomSchema = new mongoose.Schema(
     cene: {
       type: [stavkaCenovnikaSchema],
       default: [],
-      validate: {
-        validator: (v) => Array.isArray(v) && v.length > 0,
-        message: "Mora postojati bar jedna cena",
-      },
     },
 
     paketi: {

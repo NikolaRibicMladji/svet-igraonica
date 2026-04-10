@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getPlayroomById } from "../services/playroomService";
-import { useAuth } from "../context/AuthContext";
+
 import "../styles/PlayroomDetails.css";
 import ImageModal from "../components/ImageModal";
 import Reviews from "../components/Reviews";
@@ -19,7 +19,7 @@ const DAY_LABELS = {
 
 const PlayroomDetails = () => {
   const { id } = useParams();
-  const { isAuthenticated } = useAuth();
+
   const navigate = useNavigate();
 
   const [playroom, setPlayroom] = useState(null);
@@ -30,7 +30,32 @@ const PlayroomDetails = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   useEffect(() => {
-    loadPlayroom();
+    const fetchData = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const result = await getPlayroomById(id);
+
+        if (result?.success) {
+          setPlayroom(result.data);
+        } else {
+          setPlayroom(null);
+          setError(result?.error || "Greška pri učitavanju igraonice.");
+        }
+      } catch (err) {
+        setPlayroom(null);
+        setError(
+          err?.response?.data?.message ||
+            err?.message ||
+            "Greška pri učitavanju igraonice.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [id]);
 
   useEffect(() => {
@@ -47,31 +72,6 @@ const PlayroomDetails = () => {
       }, 300);
     }
   }, [playroom]);
-
-  const loadPlayroom = async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const result = await getPlayroomById(id);
-
-      if (result?.success) {
-        setPlayroom(result.data);
-      } else {
-        setPlayroom(null);
-        setError(result?.error || "Greška pri učitavanju igraonice.");
-      }
-    } catch (err) {
-      setPlayroom(null);
-      setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Greška pri učitavanju igraonice.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleBook = () => {
     navigate(`/book/${id}`);

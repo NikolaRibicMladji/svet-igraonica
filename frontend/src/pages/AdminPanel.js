@@ -115,8 +115,6 @@ const AdminPanel = () => {
         <div className="admin-playrooms-list">
           {playrooms.map((playroom) => {
             const vlasnik = playroom?.vlasnikId || {};
-            const cena =
-              playroom?.osnovnaCena || playroom?.cenovnik?.osnovni || 0;
 
             return (
               <div key={playroom._id} className="admin-playroom-card">
@@ -151,10 +149,6 @@ const AdminPanel = () => {
                     {playroom?.kapacitet?.roditelji
                       ? `${playroom.kapacitet.roditelji} roditelja`
                       : "Neograničeno"}
-                  </p>
-
-                  <p>
-                    <strong>Osnovna cena:</strong> {cena} RSD
                   </p>
 
                   <p>

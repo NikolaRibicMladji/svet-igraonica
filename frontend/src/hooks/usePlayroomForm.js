@@ -66,7 +66,7 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
     tip: "fiksno",
     opis: "",
   });
-
+  const [submitting, setSubmitting] = useState(false);
   const [videoGalerija, setVideoGalerija] = useState(
     Array.isArray(initialData?.videoGalerija)
       ? initialData.videoGalerija
@@ -581,8 +581,13 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (uploading || uploadingVideo || submitting) {
+      return;
+    }
+
     window.scrollTo({ top: 0, behavior: "smooth" });
     setError("");
 
@@ -631,7 +636,6 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
         tiktok: sanitizeText(drustveneMreze.tiktok),
         website: sanitizeText(drustveneMreze.website),
       },
-
       radnoVreme: {},
     };
 
@@ -649,7 +653,19 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
       }
     }
 
-    onSubmit(submitData);
+    setSubmitting(true);
+
+    try {
+      await onSubmit(submitData);
+    } catch (err) {
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Greška pri čuvanju igraonice.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return {
@@ -658,6 +674,7 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
     errors,
     uploading,
     uploadingVideo,
+    submitting,
     slike,
     profilnaSlika,
     videoGalerija,
