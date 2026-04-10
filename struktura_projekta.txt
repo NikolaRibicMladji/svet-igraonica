@@ -1,0 +1,165 @@
+﻿├── 📁 .vscode
+│   └── 📄 settings.json
+├── 📁 backend
+│   ├── 📁 config
+│   │   ├── 📄 cloudinary.js
+│   │   └── 📄 db.js
+│   ├── 📁 constants
+│   │   ├── 📄 bookingStatus.js
+│   │   ├── 📄 playroomStatus.js
+│   │   └── 📄 roles.js
+│   ├── 📁 controllers
+│   │   ├── 📄 adminController.js
+│   │   ├── 📄 authController.js
+│   │   ├── 📄 bookingController.js
+│   │   ├── 📄 playroomController.js
+│   │   ├── 📄 reviewController.js
+│   │   ├── 📄 timeSlotController.js
+│   │   ├── 📄 uploadController.js
+│   │   └── 📄 videoController.js
+│   ├── 📁 jobs
+│   │   └── 📄 completeBookings.js
+│   ├── 📁 middleware
+│   │   ├── 📄 authMiddleware.js
+│   │   ├── 📄 errorMiddleware.js
+│   │   ├── 📄 ownerMiddleware.js
+│   │   ├── 📄 roleMiddleware.js
+│   │   ├── 📄 upload.js
+│   │   └── 📄 validate.js
+│   ├── 📁 models
+│   │   ├── 📄 Booking.js
+│   │   ├── 📄 Playroom.js
+│   │   ├── 📄 Review.js
+│   │   ├── 📄 TimeSlot.js
+│   │   └── 📄 User.js
+│   ├── 📁 routes
+│   │   ├── 📄 adminRoutes.js
+│   │   ├── 📄 authRoutes.js
+│   │   ├── 📄 bookingRoutes.js
+│   │   ├── 📄 playroomRoutes.js
+│   │   ├── 📄 reviewRoutes.js
+│   │   ├── 📄 tempUploadRoutes.js
+│   │   ├── 📄 timeSlotRoutes.js
+│   │   └── 📄 uploadRoutes.js
+│   ├── 📁 scripts
+│   │   ├── 📄 generateSlots.js
+│   │   └── 📄 testEmail.js
+│   ├── 📁 services
+│   │   ├── 📄 authService.js
+│   │   ├── 📄 bookingService.js
+│   │   ├── 📄 playroomService.js
+│   │   └── 📄 timeSlotService.js
+│   ├── 📁 utils
+│   │   ├── 📄 apiResponse.js
+│   │   ├── 📄 emailService.js
+│   │   ├── 📄 errorResponse.js
+│   │   ├── 📄 generateTimeSlots.js
+│   │   └── 📄 generateToken.js
+│   ├── 📁 validations
+│   │   ├── 📄 authValidation.js
+│   │   ├── 📄 bookingValidation.js
+│   │   └── 📄 timeSlotValidation.js
+│   ├── 📄 app.js
+│   └── 📄 server.js
+├── 📁 frontend
+│   ├── 📁 public
+│   │   ├── 📄 favicon.ico
+│   │   ├── 📄 index.html
+│   │   ├── 📄 logo192.png
+│   │   ├── 📄 logo512.png
+│   │   ├── 📄 manifest.json
+│   │   └── 📄 robots.txt
+│   ├── 📁 src
+│   │   ├── 📁 components
+│   │   │   ├── 📁 playroom-form
+│   │   │   │   ├── 📄 AdditionalPricesSection.js
+│   │   │   │   ├── 📄 AdditionalServicesSection.js
+│   │   │   │   ├── 📄 BasicInfoSection.js
+│   │   │   │   ├── 📄 BenefitsSection.js
+│   │   │   │   ├── 📄 CapacitySection.js
+│   │   │   │   ├── 📄 ImagesSection.js
+│   │   │   │   ├── 📄 PackagesSection.js
+│   │   │   │   ├── 📄 ParentPricingSection.js
+│   │   │   │   ├── 📄 SocialLinksSection.js
+│   │   │   │   ├── 📄 VideosSection.js
+│   │   │   │   └── 📄 WorkingHoursSection.js
+│   │   │   ├── 📄 ImageGallery.js
+│   │   │   ├── 📄 ImageModal.js
+│   │   │   ├── 📄 ManualBookingModal.js
+│   │   │   ├── 📄 Navbar.js
+│   │   │   ├── 📄 PlayroomCoverFallback.js
+│   │   │   ├── 📄 PlayroomFilters.js
+│   │   │   ├── 📄 PlayroomForm.js
+│   │   │   ├── 📄 Reviews.js
+│   │   │   ├── 📄 ToastContainer.js
+│   │   │   └── 📄 VideoPlayer.js
+│   │   ├── 📁 context
+│   │   │   ├── 📄 AuthContext.js
+│   │   │   └── 📄 ToastContext.js
+│   │   ├── 📁 hooks
+│   │   │   └── 📄 usePlayroomForm.js
+│   │   ├── 📁 pages
+│   │   │   ├── 📄 AdminPanel.js
+│   │   │   ├── 📄 Book.js
+│   │   │   ├── 📄 BookingSuccess.js
+│   │   │   ├── 📄 CreatePlayroom.js
+│   │   │   ├── 📄 ForgotPassword.js
+│   │   │   ├── 📄 Home.js
+│   │   │   ├── 📄 Login.js
+│   │   │   ├── 📄 ManagePlayroom.js
+│   │   │   ├── 📄 ManageTimeSlots.js
+│   │   │   ├── 📄 MyBookings.js
+│   │   │   ├── 📄 OwnerDashboard.js
+│   │   │   ├── 📄 OwnerTimeSlots.js
+│   │   │   ├── 📄 PlayroomDetails.js
+│   │   │   ├── 📄 Playrooms.js
+│   │   │   ├── 📄 Register.js
+│   │   │   └── 📄 ResetPassword.js
+│   │   ├── 📁 services
+│   │   │   ├── 📄 adminService.js
+│   │   │   ├── 📄 api.js
+│   │   │   ├── 📄 bookingService.js
+│   │   │   ├── 📄 playroomService.js
+│   │   │   ├── 📄 reviewService.js
+│   │   │   └── 📄 uploadService.js
+│   │   ├── 📁 styles
+│   │   │   ├── 📄 AdminPanel.css
+│   │   │   ├── 📄 Book.css
+│   │   │   ├── 📄 BookingSuccess.css
+│   │   │   ├── 📄 CreatePlayroom.css
+│   │   │   ├── 📄 global.css
+│   │   │   ├── 📄 Home.css
+│   │   │   ├── 📄 ImageGallery.css
+│   │   │   ├── 📄 ImageModal.css
+│   │   │   ├── 📄 ManagePlayroom.css
+│   │   │   ├── 📄 ManageTimeSlots.css
+│   │   │   ├── 📄 ManualBookingModal.css
+│   │   │   ├── 📄 MyBookings.css
+│   │   │   ├── 📄 Navbar.css
+│   │   │   ├── 📄 OwnerDashboard.css
+│   │   │   ├── 📄 OwnerTimeSlots.css
+│   │   │   ├── 📄 PlayroomCoverFallback.css
+│   │   │   ├── 📄 PlayroomDetails.css
+│   │   │   ├── 📄 PlayroomFilters.css
+│   │   │   ├── 📄 Playrooms.css
+│   │   │   ├── 📄 Reviews.css
+│   │   │   └── 📄 Toast.css
+│   │   ├── 📁 utils
+│   │   │   └── 📄 media.js
+│   │   ├── 📄 App.css
+│   │   ├── 📄 App.js
+│   │   ├── 📄 App.test.js
+│   │   ├── 📄 index.css
+│   │   ├── 📄 index.js
+│   │   ├── 📄 logo.svg
+│   │   ├── 📄 reportWebVitals.js
+│   │   └── 📄 setupTests.js
+│   ├── 📄 package.json
+│   └── 📄 README.md
+├── 📄 .env
+├── 📄 .gitignore
+├── 📄 backend_dump.txt
+├── 📄 frontend_src_dump.txt
+├── 📄 package.json
+├── 📄 README.md
+└── 📄 struktura_projekta.txt

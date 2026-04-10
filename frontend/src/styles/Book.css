@@ -227,7 +227,25 @@
 .option-card {
   border: 1px solid #e2e8f0;
   border-radius: 16px;
-  padding: 12px;
+  padding: 14px 16px;
+
+  display: flex;
+  align-items: center; /* 🔥 OVO CENTRIRA VERTIKALNO */
+  justify-content: space-between;
+  min-height: 56px;
+}
+.option-check-row {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* razmak između teksta i checkboxa */
+  width: 100%;
+}
+.option-check-row input[type="checkbox"] {
+  margin-left: auto; /* 🔥 OVO GA GURA SKROZ DESNO */
+  margin-right: 4px;
+}
+.option-check-row span {
+  display: block;
 }
 
 .option-card:hover {
@@ -301,6 +319,168 @@
   text-align: center;
   padding: 40px;
   color: #777;
+}
+
+.booking-info-box {
+  margin-bottom: 32px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  font-weight: 600;
+}
+
+.slots-section {
+  margin-top: 10px;
+  margin-bottom: 28px;
+}
+
+.selected-slot-summary {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+
+.selected-slot-summary p {
+  margin: 0 0 8px 0;
+}
+
+.selected-slot-summary p:last-child {
+  margin-bottom: 0;
+}
+
+.busy-intervals {
+  margin-bottom: 20px;
+  padding: 18px;
+  border-radius: 16px;
+  background: #fff7f7;
+  border: 1px solid #fecaca;
+}
+
+.busy-intervals h4 {
+  margin-bottom: 12px;
+  color: #991b1b;
+}
+
+.busy-interval-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #fecaca;
+  margin-bottom: 10px;
+}
+
+.busy-interval-item:last-child {
+  margin-bottom: 0;
+}
+
+.booking-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+.booking-options-list label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.booking-options-list label:hover {
+  border-color: transparent;
+}
+
+.option-check-row input[type="checkbox"] {
+  margin: 0;
+  align-self: center; /* 🔥 osigurava centriranje */
+}
+
+.form-group select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  background: #fff;
+}
+
+.form-group select:focus {
+  border-color: #ff6b4a;
+  outline: none;
+}
+
+.free-features-section {
+  margin: 24px 0;
+  padding: 18px;
+  border-radius: 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.free-features-section h4 {
+  margin-bottom: 12px;
+  color: #166534;
+}
+
+.free-features-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.free-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 600;
+}
+
+.order-summary {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: min(1100px, calc(100% - 32px));
+  z-index: 999;
+  background: #fff9f5;
+  border: 1px solid #fed7aa;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.booking-form {
+  padding-bottom: 320px;
+}
+
+.clear-package-btn {
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.option-card-header {
+  margin-bottom: 8px;
+}
+
+.option-card-quantity-info {
+  font-size: 14px;
+  color: #64748b;
 }
 
 /* =========================================

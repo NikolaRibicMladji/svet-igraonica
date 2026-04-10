@@ -1,0 +1,6864 @@
+﻿================ BACKEND STRUKTURA ================
+Folder PATH listing
+Volume serial number is 00000013 0642:6B7F
+D:\SVET-IGRAONICA\BACKEND
+|   app.js
+|   server.js
+|   
++---config
+|       cloudinary.js
+|       db.js
+|       
++---constants
+|       bookingStatus.js
+|       playroomStatus.js
+|       roles.js
+|       
++---controllers
+|       adminController.js
+|       authController.js
+|       bookingController.js
+|       playroomController.js
+|       reviewController.js
+|       timeSlotController.js
+|       uploadController.js
+|       videoController.js
+|       
++---jobs
+|       completeBookings.js
+|       
++---middleware
+|       authMiddleware.js
+|       errorMiddleware.js
+|       ownerMiddleware.js
+|       roleMiddleware.js
+|       upload.js
+|       validate.js
+|       
++---models
+|       Booking.js
+|       Playroom.js
+|       Review.js
+|       TimeSlot.js
+|       User.js
+|       
++---routes
+|       adminRoutes.js
+|       authRoutes.js
+|       bookingRoutes.js
+|       playroomRoutes.js
+|       reviewRoutes.js
+|       tempUploadRoutes.js
+|       timeSlotRoutes.js
+|       uploadRoutes.js
+|       
++---scripts
+|       generateSlots.js
+|       testEmail.js
+|       
++---services
+|       authService.js
+|       bookingService.js
+|       playroomService.js
+|       timeSlotService.js
+|       
++---utils
+|       apiResponse.js
+|       emailService.js
+|       errorResponse.js
+|       generateTimeSlots.js
+|       generateToken.js
+|       
+\---validations
+        authValidation.js
+        bookingValidation.js
+        timeSlotValidation.js
+        
+
+
+================ BACKEND SADRZAJ FAJLOVA ================
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\app.js
+==================================================
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
+const cookieParser = require("cookie-parser");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+const mongoSanitize = require("express-mongo-sanitize");
+const xss = require("xss-clean");
+const errorHandler = require("./middleware/errorMiddleware");
+
+const app = express();
+
+app.set("trust proxy", 1);
+
+// Security
+app.use(helmet());
+app.use(mongoSanitize());
+app.use(xss());
+
+// Rate limit
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "PreviÅ¡e zahteva, pokuÅ¡ajte ponovo kasnije",
+  },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message:
+      "PreviÅ¡e pokuÅ¡aja prijave ili registracije. PokuÅ¡ajte ponovo kasnije.",
+  },
+});
+
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "PreviÅ¡e zahteva za reset lozinke. PokuÅ¡ajte ponovo kasnije.",
+  },
+});
+
+// ðŸ”¥ REQUEST LOGGER
+app.use((req, res, next) => {
+  req.requestId = Math.random().toString(36).substring(2, 10);
+
+  if (process.env.NODE_ENV !== "development") {
+    return next();
+  }
+
+  const start = Date.now();
+
+  console.log(
+    `âž¡ï¸ [${req.requestId}] ${req.method} ${req.originalUrl} - ${new Date().toLocaleString("sr-RS")}`,
+  );
+
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+
+    console.log(
+      `â¬…ï¸ [${req.requestId}] ${res.statusCode} ${req.method} ${req.originalUrl} (${duration}ms)`,
+    );
+  });
+
+  next();
+});
+// Core middleware
+app.use(cookieParser());
+
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === "production"
+        ? process.env.FRONTEND_URL
+        : "http://localhost:3000",
+    credentials: true,
+  }),
+);
+
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Static files
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Health check
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "API radi",
+  });
+});
+
+// API rute
+app.use("/api/auth/forgot-password", passwordResetLimiter);
+app.use("/api/auth/reset-password", passwordResetLimiter);
+app.use("/api/auth", authLimiter, require("./routes/authRoutes"));
+
+app.use("/api/playrooms", apiLimiter, require("./routes/playroomRoutes"));
+app.use("/api/timeslots", apiLimiter, require("./routes/timeSlotRoutes"));
+app.use("/api/bookings", apiLimiter, require("./routes/bookingRoutes"));
+app.use("/api/admin", apiLimiter, require("./routes/adminRoutes"));
+app.use("/api/reviews", apiLimiter, require("./routes/reviewRoutes"));
+app.use("/api/upload", apiLimiter, require("./routes/uploadRoutes"));
+app.use("/api/temp-upload", apiLimiter, require("./routes/tempUploadRoutes"));
+
+// SPA fallback / dev root
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../frontend/build")));
+
+  app.get("*", (req, res) => {
+    res.sendFile(path.resolve(__dirname, "../frontend/build/index.html"));
+  });
+} else {
+  app.get("/", (req, res) => {
+    res.status(200).json({
+      success: true,
+      message: "Svet igraonica API radi u development modu!",
+    });
+  });
+}
+
+// Error handler mora poslednji
+app.use(errorHandler);
+
+module.exports = app;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\server.js
+==================================================
+const dotenv = require("dotenv");
+const path = require("path");
+const connectDB = require("./config/db");
+const app = require("./app");
+
+// Load env
+dotenv.config({ path: path.join(__dirname, "../.env") });
+
+const requiredEnv = ["MONGO_URI", "JWT_SECRET", "REFRESH_TOKEN_SECRET"];
+
+for (const key of requiredEnv) {
+  if (!process.env[key]) {
+    console.error(`âŒ Nedostaje obavezna ENV promenljiva: ${key}`);
+    process.exit(1);
+  }
+}
+
+const PORT = process.env.PORT || 5000;
+
+let server;
+
+const startServer = async () => {
+  try {
+    await connectDB();
+
+    // Cron (ne u testu)
+    if (process.env.NODE_ENV !== "test") {
+      require("./jobs/completeBookings");
+    }
+
+    server = app.listen(PORT, () => {
+      console.log(
+        `ðŸš€ Server pokrenut na portu ${PORT} u ${
+          process.env.NODE_ENV || "development"
+        } modu`,
+      );
+    });
+  } catch (error) {
+    console.error("âŒ GreÅ¡ka pri pokretanju servera:", error.message);
+    process.exit(1);
+  }
+};
+
+startServer();
+
+// ðŸ”¥ GRACEFUL SHUTDOWN
+process.on("unhandledRejection", (err) => {
+  console.error("âŒ UNHANDLED REJECTION:", {
+    message: err.message,
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    time: new Date().toISOString(),
+  });
+  if (server) {
+    server.close(() => process.exit(1));
+  } else {
+    process.exit(1);
+  }
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("âŒ UNCAUGHT EXCEPTION:", {
+    message: err.message,
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    time: new Date().toISOString(),
+  });
+  process.exit(1);
+});
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\config\cloudinary.js
+==================================================
+const cloudinary = require("cloudinary").v2;
+const dotenv = require("dotenv");
+const path = require("path");
+
+dotenv.config({ path: path.join(__dirname, "../../.env") });
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+module.exports = cloudinary;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\config\db.js
+==================================================
+const mongoose = require("mongoose");
+
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(process.env.MONGO_URI);
+    console.log(`MongoDB povezan: ${conn.connection.host}`);
+  } catch (error) {
+    throw error;
+  }
+};
+
+module.exports = connectDB;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\constants\bookingStatus.js
+==================================================
+const BOOKING_STATUS = Object.freeze({
+  CEKANJE: "cekanje",
+  POTVRDJENO: "potvrdjeno",
+  OTKAZANO: "otkazano",
+  ZAVRSENO: "zavrseno",
+});
+
+module.exports = BOOKING_STATUS;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\constants\playroomStatus.js
+==================================================
+const PLAYROOM_STATUS = Object.freeze({
+  U_IZRADI: "u_izradi",
+  AKTIVAN: "aktivan",
+  NEAKTIVAN: "neaktivan",
+});
+
+module.exports = PLAYROOM_STATUS;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\constants\roles.js
+==================================================
+const ROLES = Object.freeze({
+  ADMIN: "admin",
+  VLASNIK: "vlasnik",
+  RODITELJ: "roditelj",
+});
+
+module.exports = ROLES;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\controllers\adminController.js
+==================================================
+const Playroom = require("../models/Playroom");
+const User = require("../models/User");
+const PLAYROOM_STATUS = require("../constants/playroomStatus");
+const {
+  verifyPlayroomAndGenerateSlots,
+} = require("../services/playroomService");
+
+// @desc    Dohvati sve neverifikovane igraonice
+// @route   GET /api/admin/playrooms/unverified
+// @access  Private (admin)
+exports.getUnverifiedPlayrooms = async (req, res, next) => {
+  try {
+    const playrooms = await Playroom.find({
+      verifikovan: false,
+      status: PLAYROOM_STATUS.U_IZRADI,
+    })
+      .populate("vlasnikId", "ime prezime email telefon")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: playrooms.length,
+      data: playrooms,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dohvati sve korisnike
+// @route   GET /api/admin/users
+// @access  Private (admin)
+exports.getAllUsers = async (req, res, next) => {
+  try {
+    const users = await User.find()
+      .select("-password -__v")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: users.length,
+      data: users,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Verifikuj igraonicu (admin)
+// @route   PUT /api/admin/playrooms/:id/verify
+// @access  Private (admin)
+exports.verifyPlayroom = async (req, res, next) => {
+  try {
+    const result = await verifyPlayroomAndGenerateSlots(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      data: result.playroom,
+      message: `Igraonica je verifikovana. ${
+        result.slotResult?.createdCount || 0
+      } termina je automatski kreirano.`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\controllers\authController.js
+==================================================
+const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
+const User = require("../models/User");
+const { sendMail } = require("../utils/emailService");
+const authService = require("../services/authService");
+
+// @desc    Registracija korisnika
+// @route   POST /api/auth/register
+// @access  Public
+exports.register = async (req, res, next) => {
+  try {
+    const { user, accessToken, refreshToken } = await authService.registerUser(
+      req.body,
+    );
+
+    res.cookie("refreshToken", refreshToken, authService.cookieOptions);
+
+    res.status(201).json({
+      success: true,
+      accessToken,
+      user: {
+        id: user._id,
+        ime: user.ime,
+        prezime: user.prezime,
+        email: user.email,
+        telefon: user.telefon,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Prijava korisnika
+// @route   POST /api/auth/login
+// @access  Public
+exports.login = async (req, res, next) => {
+  try {
+    const { user, accessToken, refreshToken } = await authService.loginUser(
+      req.body.email,
+      req.body.password,
+    );
+
+    res.cookie("refreshToken", refreshToken, authService.cookieOptions);
+
+    res.status(200).json({
+      success: true,
+      accessToken,
+      user: {
+        id: user._id,
+        ime: user.ime,
+        prezime: user.prezime,
+        email: user.email,
+        telefon: user.telefon,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Logout
+// @route   POST /api/auth/logout
+// @access  Private/Public
+exports.logout = (req, res) => {
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "UspeÅ¡no ste se odjavili",
+  });
+};
+
+// @desc    Refresh token
+// @route   POST /api/auth/refresh
+// @access  Public
+exports.refreshToken = async (req, res, next) => {
+  try {
+    const { accessToken } = await authService.refreshUserToken(
+      req.cookies.refreshToken,
+    );
+
+    res.status(200).json({
+      success: true,
+      accessToken,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Trenutni korisnik
+// @route   GET /api/auth/me
+// @access  Private
+exports.getMe = async (req, res) => {
+  res.status(200).json({
+    success: true,
+    user: req.user,
+  });
+};
+
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Email adresa je obavezna.",
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    // Ne otkrivamo da li korisnik postoji
+    if (!user) {
+      return res.status(200).json({
+        success: true,
+        message:
+          "Ako nalog sa tom email adresom postoji, poslali smo link za reset lozinke.",
+      });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
+
+    user.passwordResetToken = hashedToken;
+    user.passwordResetExpires = Date.now() + 15 * 60 * 1000; // 15 minuta
+
+    await user.save({ validateBeforeSave: false });
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
+    await sendMail({
+      from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: "Reset lozinke - Svet Igraonica",
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;">
+          <h2 style="color:#ff6b4a;">Reset lozinke</h2>
+          <p>ZatraÅ¾ili ste promenu lozinke za vaÅ¡ nalog.</p>
+          <p>Kliknite na dugme ispod da postavite novu lozinku:</p>
+          <p style="margin:24px 0;">
+            <a href="${resetUrl}" style="display:inline-block;padding:12px 20px;background:#ff6b4a;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:bold;">
+              Promeni lozinku
+            </a>
+          </p>
+          <p>Ako niste vi traÅ¾ili reset lozinke, slobodno ignoriÅ¡ite ovaj email.</p>
+          <p>Link vaÅ¾i 15 minuta.</p>
+        </div>
+      `,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Ako nalog sa tom email adresom postoji, poslali smo link za reset lozinke.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const { password, confirmPassword } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Lozinka mora imati najmanje 6 karaktera.",
+      });
+    }
+
+    if (!confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Potvrda lozinke je obavezna.",
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Lozinke se ne podudaraju.",
+      });
+    }
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() },
+    }).select("+password");
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Token nije validan ili je istekao.",
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Lozinka je uspeÅ¡no promenjena.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\controllers\bookingController.js
+==================================================
+const Booking = require("../models/Booking");
+
+const Playroom = require("../models/Playroom");
+const bookingService = require("../services/bookingService");
+const User = require("../models/User");
+const authService = require("../services/authService");
+const mongoose = require("mongoose");
+
+// @desc    Kreiraj novu rezervaciju (ulogovan korisnik)
+// @route   POST /api/bookings
+// @access  Private
+exports.createBooking = async (req, res, next) => {
+  try {
+    console.log("ðŸŸ¢ CREATE BOOKING:", {
+      requestId: req.requestId,
+      user: req.user?.id || null,
+      slotId: req.body.slotId,
+      time: new Date().toISOString(),
+    });
+    const booking = await bookingService.reserveCustomInterval({
+      playroomId: req.body.playroomId,
+      datum: req.body.datum,
+      vremeOd: req.body.vremeOd,
+      vremeDo: req.body.vremeDo,
+      user: req.user || null,
+      payload: {
+        cenaId: req.body.cenaId || "",
+        paketId: req.body.paketId || null,
+        usluge: Array.isArray(req.body.usluge) ? req.body.usluge : [],
+        brojDece: Number(req.body.brojDece) || 1,
+        imeRoditelja: req.body.imeRoditelja || req.body.ime || "",
+        prezimeRoditelja: req.body.prezimeRoditelja || req.body.prezime || "",
+        emailRoditelja: req.body.emailRoditelja || req.body.email || "",
+        telefonRoditelja: req.body.telefonRoditelja || req.body.telefon || "",
+        napomena: req.body.napomena || "",
+      },
+    });
+
+    setImmediate(async () => {
+      try {
+        await bookingService.handleBookingEmails(booking._id);
+      } catch (emailError) {
+        console.error(
+          "GreÅ¡ka pri slanju emaila nakon rezervacije:",
+          emailError.message,
+        );
+      }
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: booking,
+      message: "Rezervacija uspeÅ¡no kreirana",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Guest rezervacija + registracija + auto login
+// @route   POST /api/bookings/guest
+// @access  Public
+exports.createGuestBooking = async (req, res, next) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const {
+      playroomId,
+      datum,
+      vremeOd,
+      vremeDo,
+      ime,
+      prezime,
+      email,
+      telefon,
+      password,
+      napomena,
+    } = req.body;
+    console.log("ðŸŸ¡ GUEST BOOKING:", {
+      requestId: req.requestId,
+      email,
+      time: new Date().toISOString(),
+    });
+
+    const authResult = await authService.registerGuestParent(
+      {
+        ime,
+        prezime,
+        email,
+        password,
+        telefon,
+      },
+      session,
+    );
+
+    const createdUser = authResult.user;
+    const accessToken = authResult.accessToken;
+    const refreshToken = authResult.refreshToken;
+
+    const createdBooking = await bookingService.reserveCustomInterval({
+      playroomId: req.body.playroomId,
+      datum: req.body.datum,
+      vremeOd: req.body.vremeOd,
+      vremeDo: req.body.vremeDo,
+      user: createdUser,
+      payload: {
+        cenaId: req.body.cenaId || "",
+        paketId: req.body.paketId || null,
+        usluge: Array.isArray(req.body.usluge) ? req.body.usluge : [],
+        brojDece: Number(req.body.brojDece) || 1,
+        imeRoditelja: createdUser.ime,
+        prezimeRoditelja: createdUser.prezime,
+        emailRoditelja: createdUser.email,
+        telefonRoditelja: createdUser.telefon,
+        napomena: napomena || "",
+      },
+      session,
+    });
+
+    await session.commitTransaction();
+
+    res.cookie("refreshToken", refreshToken, authService.cookieOptions);
+
+    setImmediate(async () => {
+      try {
+        await bookingService.handleBookingEmails(createdBooking._id);
+      } catch (emailError) {
+        console.error(
+          "GreÅ¡ka pri slanju emaila nakon guest rezervacije:",
+          emailError.message,
+        );
+      }
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "UspeÅ¡na registracija i rezervacija",
+      accessToken,
+      user: {
+        id: createdUser._id,
+        ime: createdUser.ime,
+        prezime: createdUser.prezime,
+        email: createdUser.email,
+        telefon: createdUser.telefon,
+        role: createdUser.role,
+      },
+      data: createdBooking,
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    next(error);
+  } finally {
+    session.endSession();
+  }
+};
+
+// @desc    Dohvati moje rezervacije (roditelj)
+// @route   GET /api/bookings/my
+// @access  Private (roditelj)
+exports.getMyBookings = async (req, res, next) => {
+  try {
+    const bookings = await Booking.find({ roditeljId: req.user.id })
+      .populate("playroomId", "naziv adresa grad slike")
+      .populate("timeSlotId")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: bookings.length,
+      data: bookings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dohvati rezervacije za moje igraonice (vlasnik)
+// @route   GET /api/bookings/owner
+// @access  Private (vlasnik)
+exports.getOwnerBookings = async (req, res, next) => {
+  try {
+    const playrooms = await Playroom.find({ vlasnikId: req.user.id });
+    const playroomIds = playrooms.map((p) => p._id);
+
+    const bookings = await Booking.find({ playroomId: { $in: playroomIds } })
+      .populate("roditeljId", "ime prezime email telefon")
+      .populate("playroomId", "naziv adresa grad")
+      .populate("timeSlotId")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: bookings.length,
+      data: bookings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    OtkaÅ¾i rezervaciju
+// @route   PUT /api/bookings/:id/cancel
+// @access  Private (roditelj ili vlasnik ili admin)
+exports.cancelBooking = async (req, res, next) => {
+  try {
+    console.log("ðŸ”´ CANCEL BOOKING:", {
+      requestId: req.requestId,
+      bookingId: req.params.id,
+      user: req.user?.id || null,
+      time: new Date().toISOString(),
+    });
+    await bookingService.cancelBookingById({
+      bookingId: req.params.id,
+      currentUser: req.user,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Rezervacija je otkazana",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Potvrdi rezervaciju
+// @route   PUT /api/bookings/:id/confirm
+// @access  Private (vlasnik ili admin)
+exports.confirmBooking = async (req, res, next) => {
+  try {
+    console.log("ðŸŸ£ CONFIRM BOOKING:", {
+      requestId: req.requestId,
+      bookingId: req.params.id,
+      user: req.user?.id || null,
+      time: new Date().toISOString(),
+    });
+    await bookingService.confirmBookingById({
+      bookingId: req.params.id,
+      currentUser: req.user,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Rezervacija je potvrÄ‘ena",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dohvati jednu rezervaciju po ID
+// @route   GET /api/bookings/:id
+// @access  Private (roditelj ili vlasnik ili admin)
+exports.getBookingById = async (req, res, next) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate("roditeljId", "ime prezime email telefon")
+      .populate(
+        "playroomId",
+        "naziv adresa grad kontaktTelefon kontaktEmail vlasnikId",
+      )
+      .populate("timeSlotId");
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Rezervacija nije pronaÄ‘ena",
+      });
+    }
+
+    const isAdmin = req.user.role === "admin";
+    const isOwnerOfBooking =
+      booking.roditeljId &&
+      booking.roditeljId._id &&
+      booking.roditeljId._id.toString() === req.user.id;
+    const isPlayroomOwner =
+      booking.playroomId?.vlasnikId &&
+      booking.playroomId.vlasnikId.toString() === req.user.id;
+
+    if (!isOwnerOfBooking && !isPlayroomOwner && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da vidite ovu rezervaciju",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: booking,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\controllers\playroomController.js
+==================================================
+const Playroom = require("../models/Playroom");
+const Booking = require("../models/Booking");
+const TimeSlot = require("../models/TimeSlot");
+const PLAYROOM_STATUS = require("../constants/playroomStatus");
+const BOOKING_STATUS = require("../constants/bookingStatus");
+const {
+  createPlayroomWithSlots,
+  verifyPlayroomAndGenerateSlots,
+  regenerateSlotsForPlayroom,
+} = require("../services/playroomService");
+const { syncTimeSlotsWithWorkingHours } = require("../utils/generateTimeSlots");
+const isEqual = require("lodash.isequal");
+
+const normalizeRadnoVreme = (radnoVreme = {}) => {
+  const days = [
+    "ponedeljak",
+    "utorak",
+    "sreda",
+    "cetvrtak",
+    "petak",
+    "subota",
+    "nedelja",
+  ];
+
+  const normalized = {};
+
+  for (const day of days) {
+    const value = radnoVreme?.[day] || {};
+    const radi = value.radi === true;
+
+    if (!radi) {
+      normalized[day] = { radi: false };
+    } else {
+      normalized[day] = {
+        od: value.od || "",
+        do: value.do || "",
+        radi: true,
+      };
+    }
+  }
+
+  return normalized;
+};
+
+// @desc    Kreiraj novu igraonicu (samo vlasnici)
+// @route   POST /api/playrooms
+// @access  Private (vlasnik ili admin)
+exports.createPlayroom = async (req, res, next) => {
+  try {
+    req.body.vlasnikId = req.user.id;
+
+    const postoji = await Playroom.findOne({
+      naziv: req.body.naziv?.trim(),
+    });
+
+    if (postoji) {
+      return res.status(400).json({
+        success: false,
+        message: "Igraonica sa ovim imenom veÄ‡ postoji",
+      });
+    }
+
+    const result = await createPlayroomWithSlots({
+      ...req.body,
+      naziv: req.body.naziv?.trim(),
+      kontaktEmail: req.body.kontaktEmail?.trim()?.toLowerCase(),
+    });
+
+    res.status(201).json({
+      success: true,
+      data: result.playroom,
+      message: `Igraonica je kreirana. ${
+        result.slotResult?.createdCount || 0
+      } termina je automatski generisano.`,
+      slotWarning: result.slotError || null,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dohvati sve verifikovane igraonice (sa filtriranjem)
+// @route   GET /api/playrooms
+// @access  Public
+exports.getAllPlayrooms = async (req, res, next) => {
+  try {
+    const { grad, minCena, maxCena, pogodnosti, minRating, sortBy } = req.query;
+
+    const query = {
+      verifikovan: true,
+      status: PLAYROOM_STATUS.AKTIVAN,
+    };
+
+    if (grad && grad !== "svi") {
+      query.grad = grad;
+    }
+
+    if (minRating && minRating !== "sve") {
+      query.rating = { $gte: parseInt(minRating, 10) };
+    }
+
+    if (pogodnosti) {
+      const pogodnostiArray = pogodnosti
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean);
+
+      if (pogodnostiArray.length > 0) {
+        query.besplatnePogodnosti = { $in: pogodnostiArray };
+      }
+    }
+
+    let sort = { createdAt: -1 };
+    if (sortBy === "rating") sort = { rating: -1 };
+
+    const playrooms = await Playroom.find(query).select("-__v").sort(sort);
+
+    res.status(200).json({
+      success: true,
+      count: playrooms.length,
+      data: playrooms,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dohvati jednu igraonicu po ID
+// @route   GET /api/playrooms/:id
+// @access  Public
+exports.getPlayroomById = async (req, res, next) => {
+  try {
+    const playroom = await Playroom.findById(req.params.id);
+
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    const isAdmin = req.user?.role === "admin";
+    const isOwner = playroom.vlasnikId?.toString() === req.user?.id;
+
+    if (!playroom.verifikovan && !isAdmin && !isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: "Ova igraonica joÅ¡ nije verifikovana",
+      });
+    }
+
+    const data = playroom.toObject();
+
+    // âŒ ukloni privatno
+    delete data.vlasnikId;
+    delete data.__v;
+    delete data.createdAt;
+    delete data.updatedAt;
+
+    // âŒ ukloni email ako NE Å¾eliÅ¡ javno
+    delete data.kontaktEmail;
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dohvati svoje igraonice (za vlasnika)
+// @route   GET /api/playrooms/mine/my-playrooms
+// @access  Private (vlasnik)
+exports.getMyPlayrooms = async (req, res, next) => {
+  try {
+    const playrooms = await Playroom.find({ vlasnikId: req.user.id }).sort({
+      createdAt: -1,
+    });
+
+    res.status(200).json({
+      success: true,
+      count: playrooms.length,
+      data: playrooms,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    AÅ¾uriraj igraonicu
+// @route   PUT /api/playrooms/:id
+// @access  Private (vlasnik te igraonice ili admin)
+exports.updatePlayroom = async (req, res, next) => {
+  try {
+    let playroom = await Playroom.findById(req.params.id);
+
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da menjate ovu igraonicu",
+      });
+    }
+
+    const oldRadnoVreme = normalizeRadnoVreme(playroom.radnoVreme);
+    const hasRadnoVremeUpdate = Object.prototype.hasOwnProperty.call(
+      req.body,
+      "radnoVreme",
+    );
+    const newRadnoVreme = hasRadnoVremeUpdate
+      ? normalizeRadnoVreme(req.body.radnoVreme)
+      : oldRadnoVreme;
+
+    playroom = await Playroom.findByIdAndUpdate(
+      req.params.id,
+      {
+        ...req.body,
+        ...(req.body.naziv ? { naziv: req.body.naziv.trim() } : {}),
+        ...(req.body.kontaktEmail
+          ? { kontaktEmail: req.body.kontaktEmail.trim().toLowerCase() }
+          : {}),
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+
+    let syncResult = null;
+
+    if (hasRadnoVremeUpdate && !isEqual(oldRadnoVreme, newRadnoVreme)) {
+      syncResult = await syncTimeSlotsWithWorkingHours(playroom._id, 30);
+
+      if (!syncResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: syncResult.message || "GreÅ¡ka pri sinhronizaciji termina",
+        });
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: playroom,
+      message: "Igraonica je uspeÅ¡no aÅ¾urirana",
+      slotSync: syncResult,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    ObriÅ¡i igraonicu
+// @route   DELETE /api/playrooms/:id
+// @access  Private (vlasnik ili admin)
+exports.deletePlayroom = async (req, res, next) => {
+  try {
+    const playroom = await Playroom.findById(req.params.id);
+
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da obriÅ¡ete ovu igraonicu",
+      });
+    }
+
+    const activeBookings = await Booking.countDocuments({
+      playroomId: playroom._id,
+      status: { $ne: BOOKING_STATUS.OTKAZANO },
+    });
+
+    if (activeBookings > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Ne moÅ¾eÅ¡ obrisati igraonicu dok postoje aktivne rezervacije",
+      });
+    }
+
+    await TimeSlot.deleteMany({ playroomId: playroom._id });
+    await playroom.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: "Igraonica i svi njeni termini su obrisani",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Verifikuj igraonicu (samo admin)
+// @route   PUT /api/playrooms/:id/verify
+// @access  Private (admin)
+exports.verifyPlayroom = async (req, res, next) => {
+  try {
+    const result = await verifyPlayroomAndGenerateSlots(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      data: result.playroom,
+      message: `Igraonica je verifikovana. ${
+        result.slotResult?.createdCount || 0
+      } termina je automatski generisano.`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    RegeneriÅ¡i termine za igraonicu (ruÄno)
+// @route   POST /api/playrooms/:id/regenerate-slots
+// @access  Private (vlasnik ili admin)
+exports.regenerateTimeSlots = async (req, res, next) => {
+  try {
+    const playroom = await Playroom.findById(req.params.id);
+
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da regeneriÅ¡ete termine za ovu igraonicu",
+      });
+    }
+
+    const result = await regenerateSlotsForPlayroom(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      message: `Termini su sinhronizovani. Novo: ${
+        result.createdCount || 0
+      }, deaktivirano: ${result.deactivatedCount || 0}, konflikti: ${
+        result.conflictCount || 0
+      }.`,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dohvati statistiku za vlasnika igraonice
+// @route   GET /api/playrooms/:id/stats
+// @access  Private (Vlasnik)
+exports.getOwnerStats = async (req, res, next) => {
+  try {
+    const playroomId = req.params.id;
+
+    const playroom = await Playroom.findById(playroomId);
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate dozvolu za ovaj pristup",
+      });
+    }
+
+    const stats = await Booking.aggregate([
+      { $match: { playroomId: playroom._id } },
+      {
+        $group: {
+          _id: null,
+          totalBookings: { $sum: 1 },
+          confirmedBookings: {
+            $sum: {
+              $cond: [{ $eq: ["$status", BOOKING_STATUS.POTVRDJENO] }, 1, 0],
+            },
+          },
+          waitingBookings: {
+            $sum: {
+              $cond: [{ $eq: ["$status", BOOKING_STATUS.CEKANJE] }, 1, 0],
+            },
+          },
+          canceledBookings: {
+            $sum: {
+              $cond: [{ $eq: ["$status", BOOKING_STATUS.OTKAZANO] }, 1, 0],
+            },
+          },
+          completedBookings: {
+            $sum: {
+              $cond: [{ $eq: ["$status", BOOKING_STATUS.ZAVRSENO] }, 1, 0],
+            },
+          },
+          totalRevenue: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$status",
+                    [BOOKING_STATUS.POTVRDJENO, BOOKING_STATUS.ZAVRSENO],
+                  ],
+                },
+                "$ukupnaCena",
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    const result =
+      stats.length > 0
+        ? stats[0]
+        : {
+            totalBookings: 0,
+            confirmedBookings: 0,
+            waitingBookings: 0,
+            canceledBookings: 0,
+            completedBookings: 0,
+            totalRevenue: 0,
+          };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        playroomName: playroom.naziv,
+        ...result,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\controllers\reviewController.js
+==================================================
+const Review = require("../models/Review");
+const Playroom = require("../models/Playroom");
+const Booking = require("../models/Booking");
+const BOOKING_STATUS = require("../constants/bookingStatus");
+
+const recalculatePlayroomRating = async (playroomId) => {
+  const allReviews = await Review.find({ playroomId });
+  const playroom = await Playroom.findById(playroomId);
+
+  if (!playroom) return;
+
+  if (allReviews.length > 0) {
+    const totalRating = allReviews.reduce((sum, r) => sum + r.rating, 0);
+    playroom.rating = Number((totalRating / allReviews.length).toFixed(1));
+    playroom.reviewCount = allReviews.length;
+  } else {
+    playroom.rating = 0;
+    playroom.reviewCount = 0;
+  }
+
+  await playroom.save();
+};
+
+// @desc    Dodaj recenziju za igraonicu
+// @route   POST /api/reviews/:playroomId
+// @access  Private (samo roditelji koji su bili na terminu)
+exports.addReview = async (req, res, next) => {
+  try {
+    const { playroomId } = req.params;
+    const { rating, comment } = req.body;
+    const userId = req.user.id;
+
+    const playroom = await Playroom.findById(playroomId);
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    const existingReview = await Review.findOne({ playroomId, userId });
+    if (existingReview) {
+      return res.status(400).json({
+        success: false,
+        message: "VeÄ‡ ste ostavili recenziju za ovu igraonicu",
+      });
+    }
+
+    const hasCompletedBooking = await Booking.findOne({
+      playroomId,
+      roditeljId: userId,
+      status: BOOKING_STATUS.ZAVRSENO,
+    });
+
+    if (!hasCompletedBooking && req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Samo roditelji koji su posetili igraonicu mogu ostaviti recenziju. Rezervacija mora biti zavrÅ¡ena.",
+      });
+    }
+
+    const review = await Review.create({
+      playroomId,
+      userId,
+      userName: `${req.user.ime} ${req.user.prezime}`.trim(),
+      rating,
+      comment: (comment || "").trim(),
+    });
+
+    await recalculatePlayroomRating(playroomId);
+
+    res.status(201).json({
+      success: true,
+      data: review,
+      message: "Recenzija je uspeÅ¡no dodata",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dohvati sve recenzije za igraonicu
+// @route   GET /api/reviews/:playroomId
+// @access  Public
+exports.getReviews = async (req, res, next) => {
+  try {
+    const { playroomId } = req.params;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.max(parseInt(req.query.limit, 10) || 10, 1);
+
+    const playroom = await Playroom.findById(playroomId).select("_id");
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    const reviews = await Review.find({ playroomId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .skip((page - 1) * limit);
+
+    const total = await Review.countDocuments({ playroomId });
+
+    res.status(200).json({
+      success: true,
+      count: reviews.length,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      data: reviews,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    ObriÅ¡i recenziju (samo admin ili autor)
+// @route   DELETE /api/reviews/:id
+// @access  Private (admin ili autor)
+exports.deleteReview = async (req, res, next) => {
+  try {
+    const review = await Review.findById(req.params.id);
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: "Recenzija nije pronaÄ‘ena",
+      });
+    }
+
+    if (review.userId.toString() !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da obriÅ¡ete ovu recenziju",
+      });
+    }
+
+    const playroomId = review.playroomId;
+
+    await review.deleteOne();
+    await recalculatePlayroomRating(playroomId);
+
+    res.status(200).json({
+      success: true,
+      message: "Recenzija je obrisana",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\controllers\timeSlotController.js
+==================================================
+const Playroom = require("../models/Playroom");
+const Booking = require("../models/Booking");
+const { generateTimeSlotsForPlayroom } = require("../utils/generateTimeSlots");
+const BOOKING_STATUS = require("../constants/bookingStatus");
+const timeSlotService = require("../services/timeSlotService");
+const mongoose = require("mongoose");
+const TimeSlot = require("../models/TimeSlot");
+const bookingService = require("../services/bookingService");
+
+// @desc    Kreiraj novi termin (samo vlasnik igraonice)
+// @route   POST /api/timeslots
+// @access  Private (vlasnik)
+exports.createTimeSlot = async (req, res, next) => {
+  try {
+    const { playroomId, datum, vremeOd, vremeDo, cena } = req.body;
+
+    const playroom = await Playroom.findById(playroomId);
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da dodajete termine za ovu igraonicu",
+      });
+    }
+
+    const slotDate = new Date(datum);
+    slotDate.setHours(0, 0, 0, 0);
+
+    try {
+      const timeSlot = await TimeSlot.create({
+        playroomId,
+        datum: slotDate,
+        vremeOd,
+        vremeDo,
+        cena: Number(cena) || 0,
+        zauzeto: false,
+        aktivno: true,
+        vanRadnogVremena: false,
+      });
+
+      return res.status(201).json({
+        success: true,
+        data: timeSlot,
+      });
+    } catch (err) {
+      if (err.code === 11000) {
+        return res.status(400).json({
+          success: false,
+          message: "Termin veÄ‡ postoji",
+        });
+      }
+
+      throw err;
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dohvati sve termine za igraonicu
+// @route   GET /api/timeslots/playroom/:playroomId
+// @access  Public
+exports.getTimeSlotsByPlayroom = async (req, res, next) => {
+  try {
+    const { playroomId } = req.params;
+    const { datum } = req.query;
+
+    if (!datum) {
+      return res.status(400).json({
+        success: false,
+        message: "Datum je obavezan",
+      });
+    }
+
+    const playroom = await Playroom.findById(playroomId);
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    const startDate = new Date(datum);
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(datum);
+    endDate.setHours(23, 59, 59, 999);
+
+    const timeSlots = await TimeSlot.find({
+      playroomId,
+      datum: { $gte: startDate, $lte: endDate },
+      aktivno: true,
+      vanRadnogVremena: false,
+    }).sort({ vremeOd: 1 });
+
+    const now = new Date();
+
+    const filteredSlots = timeSlots.filter((slot) => {
+      const slotEnd = new Date(
+        new Date(slot.datum).getFullYear(),
+        new Date(slot.datum).getMonth(),
+        new Date(slot.datum).getDate(),
+        ...String(slot.vremeDo || "00:00")
+          .split(":")
+          .map((v) => parseInt(v, 10)),
+      );
+
+      return slotEnd > now;
+    });
+
+    res.status(200).json({
+      success: true,
+      count: filteredSlots.length,
+      data: filteredSlots,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dohvati svoje termine (za vlasnika)
+// @route   GET /api/timeslots/my
+// @access  Private (vlasnik)
+exports.getMyTimeSlots = async (req, res, next) => {
+  try {
+    const playrooms = await Playroom.find({ vlasnikId: req.user.id });
+    const playroomIds = playrooms.map((p) => p._id);
+
+    const timeSlots = await TimeSlot.find({ playroomId: { $in: playroomIds } })
+      .populate("playroomId", "naziv")
+      .sort({ datum: -1, vremeOd: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: timeSlots.length,
+      data: timeSlots,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dohvati jedan termin po ID
+// @route   GET /api/timeslots/:id
+// @access  Public
+exports.getTimeSlotById = async (req, res, next) => {
+  try {
+    const timeSlot = await TimeSlot.findById(req.params.id);
+
+    if (!timeSlot) {
+      return res.status(404).json({
+        success: false,
+        message: "Termin nije pronaÄ‘en",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: timeSlot,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    AÅ¾uriraj termin
+// @route   PUT /api/timeslots/:id
+// @access  Private (vlasnik ili admin)
+exports.updateTimeSlot = async (req, res, next) => {
+  try {
+    let timeSlot = await TimeSlot.findById(req.params.id);
+
+    if (!timeSlot) {
+      return res.status(404).json({
+        success: false,
+        message: "Termin nije pronaÄ‘en",
+      });
+    }
+
+    const playroom = await Playroom.findById(timeSlot.playroomId);
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da menjate ovaj termin",
+      });
+    }
+
+    const { cena, aktivno } = req.body;
+
+    if (cena !== undefined) {
+      const parsedCena = Number(cena);
+
+      const updated = await TimeSlot.findOneAndUpdate(
+        {
+          _id: timeSlot._id,
+          zauzeto: false,
+        },
+        {
+          $set: { cena: parsedCena },
+        },
+        { new: true },
+      );
+
+      if (!updated) {
+        return res.status(400).json({
+          success: false,
+          message: "Ne moÅ¾eÅ¡ menjati cenu termina koji ima rezervaciju",
+        });
+      }
+
+      timeSlot = updated;
+    }
+
+    if (aktivno !== undefined) {
+      if (aktivno === false) {
+        timeSlot = await timeSlotService.deactivateSlotIfAllowed(timeSlot);
+      } else {
+        const slotEnd = new Date(
+          new Date(timeSlot.datum).getFullYear(),
+          new Date(timeSlot.datum).getMonth(),
+          new Date(timeSlot.datum).getDate(),
+          ...String(timeSlot.vremeDo || "00:00")
+            .split(":")
+            .map((v) => parseInt(v, 10)),
+        );
+
+        if (slotEnd <= new Date()) {
+          return res.status(400).json({
+            success: false,
+            message: "ProÅ¡li termin ne moÅ¾e biti ponovo aktiviran",
+          });
+        }
+
+        timeSlot.aktivno = true;
+        await timeSlot.save();
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: timeSlot,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    ObriÅ¡i termin
+// @route   DELETE /api/timeslots/:id
+// @access  Private (vlasnik ili admin)
+exports.deleteTimeSlot = async (req, res, next) => {
+  try {
+    const timeSlot = await TimeSlot.findById(req.params.id);
+
+    if (!timeSlot) {
+      return res.status(404).json({
+        success: false,
+        message: "Termin nije pronaÄ‘en",
+      });
+    }
+
+    const playroom = await Playroom.findById(timeSlot.playroomId);
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da obriÅ¡ete ovaj termin",
+      });
+    }
+
+    await timeSlotService.deleteSlotIfAllowed(timeSlot);
+
+    res.status(200).json({
+      success: true,
+      message: "Termin je obrisan",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    RuÄno generiÅ¡i termine za igraonicu
+// @route   POST /api/timeslots/generate/:playroomId
+// @access  Private (vlasnik)
+exports.generateSlotsForPlayroom = async (req, res, next) => {
+  try {
+    const { playroomId } = req.params;
+
+    const playroom = await Playroom.findById(playroomId);
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da generiÅ¡ete termine za ovu igraonicu",
+      });
+    }
+
+    const result = await generateTimeSlotsForPlayroom(playroomId);
+
+    res.status(200).json({
+      success: true,
+      message: `Generisano ${result.createdCount || 0} novih termina`,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dohvati slobodne termine za igraonicu
+// @route   GET /api/timeslots/playroom/:playroomId/available
+// @access  Public
+exports.getAvailableTimeSlots = async (req, res, next) => {
+  try {
+    const { playroomId } = req.params;
+    const { datum } = req.query;
+
+    if (!datum) {
+      return res.status(400).json({
+        success: false,
+        message: "Datum je obavezan",
+      });
+    }
+
+    const playroom = await Playroom.findById(playroomId);
+
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    const [year, month, day] = datum.split("-").map(Number);
+
+    const targetDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+
+    const workingHours = bookingService.getWorkingHoursForDate(
+      playroom,
+      targetDate,
+    );
+    console.log("AVAILABLE DEBUG", {
+      datumIzQuery: datum,
+      targetDate: targetDate.toString(),
+      radnoVreme: playroom.radnoVreme,
+      workingHours,
+    });
+    if (!workingHours) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          workingHours: null,
+          busyIntervals: [],
+          freeIntervals: [],
+        },
+      });
+    }
+
+    const bookings = await bookingService.getActiveBookingsForDate({
+      playroomId,
+      datum: targetDate,
+    });
+
+    const segments = bookingService.buildDaySegments({
+      workingHours,
+      bookings: bookings.map((b) => ({
+        vremeOd: b.vremeOd,
+        vremeDo: b.vremeDo,
+      })),
+    });
+
+    const busyIntervals = segments
+      .filter((s) => s.tip === "zauzeto")
+      .map((s) => ({
+        vremeOd: s.vremeOd,
+        vremeDo: s.vremeDo,
+      }));
+
+    const freeIntervals = segments
+      .filter((s) => s.tip === "slobodno")
+      .map((s) => ({
+        vremeOd: s.vremeOd,
+        vremeDo: s.vremeDo,
+      }));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        workingHours,
+        busyIntervals,
+        freeIntervals,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dohvati sve termine za vlasnika (sa detaljima)
+// @route   GET /api/timeslots/playroom/:playroomId/all
+// @access  Private (vlasnik)
+exports.getAllTimeSlotsForOwner = async (req, res, next) => {
+  try {
+    const { playroomId } = req.params;
+    const { datum } = req.query;
+
+    if (!datum) {
+      return res.status(400).json({
+        success: false,
+        message: "Datum je obavezan",
+      });
+    }
+
+    const playroom = await Playroom.findById(playroomId);
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da vidite termine za ovu igraonicu",
+      });
+    }
+
+    const [year, month, day] = datum.split("-").map(Number);
+
+    const targetDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+
+    const workingHours = bookingService.getWorkingHoursForDate(
+      playroom,
+      targetDate,
+    );
+
+    if (!workingHours) {
+      return res.status(200).json({
+        success: true,
+        count: 0,
+        data: [],
+        playroom: {
+          id: playroom._id,
+          naziv: playroom.naziv,
+          grad: playroom.grad,
+        },
+      });
+    }
+
+    const bookings = await Booking.find({
+      playroomId,
+      datum: {
+        $gte: new Date(new Date(datum).setHours(0, 0, 0, 0)),
+        $lte: new Date(new Date(datum).setHours(23, 59, 59, 999)),
+      },
+      status: { $ne: BOOKING_STATUS.OTKAZANO },
+    })
+      .select(
+        "_id roditeljId imeRoditelja prezimeRoditelja emailRoditelja telefonRoditelja napomena status createdAt ukupnaCena vremeOd vremeDo",
+      )
+      .populate("roditeljId", "ime prezime email telefon")
+      .sort({ vremeOd: 1 });
+
+    const segments = bookingService.buildDaySegments({
+      workingHours,
+      bookings: bookings.map((booking) => ({
+        _id: booking._id,
+        vremeOd: booking.vremeOd,
+        vremeDo: booking.vremeDo,
+        booking: {
+          id: booking._id,
+          roditelj: booking.roditeljId,
+          imeRoditelja: booking.imeRoditelja,
+          prezimeRoditelja: booking.prezimeRoditelja,
+          emailRoditelja: booking.emailRoditelja,
+          telefonRoditelja: booking.telefonRoditelja,
+          ukupnaCena: booking.ukupnaCena,
+          napomena: booking.napomena,
+          status: booking.status,
+          createdAt: booking.createdAt,
+        },
+      })),
+    });
+
+    const normalizedSegments = segments.map((segment) => ({
+      tip: segment.tip,
+      vremeOd: segment.vremeOd,
+      vremeDo: segment.vremeDo,
+      booking: segment.booking?.booking || segment.booking || null,
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: normalizedSegments.length,
+      data: normalizedSegments,
+      playroom: {
+        id: playroom._id,
+        naziv: playroom.naziv,
+        grad: playroom.grad,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    RuÄno zauzmi termin (vlasnik rezerviÅ¡e)
+// @route   POST /api/timeslots/:id/manual-book
+// @access  Private (vlasnik)
+exports.manualBookTimeSlot = async (req, res, next) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const { id } = req.params;
+    const {
+      imeRoditelja,
+      prezimeRoditelja,
+      emailRoditelja,
+      telefonRoditelja,
+      napomena,
+    } = req.body;
+
+    const timeSlot = await TimeSlot.findById(id).session(session);
+
+    if (!timeSlot) {
+      await session.abortTransaction();
+      return res.status(404).json({
+        success: false,
+        message: "Termin nije pronaÄ‘en",
+      });
+    }
+
+    const playroom = await Playroom.findById(timeSlot.playroomId).session(
+      session,
+    );
+
+    if (!playroom) {
+      await session.abortTransaction();
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      await session.abortTransaction();
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da zauzmete ovaj termin",
+      });
+    }
+
+    const slotEnd = new Date(
+      new Date(timeSlot.datum).getFullYear(),
+      new Date(timeSlot.datum).getMonth(),
+      new Date(timeSlot.datum).getDate(),
+      ...String(timeSlot.vremeDo || "00:00")
+        .split(":")
+        .map((v) => parseInt(v, 10)),
+    );
+
+    if (slotEnd <= new Date()) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        message: "Ne moÅ¾eÅ¡ ruÄno zauzeti proÅ¡li termin",
+      });
+    }
+
+    const lockedSlot = await TimeSlot.findOneAndUpdate(
+      {
+        _id: timeSlot._id,
+        zauzeto: false,
+        aktivno: true,
+        vanRadnogVremena: false,
+      },
+      {
+        $set: {
+          zauzeto: true,
+        },
+      },
+      {
+        new: true,
+        session,
+      },
+    );
+
+    if (!lockedSlot) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        message: "Termin je veÄ‡ zauzet, neaktivan ili ne postoji",
+      });
+    }
+
+    const ukupnaCena = Number(lockedSlot.cena) || 0;
+
+    let created;
+
+    try {
+      created = await Booking.create(
+        [
+          {
+            roditeljId: null,
+            timeSlotId: lockedSlot._id,
+            playroomId: lockedSlot.playroomId,
+            datum: lockedSlot.datum,
+            vremeOd: lockedSlot.vremeOd,
+            vremeDo: lockedSlot.vremeDo,
+            ukupnaCena,
+            napomena: napomena || "",
+            status: BOOKING_STATUS.POTVRDJENO,
+            imeRoditelja: imeRoditelja.trim(),
+            prezimeRoditelja: prezimeRoditelja.trim(),
+            emailRoditelja: emailRoditelja.trim().toLowerCase(),
+            telefonRoditelja: telefonRoditelja.trim(),
+          },
+        ],
+        { session },
+      );
+    } catch (err) {
+      if (err.code === 11000) {
+        await TimeSlot.findOneAndUpdate(
+          {
+            _id: lockedSlot._id,
+            zauzeto: true,
+          },
+          {
+            $set: { zauzeto: false },
+          },
+          { session },
+        );
+
+        await session.abortTransaction();
+
+        return res.status(400).json({
+          success: false,
+          message: "Termin je upravo zauzet",
+        });
+      }
+
+      throw err;
+    }
+
+    await session.commitTransaction();
+
+    return res.status(200).json({
+      success: true,
+      data: created[0],
+      message: `Termin je uspeÅ¡no zauzet. Ukupno: ${ukupnaCena} RSD`,
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    next(error);
+  } finally {
+    session.endSession();
+  }
+};
+
+exports.manualBookInterval = async (req, res, next) => {
+  try {
+    const {
+      playroomId,
+      datum,
+      vremeOd,
+      vremeDo,
+      imeRoditelja,
+      prezimeRoditelja,
+      emailRoditelja,
+      telefonRoditelja,
+      napomena,
+    } = req.body;
+
+    const playroom = await Playroom.findById(playroomId);
+
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da ruÄno rezerviÅ¡ete za ovu igraonicu",
+      });
+    }
+
+    const defaultCena =
+      Array.isArray(playroom.cene) && playroom.cene.length > 0
+        ? playroom.cene[0]
+        : null;
+
+    if (!defaultCena?._id) {
+      return res.status(400).json({
+        success: false,
+        message: "Igraonica nema nijednu cenu za obraÄun rezervacije",
+      });
+    }
+
+    const booking = await bookingService.reserveCustomInterval({
+      playroomId,
+      datum,
+      vremeOd,
+      vremeDo,
+      user: null,
+      payload: {
+        cenaId: String(defaultCena._id),
+        paketId: null,
+        usluge: [],
+        brojDece: 1,
+        imeRoditelja: imeRoditelja || "",
+        prezimeRoditelja: prezimeRoditelja || "",
+        emailRoditelja: emailRoditelja || "",
+        telefonRoditelja: telefonRoditelja || "",
+        napomena: napomena || "",
+      },
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: booking,
+      message: "Termin je uspeÅ¡no ruÄno zauzet.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\controllers\uploadController.js
+==================================================
+const cloudinary = require("../config/cloudinary");
+const Playroom = require("../models/Playroom");
+const streamifier = require("streamifier");
+
+// Upload slike za igraonicu
+exports.uploadPlayroomImage = async (req, res, next) => {
+  try {
+    const { playroomId } = req.params;
+
+    const playroom = await Playroom.findById(playroomId);
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da dodajete slike za ovu igraonicu",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Molimo odaberite sliku",
+      });
+    }
+
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: "svet-igraonica",
+          resource_type: "image",
+          transformation: [
+            { width: 1600, height: 1200, crop: "limit" },
+            { quality: "auto" },
+            { fetch_format: "auto" },
+          ],
+        },
+        (error, uploadResult) => {
+          if (error) return reject(error);
+          resolve(uploadResult);
+        },
+      );
+
+      streamifier.createReadStream(req.file.buffer).pipe(stream);
+    });
+
+    playroom.slike.push({
+      url: result.secure_url,
+      publicId: result.public_id,
+      width: result.width,
+      height: result.height,
+      size: result.bytes,
+      format: result.format,
+    });
+
+    if (!playroom.profilnaSlika?.url) {
+      playroom.profilnaSlika = {
+        url: result.secure_url,
+        publicId: result.public_id,
+      };
+    }
+
+    await playroom.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        url: result.secure_url,
+        publicId: result.public_id,
+        width: result.width,
+        height: result.height,
+        format: result.format,
+        size: result.bytes,
+      },
+      message: "Slika je uspeÅ¡no dodata",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ObriÅ¡i sliku
+exports.deletePlayroomImage = async (req, res, next) => {
+  try {
+    const { playroomId, imageUrl } = req.params;
+
+    const playroom = await Playroom.findById(playroomId);
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo da briÅ¡ete slike za ovu igraonicu",
+      });
+    }
+
+    const decodedUrl = decodeURIComponent(imageUrl);
+    const imageToDelete = playroom.slike.find(
+      (image) => image.url === decodedUrl,
+    );
+
+    if (!imageToDelete) {
+      return res.status(404).json({
+        success: false,
+        message: "Slika nije pronaÄ‘ena",
+      });
+    }
+
+    if (imageToDelete.publicId) {
+      await cloudinary.uploader.destroy(imageToDelete.publicId, {
+        resource_type: "image",
+      });
+    }
+
+    playroom.slike = playroom.slike.filter((image) => image.url !== decodedUrl);
+
+    if (playroom.profilnaSlika?.url === decodedUrl) {
+      if (playroom.slike.length > 0) {
+        playroom.profilnaSlika = {
+          url: playroom.slike[0].url,
+          publicId: playroom.slike[0].publicId,
+        };
+      } else {
+        playroom.profilnaSlika = {
+          url: "",
+          publicId: "",
+        };
+      }
+    }
+
+    await playroom.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Slika je obrisana",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\controllers\videoController.js
+==================================================
+const cloudinary = require("../config/cloudinary");
+const streamifier = require("streamifier");
+
+exports.uploadVideo = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Nema videa",
+      });
+    }
+
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: "svet-igraonica/videos",
+          resource_type: "video",
+          transformation: [
+            { width: 1280, height: 720, crop: "limit" },
+            { quality: "auto:good" },
+            { fetch_format: "auto" },
+          ],
+        },
+        (error, uploadResult) => {
+          if (error) return reject(error);
+          resolve(uploadResult);
+        },
+      );
+
+      streamifier.createReadStream(req.file.buffer).pipe(stream);
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        url: result.secure_url,
+        publicId: result.public_id,
+        thumbnail: cloudinary.url(result.public_id, {
+          resource_type: "video",
+          format: "jpg",
+        }),
+        duration: result.duration,
+        width: result.width,
+        height: result.height,
+        format: result.format,
+        bytes: result.bytes,
+      },
+      message: "Video je uspeÅ¡no uploadovan",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\jobs\completeBookings.js
+==================================================
+const cron = require("node-cron");
+const Booking = require("../models/Booking");
+const BOOKING_STATUS = require("../constants/bookingStatus");
+
+// Funkcija za zavrÅ¡avanje termina koji su proÅ¡li
+const completeExpiredBookings = async () => {
+  try {
+    const now = new Date();
+    console.log(
+      `ðŸ” Proveravam termine koji su zavrÅ¡eni... (${now.toLocaleString("sr-RS")})`,
+    );
+
+    const bookings = await Booking.find({
+      status: BOOKING_STATUS.POTVRDJENO,
+    }).select("_id datum vremeDo status");
+
+    let completedCount = 0;
+    let skippedCount = 0;
+
+    for (const booking of bookings) {
+      if (!booking.datum || Number.isNaN(new Date(booking.datum).getTime())) {
+        skippedCount++;
+        console.warn(
+          `âš ï¸ Rezervacija ${booking._id} preskoÄena: datum nije validan`,
+        );
+        continue;
+      }
+
+      if (!booking.vremeDo || typeof booking.vremeDo !== "string") {
+        skippedCount++;
+        console.warn(
+          `âš ï¸ Rezervacija ${booking._id} preskoÄena: nedostaje ili nije validno vremeDo`,
+        );
+        continue;
+      }
+
+      const [hour, minute] = booking.vremeDo
+        .split(":")
+        .map((v) => parseInt(v, 10));
+
+      if (Number.isNaN(hour) || Number.isNaN(minute)) {
+        skippedCount++;
+        console.warn(
+          `âš ï¸ Rezervacija ${booking._id} preskoÄena: neispravan format vremeDo (${booking.vremeDo})`,
+        );
+        continue;
+      }
+
+      const endTime = new Date(
+        new Date(booking.datum).getFullYear(),
+        new Date(booking.datum).getMonth(),
+        new Date(booking.datum).getDate(),
+        hour,
+        minute,
+        0,
+        0,
+      );
+
+      if (endTime <= now) {
+        booking.status = BOOKING_STATUS.ZAVRSENO;
+        await booking.save();
+        const TimeSlot = require("../models/TimeSlot");
+
+        await TimeSlot.findOneAndUpdate(
+          {
+            _id: booking.timeSlotId,
+            zauzeto: true,
+          },
+          {
+            $set: { zauzeto: false },
+          },
+        );
+        completedCount++;
+      }
+    }
+
+    if (completedCount > 0) {
+      console.log(`ðŸ“Š ZavrÅ¡eno ${completedCount} termina`);
+    } else {
+      console.log("ðŸ“­ Nema termina za zavrÅ¡avanje");
+    }
+
+    if (skippedCount > 0) {
+      console.log(
+        `âš ï¸ PreskoÄeno ${skippedCount} rezervacija zbog loÅ¡ih podataka`,
+      );
+    }
+  } catch (error) {
+    console.error("âŒ GreÅ¡ka pri zavrÅ¡avanju termina:", error.message);
+  }
+};
+
+// Pokreni odmah pri startu
+completeExpiredBookings();
+
+// Zakazivanje: svakih 30 minuta
+cron.schedule("*/10 * * * *", () => {
+  console.log("â° Cron job: Provera termina za zavrÅ¡avanje...");
+  completeExpiredBookings();
+});
+
+console.log("ðŸ“… Cron job za zavrÅ¡avanje termina aktivan (svakih 10 minuta)");
+
+module.exports = { completeExpiredBookings };
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\middleware\authMiddleware.js
+==================================================
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
+
+const protect = async (req, res, next) => {
+  try {
+    let token;
+
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
+    }
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Niste autorizovani (nema tokena)",
+      });
+    }
+
+    let decoded;
+
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        message: "Token nije validan",
+      });
+    }
+
+    const user = await User.findById(decoded.id).select("-password");
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Korisnik ne postoji",
+      });
+    }
+
+    req.user = user;
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { protect };
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\middleware\errorMiddleware.js
+==================================================
+const errorHandler = (err, req, res, next) => {
+  console.error("âŒ ERROR:", {
+    requestId: req.requestId,
+    message: err.message,
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    path: req.originalUrl,
+    method: req.method,
+    user: req.user?.id || null,
+    time: new Date().toISOString(),
+  });
+
+  let statusCode = err.statusCode || 500;
+  let message = err.message || "GreÅ¡ka na serveru";
+
+  if (err.code === 11000) {
+    statusCode = 400;
+    const field = Object.keys(err.keyValue || {})[0];
+    message = `${field} veÄ‡ postoji`;
+  }
+
+  if (err.name === "CastError") {
+    statusCode = 400;
+    message = "Nevalidan ID";
+  }
+
+  if (err.name === "ValidationError") {
+    statusCode = 400;
+    message = Object.values(err.errors)
+      .map((val) => val.message)
+      .join(", ");
+  }
+
+  if (err.name === "JsonWebTokenError") {
+    statusCode = 401;
+    message = "Token nije validan";
+  }
+
+  if (err.name === "TokenExpiredError") {
+    statusCode = 401;
+    message = "Token je istekao";
+  }
+
+  res.status(statusCode).json({
+    success: false,
+    message,
+    ...(process.env.NODE_ENV === "development" && {
+      stack: err.stack,
+    }),
+  });
+};
+
+module.exports = errorHandler;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\middleware\ownerMiddleware.js
+==================================================
+const Playroom = require("../models/Playroom");
+
+const checkOwner = async (req, res, next) => {
+  try {
+    const playroomId = req.params.playroomId || req.params.id;
+
+    if (!playroomId) {
+      return res.status(400).json({
+        success: false,
+        message: "ID igraonice nije prosleÄ‘en",
+      });
+    }
+
+    const playroom = await Playroom.findById(playroomId);
+
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronaÄ‘ena",
+      });
+    }
+
+    // admin moÅ¾e sve
+    if (req.user.role === "admin") {
+      req.playroom = playroom;
+      return next();
+    }
+
+    // vlasnik moÅ¾e samo svoju
+    if (playroom.vlasnikId.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate dozvolu za ovu igraonicu",
+      });
+    }
+
+    req.playroom = playroom;
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = checkOwner;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\middleware\roleMiddleware.js
+==================================================
+const ROLES = require("../constants/roles");
+
+const authorize = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+      const error = new Error("Nemate dozvolu za ovu akciju");
+      error.statusCode = 403;
+      return next(error);
+    }
+
+    next();
+  };
+};
+
+module.exports = authorize;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\middleware\upload.js
+==================================================
+const multer = require("multer");
+const path = require("path");
+
+// ÄŒuvanje u memoriji (za Cloudinary)
+const storage = multer.memoryStorage();
+
+const IMAGE_MAX_SIZE = 10 * 1024 * 1024; // 10MB
+const VIDEO_MAX_SIZE = 50 * 1024 * 1024; // 50MB
+
+const allowedImageExtensions = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".gif",
+  ".webp",
+  ".bmp",
+  ".svg",
+  ".avif",
+  ".heic",
+  ".heif",
+  ".tif",
+  ".tiff",
+  ".ico",
+]);
+
+const allowedVideoExtensions = new Set([
+  ".mp4",
+  ".mov",
+  ".avi",
+  ".mkv",
+  ".webm",
+]);
+
+const imageFileFilter = (req, file, cb) => {
+  try {
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    const mime = (file.mimetype || "").toLowerCase();
+
+    const isImageMime = mime.startsWith("image/");
+    const isAllowedImage = isImageMime || allowedImageExtensions.has(ext);
+
+    if (isAllowedImage) {
+      return cb(null, true);
+    }
+
+    return cb(
+      new Error(
+        "Dozvoljeni su samo image fajlovi (jpg, jpeg, png, gif, webp, bmp, svg, avif, heic, heif, tif, tiff, ico).",
+      ),
+      false,
+    );
+  } catch (err) {
+    return cb(new Error("GreÅ¡ka pri validaciji slike"), false);
+  }
+};
+
+const videoFileFilter = (req, file, cb) => {
+  try {
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    const mime = (file.mimetype || "").toLowerCase();
+
+    const isVideoMime = mime.startsWith("video/");
+    const isAllowedVideo = isVideoMime || allowedVideoExtensions.has(ext);
+
+    if (isAllowedVideo) {
+      return cb(null, true);
+    }
+
+    return cb(
+      new Error("Dozvoljeni su samo video fajlovi (mp4, mov, avi, mkv, webm)."),
+      false,
+    );
+  } catch (err) {
+    return cb(new Error("GreÅ¡ka pri validaciji videa"), false);
+  }
+};
+
+const imageUpload = multer({
+  storage,
+  limits: {
+    fileSize: IMAGE_MAX_SIZE,
+  },
+  fileFilter: imageFileFilter,
+});
+
+const videoUpload = multer({
+  storage,
+  limits: {
+    fileSize: VIDEO_MAX_SIZE,
+  },
+  fileFilter: videoFileFilter,
+});
+
+const upload = {
+  singleImage: (field = "image") => imageUpload.single(field),
+  singleVideo: (field = "video") => videoUpload.single(field),
+  multipleImages: (field = "images", max = 10) => imageUpload.array(field, max),
+
+  limits: {
+    imageMaxSize: IMAGE_MAX_SIZE,
+    videoMaxSize: VIDEO_MAX_SIZE,
+  },
+};
+
+module.exports = upload;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\middleware\validate.js
+==================================================
+const validate = (schema) => {
+  return (req, res, next) => {
+    try {
+      const result = schema.safeParse({
+        body: req.body,
+        params: req.params,
+        query: req.query,
+      });
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: result.error.issues.map((issue) => issue.message).join(", "),
+          errors: result.error.issues.map((issue) => ({
+            path: issue.path.join("."),
+            message: issue.message,
+          })),
+        });
+      }
+
+      req.validated = result.data;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+};
+
+module.exports = validate;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\models\Booking.js
+==================================================
+const mongoose = require("mongoose");
+const BOOKING_STATUS = require("../constants/bookingStatus");
+
+const BookingSchema = new mongoose.Schema(
+  {
+    roditeljId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+
+    playroomId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Playroom",
+      required: true,
+      index: true,
+    },
+
+    timeSlotId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "TimeSlot",
+      default: null,
+      index: true,
+    },
+
+    datum: {
+      type: Date,
+      required: true,
+      index: true,
+    },
+
+    vremeOd: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    vremeDo: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    ukupnaCena: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    brojDece: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+
+    izabranaCena: {
+      naziv: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      cena: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      tip: {
+        type: String,
+        enum: ["fiksno", "po_osobi", "po_satu"],
+        default: "fiksno",
+      },
+      opis: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+    },
+
+    izabraniPaket: {
+      naziv: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      cena: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      opis: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+    },
+
+    izabraneUsluge: {
+      type: [
+        {
+          naziv: {
+            type: String,
+            trim: true,
+          },
+          cena: {
+            type: Number,
+            min: 0,
+          },
+          tip: {
+            type: String,
+            enum: ["fiksno", "po_osobi", "po_satu"],
+            default: "fiksno",
+          },
+          opis: {
+            type: String,
+            default: "",
+            trim: true,
+          },
+        },
+      ],
+      default: [],
+    },
+
+    status: {
+      type: String,
+      enum: Object.values(BOOKING_STATUS),
+      default: BOOKING_STATUS.CEKANJE,
+      index: true,
+    },
+
+    napomena: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
+
+    imeRoditelja: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100,
+    },
+
+    prezimeRoditelja: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100,
+    },
+
+    emailRoditelja: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, "Email nije validan"],
+    },
+
+    telefonRoditelja: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 30,
+    },
+  },
+  {
+    timestamps: true,
+  },
+);
+
+// BrÅ¾i query za owner dashboard
+BookingSchema.index({ playroomId: 1, datum: 1 });
+
+// BrÅ¾i query za korisnik istoriju
+BookingSchema.index({ roditeljId: 1, createdAt: -1 });
+
+module.exports = mongoose.model("Booking", BookingSchema);
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\models\Playroom.js
+==================================================
+const mongoose = require("mongoose");
+const PLAYROOM_STATUS = require("../constants/playroomStatus");
+
+const dnevnoRadnoVremeSchema = new mongoose.Schema(
+  {
+    od: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    do: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    radi: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { _id: false },
+);
+
+const stavkaCenovnikaSchema = new mongoose.Schema({
+  naziv: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 100,
+  },
+  cena: {
+    type: Number,
+    required: true,
+    min: 0,
+  },
+  tip: {
+    type: String,
+    enum: ["fiksno", "po_osobi", "po_satu"],
+    default: "fiksno",
+  },
+
+  opis: {
+    type: String,
+    default: "",
+    trim: true,
+    maxlength: 500,
+  },
+});
+
+const paketSchema = new mongoose.Schema({
+  naziv: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 100,
+  },
+  cena: {
+    type: Number,
+    required: true,
+    min: 0,
+  },
+
+  tip: {
+    type: String,
+    enum: ["fiksno", "po_osobi", "po_satu"],
+    default: "fiksno",
+  },
+
+  opis: {
+    type: String,
+    default: "",
+    trim: true,
+    maxlength: 500,
+  },
+});
+
+const dodatnaUslugaSchema = new mongoose.Schema({
+  naziv: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 100,
+  },
+  cena: {
+    type: Number,
+    required: true,
+    min: 0,
+  },
+  opis: {
+    type: String,
+    default: "",
+    trim: true,
+    maxlength: 500,
+  },
+  tip: {
+    type: String,
+    enum: ["po_osobi", "fiksno", "po_satu"],
+    default: "fiksno",
+  },
+});
+
+const slikaSchema = new mongoose.Schema(
+  {
+    url: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    publicId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    width: Number,
+    height: Number,
+    size: Number,
+    format: String,
+  },
+  { _id: false },
+);
+
+const videoSchema = new mongoose.Schema(
+  {
+    url: {
+      type: String,
+      trim: true,
+    },
+    publicId: {
+      type: String,
+      trim: true,
+    },
+    thumbnail: {
+      type: String,
+      trim: true,
+    },
+    naziv: {
+      type: String,
+      trim: true,
+      maxlength: 150,
+    },
+    trajanje: {
+      type: Number,
+      min: 0,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false },
+);
+
+const PlayroomSchema = new mongoose.Schema(
+  {
+    vlasnikId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+
+    naziv: {
+      type: String,
+      required: [true, "Naziv igraonice je obavezan"],
+      trim: true,
+      unique: true,
+      maxlength: 150,
+    },
+
+    adresa: {
+      type: String,
+      required: [true, "Adresa je obavezna"],
+      trim: true,
+      maxlength: 200,
+    },
+
+    grad: {
+      type: String,
+      required: [true, "Grad je obavezan"],
+      trim: true,
+      maxlength: 100,
+      index: true,
+    },
+
+    opis: {
+      type: String,
+      required: [true, "Opis je obavezan"],
+      trim: true,
+      maxlength: 3000,
+    },
+
+    kontaktTelefon: {
+      type: String,
+      required: [true, "Kontakt telefon je obavezan"],
+      trim: true,
+      maxlength: 30,
+    },
+
+    kontaktEmail: {
+      type: String,
+      required: [true, "Kontakt email je obavezan"],
+      trim: true,
+      lowercase: true,
+      match: [/^\S+@\S+\.\S+$/, "Kontakt email nije validan"],
+    },
+
+    radnoVreme: {
+      ponedeljak: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
+      utorak: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
+      sreda: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
+      cetvrtak: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
+      petak: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
+      subota: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
+      nedelja: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
+    },
+
+    kapacitet: {
+      deca: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      roditelji: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+    },
+
+    cene: {
+      type: [stavkaCenovnikaSchema],
+      default: [],
+    },
+
+    paketi: {
+      type: [paketSchema],
+      default: [],
+    },
+
+    dodatneUsluge: {
+      type: [dodatnaUslugaSchema],
+      default: [],
+    },
+
+    besplatnePogodnosti: {
+      type: [
+        {
+          type: String,
+          trim: true,
+          maxlength: 100,
+        },
+      ],
+      default: [],
+    },
+
+    profilnaSlika: {
+      url: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      publicId: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+    },
+
+    slike: {
+      type: [slikaSchema],
+      default: [],
+    },
+
+    videoGalerija: {
+      type: [videoSchema],
+      default: [],
+    },
+
+    verifikovan: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    rating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+      index: true,
+    },
+
+    reviewCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    status: {
+      type: String,
+      enum: Object.values(PLAYROOM_STATUS),
+      default: PLAYROOM_STATUS.U_IZRADI,
+      index: true,
+    },
+
+    drustveneMreze: {
+      instagram: { type: String, default: "", trim: true },
+      facebook: { type: String, default: "", trim: true },
+      tiktok: { type: String, default: "", trim: true },
+      website: { type: String, default: "", trim: true },
+    },
+  },
+  {
+    timestamps: true,
+  },
+);
+
+PlayroomSchema.index({ grad: 1, status: 1, verifikovan: 1 });
+
+PlayroomSchema.index({ rating: -1, reviewCount: -1 });
+
+PlayroomSchema.index({ vlasnikId: 1, createdAt: -1 });
+
+PlayroomSchema.index({ verifikovan: 1, status: 1, grad: 1 });
+
+PlayroomSchema.index({ status: 1, verifikovan: 1, rating: -1 });
+
+module.exports = mongoose.model("Playroom", PlayroomSchema);
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\models\Review.js
+==================================================
+const mongoose = require("mongoose");
+
+const ReviewSchema = new mongoose.Schema(
+  {
+    playroomId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Playroom",
+      required: true,
+      index: true,
+    },
+
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+
+    userName: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 150,
+    },
+
+    rating: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5,
+      index: true,
+    },
+
+    comment: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 500,
+    },
+  },
+  {
+    timestamps: true,
+  },
+);
+
+// ðŸ”’ jedan user = jedna recenzija po igraonici
+ReviewSchema.index({ playroomId: 1, userId: 1 }, { unique: true });
+
+// âš¡ brÅ¾i fetch recenzija po datumu
+ReviewSchema.index({ playroomId: 1, createdAt: -1 });
+
+module.exports = mongoose.model("Review", ReviewSchema);
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\models\TimeSlot.js
+==================================================
+const mongoose = require("mongoose");
+
+const TimeSlotSchema = new mongoose.Schema(
+  {
+    playroomId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Playroom",
+      required: true,
+      index: true,
+    },
+
+    datum: {
+      type: Date,
+      required: [true, "Datum je obavezan"],
+      index: true,
+    },
+
+    vremeOd: {
+      type: String,
+      required: [true, "Vreme od je obavezno"],
+      trim: true,
+    },
+
+    vremeDo: {
+      type: String,
+      required: [true, "Vreme do je obavezno"],
+      trim: true,
+    },
+
+    zauzeto: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    aktivno: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+
+    cena: {
+      type: Number,
+      required: [true, "Cena je obavezna"],
+      min: 0,
+    },
+
+    vanRadnogVremena: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    napomenaAdmin: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
+  },
+  {
+    timestamps: true,
+  },
+);
+
+// jedinstven slot
+TimeSlotSchema.index(
+  { playroomId: 1, datum: 1, vremeOd: 1, vremeDo: 1 },
+  { unique: true },
+);
+
+// brzi query za frontend
+TimeSlotSchema.index({
+  playroomId: 1,
+  datum: 1,
+  aktivno: 1,
+  vanRadnogVremena: 1,
+});
+
+// brzi query za owner dashboard
+TimeSlotSchema.index({
+  playroomId: 1,
+  datum: 1,
+  zauzeto: 1,
+});
+
+module.exports = mongoose.model("TimeSlot", TimeSlotSchema);
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\models\User.js
+==================================================
+const mongoose = require("mongoose");
+const ROLES = require("../constants/roles");
+
+const deteSchema = new mongoose.Schema(
+  {
+    ime: {
+      type: String,
+      trim: true,
+      maxlength: 100,
+    },
+    godiste: {
+      type: Number,
+      min: 1900,
+      max: new Date().getFullYear(),
+    },
+  },
+  { _id: false },
+);
+
+const UserSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: [true, "Email je obavezan"],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, "Email nije validan"],
+      index: true,
+    },
+
+    password: {
+      type: String,
+      required: [true, "Lozinka je obavezna"],
+      minlength: 6,
+      select: false, // ðŸ”’ nikad se ne vraÄ‡a automatski
+    },
+
+    ime: {
+      type: String,
+      required: [true, "Ime je obavezno"],
+      trim: true,
+      maxlength: 100,
+    },
+
+    prezime: {
+      type: String,
+      required: [true, "Prezime je obavezno"],
+      trim: true,
+      maxlength: 100,
+    },
+
+    telefon: {
+      type: String,
+      required: [true, "Telefon je obavezan"],
+      trim: true,
+      maxlength: 30,
+    },
+
+    role: {
+      type: String,
+      enum: Object.values(ROLES),
+      default: ROLES.RODITELJ,
+      index: true,
+    },
+
+    passwordResetToken: {
+      type: String,
+      default: undefined,
+    },
+
+    passwordResetExpires: {
+      type: Date,
+      default: undefined,
+    },
+  },
+  {
+    timestamps: true,
+  },
+);
+
+// âš¡ brzi lookup za login
+UserSchema.index({ email: 1 });
+
+// ðŸ”’ uklanja sensitive podatke kad se Å¡alje JSON
+UserSchema.methods.toJSON = function () {
+  const obj = this.toObject();
+  delete obj.password;
+  delete obj.__v;
+  return obj;
+};
+
+module.exports = mongoose.model("User", UserSchema);
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\routes\adminRoutes.js
+==================================================
+const express = require("express");
+const router = express.Router();
+
+const { protect } = require("../middleware/authMiddleware");
+const authorize = require("../middleware/roleMiddleware");
+const ROLES = require("../constants/roles");
+
+const {
+  getUnverifiedPlayrooms,
+  getAllUsers,
+  verifyPlayroom,
+} = require("../controllers/adminController");
+
+// ðŸ”’ sve rute su zaÅ¡tiÄ‡ene + samo ADMIN
+router.use(protect);
+router.use(authorize(ROLES.ADMIN));
+
+// ðŸ“¦ PLAYROOMS
+router.get("/playrooms/unverified", getUnverifiedPlayrooms);
+router.put("/playrooms/:id/verify", verifyPlayroom);
+
+// ðŸ‘¤ USERS
+router.get("/users", getAllUsers);
+
+module.exports = router;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\routes\authRoutes.js
+==================================================
+const express = require("express");
+const router = express.Router();
+
+const {
+  register,
+  login,
+  logout,
+  refreshToken,
+  getMe,
+  forgotPassword,
+  resetPassword,
+} = require("../controllers/authController");
+
+const { protect } = require("../middleware/authMiddleware");
+
+// VALIDACIJA
+const validate = require("../middleware/validate");
+const {
+  registerSchema,
+  loginSchema,
+} = require("../validations/authValidation");
+
+// ðŸŒ JAVNE RUTE
+router.post("/register", validate(registerSchema), register);
+router.post("/login", validate(loginSchema), login);
+router.post("/logout", logout);
+router.post("/refresh", refreshToken);
+router.post("/forgot-password", forgotPassword);
+router.put("/reset-password/:token", resetPassword);
+
+// ðŸ”’ PRIVATNE RUTE
+router.get("/me", protect, getMe);
+
+module.exports = router;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\routes\bookingRoutes.js
+==================================================
+const express = require("express");
+const router = express.Router();
+
+const { protect } = require("../middleware/authMiddleware");
+const validate = require("../middleware/validate");
+
+const {
+  createBookingSchema,
+  createGuestBookingSchema,
+  bookingIdParamSchema,
+} = require("../validations/bookingValidation");
+
+const {
+  createBooking,
+  createGuestBooking,
+  getMyBookings,
+  getOwnerBookings,
+  cancelBooking,
+  confirmBooking,
+  getBookingById,
+} = require("../controllers/bookingController");
+
+// gost: registracija + login + rezervacija
+router.post("/guest", validate(createGuestBookingSchema), createGuestBooking);
+
+// ulogovan roditelj: standardna rezervacija
+router.post("/", protect, validate(createBookingSchema), createBooking);
+
+// sve ispod traÅ¾i login
+router.use(protect);
+
+router.get("/my", getMyBookings);
+router.get("/owner", getOwnerBookings);
+
+router.get("/:id", validate(bookingIdParamSchema), getBookingById);
+
+router.put("/:id/cancel", validate(bookingIdParamSchema), cancelBooking);
+
+router.put("/:id/confirm", validate(bookingIdParamSchema), confirmBooking);
+
+module.exports = router;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\routes\playroomRoutes.js
+==================================================
+const express = require("express");
+const router = express.Router();
+
+const { protect } = require("../middleware/authMiddleware");
+const authorize = require("../middleware/roleMiddleware");
+const checkOwner = require("../middleware/ownerMiddleware");
+const ROLES = require("../constants/roles");
+
+const {
+  createPlayroom,
+  getAllPlayrooms,
+  getPlayroomById,
+  getMyPlayrooms,
+  updatePlayroom,
+  deletePlayroom,
+  verifyPlayroom,
+  regenerateTimeSlots,
+  getOwnerStats,
+} = require("../controllers/playroomController");
+
+// ðŸŒ JAVNE RUTE
+router.get("/", getAllPlayrooms);
+
+// ðŸ”’ PRIVATNE - vlasnik
+router.get(
+  "/mine/my-playrooms",
+  protect,
+  authorize(ROLES.VLASNIK),
+  getMyPlayrooms,
+);
+
+router.get(
+  "/:id/stats",
+  protect,
+  authorize(ROLES.VLASNIK),
+  checkOwner,
+  getOwnerStats,
+);
+
+// âš ï¸ MORA POSLE SPECIFIÄŒNIH
+router.get("/:id", getPlayroomById);
+
+// âœï¸ CRUD
+router.post("/", protect, authorize(ROLES.VLASNIK), createPlayroom);
+
+router.put(
+  "/:id",
+  protect,
+  authorize(ROLES.VLASNIK),
+  checkOwner,
+  updatePlayroom,
+);
+
+router.delete(
+  "/:id",
+  protect,
+  authorize(ROLES.VLASNIK),
+  checkOwner,
+  deletePlayroom,
+);
+
+router.post(
+  "/:id/regenerate-slots",
+  protect,
+  authorize(ROLES.VLASNIK),
+  checkOwner,
+  regenerateTimeSlots,
+);
+
+// ðŸ‘‘ ADMIN
+router.put("/:id/verify", protect, authorize(ROLES.ADMIN), verifyPlayroom);
+
+module.exports = router;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\routes\reviewRoutes.js
+==================================================
+const express = require("express");
+const router = express.Router();
+
+const { protect } = require("../middleware/authMiddleware");
+const authorize = require("../middleware/roleMiddleware");
+const ROLES = require("../constants/roles");
+
+const {
+  addReview,
+  getReviews,
+  deleteReview,
+} = require("../controllers/reviewController");
+
+// ðŸŒ JAVNO
+router.get("/:playroomId", getReviews);
+
+// ðŸ”’ PRIVATNO
+router.post(
+  "/:playroomId",
+  protect,
+  authorize(ROLES.RODITELJ, ROLES.ADMIN),
+  addReview,
+);
+
+router.delete("/:id", protect, deleteReview);
+
+module.exports = router;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\routes\tempUploadRoutes.js
+==================================================
+const express = require("express");
+const router = express.Router();
+
+const { protect } = require("../middleware/authMiddleware");
+const upload = require("../middleware/upload");
+const cloudinary = require("../config/cloudinary");
+const streamifier = require("streamifier");
+
+// ðŸ”’ upload privremenih slika (npr. pre kreiranja igraonice)
+router.post(
+  "/temp",
+  protect,
+  upload.singleImage("image"),
+  async (req, res, next) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "Nema slike",
+        });
+      }
+
+      const result = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: "svet-igraonica/temp",
+            resource_type: "image",
+            transformation: [
+              { width: 1200, height: 900, crop: "limit" },
+              { quality: "auto" },
+              { fetch_format: "auto" },
+            ],
+          },
+          (error, uploadResult) => {
+            if (error) return reject(error);
+            resolve(uploadResult);
+          },
+        );
+
+        streamifier.createReadStream(req.file.buffer).pipe(stream);
+      });
+
+      res.status(200).json({
+        success: true,
+        data: {
+          url: result.secure_url,
+          publicId: result.public_id,
+          width: result.width,
+          height: result.height,
+          format: result.format,
+          size: result.bytes,
+        },
+        message: "Privremena slika uploadovana",
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+module.exports = router;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\routes\timeSlotRoutes.js
+==================================================
+const express = require("express");
+const router = express.Router();
+
+const { protect } = require("../middleware/authMiddleware");
+const authorize = require("../middleware/roleMiddleware");
+const ROLES = require("../constants/roles");
+
+const {
+  createTimeSlot,
+  getTimeSlotsByPlayroom,
+  getTimeSlotById,
+  getMyTimeSlots,
+  updateTimeSlot,
+  deleteTimeSlot,
+  generateSlotsForPlayroom,
+  getAvailableTimeSlots,
+  getAllTimeSlotsForOwner,
+  manualBookTimeSlot,
+  manualBookInterval,
+} = require("../controllers/timeSlotController");
+
+const validate = require("../middleware/validate");
+const {
+  createTimeSlotSchema,
+  updateTimeSlotSchema,
+  manualBookTimeSlotSchema,
+  playroomDateQuerySchema,
+  timeSlotIdParamSchema,
+} = require("../validations/timeSlotValidation");
+
+const { manualBookingSchema } = require("../validations/bookingValidation");
+
+router.post(
+  "/manual-book-interval",
+  protect,
+  validate(manualBookingSchema),
+  manualBookInterval,
+);
+
+// ðŸŒ JAVNE RUTE
+router.get(
+  "/playroom/:playroomId",
+  validate(playroomDateQuerySchema),
+  getTimeSlotsByPlayroom,
+);
+
+router.get(
+  "/playroom/:playroomId/available",
+  validate(playroomDateQuerySchema),
+  getAvailableTimeSlots,
+);
+
+router.get("/:id", validate(timeSlotIdParamSchema), getTimeSlotById);
+
+// ðŸ”’ sve ispod traÅ¾i login
+router.use(protect);
+
+// ðŸ‘¤ vlasnik/admin
+router.post(
+  "/",
+  authorize(ROLES.VLASNIK, ROLES.ADMIN),
+  validate(createTimeSlotSchema),
+  createTimeSlot,
+);
+router.get("/my", authorize(ROLES.VLASNIK, ROLES.ADMIN), getMyTimeSlots);
+router.post(
+  "/generate/:playroomId",
+  authorize(ROLES.VLASNIK, ROLES.ADMIN),
+  generateSlotsForPlayroom,
+);
+router.put(
+  "/:id",
+  authorize(ROLES.VLASNIK, ROLES.ADMIN),
+  validate(updateTimeSlotSchema),
+  updateTimeSlot,
+);
+router.delete(
+  "/:id",
+  authorize(ROLES.VLASNIK, ROLES.ADMIN),
+  validate(timeSlotIdParamSchema),
+  deleteTimeSlot,
+);
+
+router.get(
+  "/playroom/:playroomId/all",
+  authorize(ROLES.VLASNIK, ROLES.ADMIN),
+  validate(playroomDateQuerySchema),
+  getAllTimeSlotsForOwner,
+);
+
+router.post(
+  "/:id/manual-book",
+  authorize(ROLES.VLASNIK, ROLES.ADMIN),
+  validate(manualBookTimeSlotSchema),
+  manualBookTimeSlot,
+);
+
+router.post(
+  "/manual-book-interval",
+  protect,
+  validate(manualBookingSchema),
+  manualBookInterval,
+);
+
+module.exports = router;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\routes\uploadRoutes.js
+==================================================
+const express = require("express");
+const router = express.Router();
+
+const { protect } = require("../middleware/authMiddleware");
+const authorize = require("../middleware/roleMiddleware");
+const ROLES = require("../constants/roles");
+
+const upload = require("../middleware/upload");
+
+const {
+  uploadPlayroomImage,
+  deletePlayroomImage,
+} = require("../controllers/uploadController");
+
+const { uploadVideo } = require("../controllers/videoController");
+
+// ðŸ”’ sve rute zahtevaju login + vlasnik/admin
+router.use(protect);
+router.use(authorize(ROLES.VLASNIK, ROLES.ADMIN));
+
+// ðŸ“¸ upload slike
+router.post(
+  "/playroom/:playroomId",
+  upload.singleImage("image"),
+  uploadPlayroomImage,
+);
+
+// ðŸ—‘ brisanje slike
+router.delete("/playroom/:playroomId/:imageUrl", deletePlayroomImage);
+
+// ðŸŽ¥ upload video
+router.post("/video", upload.singleVideo("video"), uploadVideo);
+
+module.exports = router;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\scripts\generateSlots.js
+==================================================
+const dotenv = require("dotenv");
+const path = require("path");
+
+// UÄitaj .env iz root foldera
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+
+const connectDB = require("../config/db");
+const { generateAllTimeSlots } = require("../utils/generateTimeSlots");
+
+const run = async () => {
+  try {
+    console.log("ðŸ”Œ Povezujem se na bazu...");
+    await connectDB();
+    console.log("âœ… Povezano!\n");
+
+    const days = 30;
+    console.log(`ðŸ“… GeneriÅ¡em termine za narednih ${days} dana...\n`);
+
+    const result = await generateAllTimeSlots(days);
+
+    console.log("\nðŸ“Š KONAÄŒAN REZULTAT:");
+    console.log(`   Novi termini: ${result.totalCreated || 0}`);
+    console.log(`   PostojeÄ‡i termini: ${result.totalExisting || 0}`);
+
+    if (Array.isArray(result.results) && result.results.length > 0) {
+      console.log("\nðŸ“‹ Detalji po igraonicama:");
+      result.results.forEach((r) => {
+        console.log(
+          `   â€¢ ${r.naziv}: ${r.createdCount || 0} novih, ${
+            r.existingCount || 0
+          } postojeÄ‡ih${r.error ? ` | greÅ¡ka: ${r.error}` : ""}`,
+        );
+      });
+    }
+  } catch (error) {
+    console.error("âŒ GreÅ¡ka:", error.message);
+    process.exit(1);
+  } finally {
+    console.log("\nðŸ ZavrÅ¡eno.");
+    process.exit(exitCode);
+  }
+};
+
+run();
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\scripts\testEmail.js
+==================================================
+const dotenv = require("dotenv");
+const path = require("path");
+const nodemailer = require("nodemailer");
+
+// Load env
+dotenv.config({ path: path.join(__dirname, "../../.env") });
+
+const testEmail = async () => {
+  try {
+    console.log("ðŸ“§ Testiranje email konfiguracije...\n");
+
+    const { EMAIL_USER, EMAIL_PASS } = process.env;
+
+    console.log("Email user:", EMAIL_USER || "âŒ NEDOSTAJE");
+    console.log("Email pass:", EMAIL_PASS ? "âœ” postoji" : "âŒ NEDOSTAJE");
+
+    if (!EMAIL_USER || !EMAIL_PASS) {
+      console.error("\nâŒ Email podaci nedostaju u .env fajlu!");
+      console.log("Dodaj:");
+      console.log("EMAIL_USER=your_email@gmail.com");
+      console.log("EMAIL_PASS=your_app_password\n");
+      process.exit(1);
+    }
+
+    // Transporter
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: EMAIL_USER,
+        pass: EMAIL_PASS,
+      },
+    });
+
+    // Verify konekcije
+    await transporter.verify();
+    console.log("âœ… Email konekcija uspeÅ¡na!\n");
+
+    // Send mail
+    const info = await transporter.sendMail({
+      from: `"Svet Igraonica" <${EMAIL_USER}>`,
+      to: EMAIL_USER,
+      subject: "âœ… Test email - Svet Igraonica",
+      html: `
+        <div style="font-family: Arial; max-width: 600px; margin:auto; padding:20px; border:1px solid #ddd; border-radius:10px;">
+          <h2 style="color:#ff6b4a;">ðŸŽ‰ Email radi!</h2>
+          <p>Ovo je test email sa tvoje platforme <strong>Svet Igraonica</strong>.</p>
+          <p>Sve je spremno za slanje notifikacija korisnicima.</p>
+          <hr>
+          <p style="font-size:12px;color:#666;">
+            ${new Date().toLocaleString("sr-RS")}
+          </p>
+        </div>
+      `,
+    });
+
+    console.log("ðŸ“¨ Email uspeÅ¡no poslat!");
+    console.log("ID:", info.messageId);
+    console.log("Na:", EMAIL_USER);
+  } catch (error) {
+    console.error("\nâŒ GREÅ KA:");
+    console.error(error.message);
+    process.exit(1);
+  } finally {
+    console.log("\nðŸ ZavrÅ¡eno.");
+    process.exit(0);
+  }
+};
+
+testEmail();
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\services\authService.js
+==================================================
+const User = require("../models/User");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const generateAccessToken = require("../utils/generateToken");
+const ROLES = require("../constants/roles");
+
+const REFRESH_TOKEN_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
+const createError = (message, statusCode = 400) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+};
+
+const normalizeEmail = (email) => email?.trim().toLowerCase();
+
+const hashPassword = async (password) => {
+  const salt = await bcrypt.genSalt(10);
+  return bcrypt.hash(password, salt);
+};
+
+const generateRefreshToken = (user) => {
+  return jwt.sign({ id: user._id }, process.env.REFRESH_TOKEN_SECRET, {
+    expiresIn: "7d",
+  });
+};
+
+const generateAuthResponse = (user) => {
+  const accessToken = generateAccessToken(user);
+  const refreshToken = generateRefreshToken(user);
+
+  return { accessToken, refreshToken };
+};
+
+const createParentUser = async ({
+  ime,
+  prezime,
+  email,
+  password,
+  telefon,
+  role = ROLES.RODITELJ,
+  deca = [],
+  session = null,
+}) => {
+  const normalizedEmail = normalizeEmail(email);
+
+  const userExists = await User.findOne({ email: normalizedEmail }).session(
+    session,
+  );
+  if (userExists) {
+    throw createError("Korisnik sa ovom email adresom veÄ‡ postoji", 400);
+  }
+
+  const hashedPassword = await hashPassword(password);
+
+  const createdUsers = await User.create(
+    [
+      {
+        ime: ime?.trim(),
+        prezime: prezime?.trim(),
+        email: normalizedEmail,
+        password: hashedPassword,
+        telefon: telefon?.trim(),
+        role,
+        deca: Array.isArray(deca) ? deca : [],
+      },
+    ],
+    session ? { session } : {},
+  );
+
+  const user = createdUsers[0];
+
+  return user;
+};
+
+exports.registerUser = async (data) => {
+  const { ime, prezime, email, password, telefon, role, deca } = data;
+
+  const userRole = role === ROLES.VLASNIK ? ROLES.VLASNIK : ROLES.RODITELJ;
+
+  const user = await createParentUser({
+    ime,
+    prezime,
+    email,
+    password,
+    telefon,
+    role: userRole,
+    deca,
+  });
+
+  const tokens = generateAuthResponse(user);
+
+  return { user, ...tokens };
+};
+
+exports.loginUser = async (email, password) => {
+  const normalizedEmail = normalizeEmail(email);
+
+  const user = await User.findOne({ email: normalizedEmail }).select(
+    "+password",
+  );
+
+  if (!user) {
+    throw createError("PogreÅ¡an email ili lozinka", 401);
+  }
+
+  const isMatch = await bcrypt.compare(password, user.password);
+
+  if (!isMatch) {
+    throw createError("PogreÅ¡an email ili lozinka", 401);
+  }
+
+  const tokens = generateAuthResponse(user);
+
+  return { user, ...tokens };
+};
+
+exports.refreshUserToken = async (refreshToken) => {
+  if (!refreshToken) {
+    throw createError("Niste autorizovani", 401);
+  }
+
+  let decoded;
+
+  try {
+    decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      throw createError("Refresh token je istekao", 401);
+    }
+
+    throw createError("Refresh token nije validan", 401);
+  }
+
+  const user = await User.findById(decoded.id);
+
+  if (!user) {
+    throw createError("Korisnik ne postoji", 401);
+  }
+
+  const accessToken = generateAccessToken(user);
+
+  return { accessToken };
+};
+
+exports.registerGuestParent = async (data, session = null) => {
+  const { ime, prezime, email, password, telefon } = data;
+
+  const normalizedEmail = normalizeEmail(email);
+
+  const userExists = await User.findOne({ email: normalizedEmail }).session(
+    session,
+  );
+  if (userExists) {
+    throw createError(
+      "Korisnik sa ovom email adresom veÄ‡ postoji. Prijavite se da biste zavrÅ¡ili rezervaciju.",
+      400,
+    );
+  }
+
+  const user = await createParentUser({
+    ime,
+    prezime,
+    email: normalizedEmail,
+    password,
+    telefon,
+    role: ROLES.RODITELJ,
+    deca: [],
+    session,
+  });
+
+  const { accessToken, refreshToken } = generateAuthResponse(user);
+
+  return {
+    user,
+    accessToken,
+    refreshToken,
+  };
+};
+
+exports.cookieOptions = REFRESH_TOKEN_COOKIE_OPTIONS;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\services\bookingService.js
+==================================================
+const TimeSlot = require("../models/TimeSlot");
+const Booking = require("../models/Booking");
+const BOOKING_STATUS = require("../constants/bookingStatus");
+const ErrorResponse = require("../utils/errorResponse");
+const mongoose = require("mongoose");
+const Playroom = require("../models/Playroom");
+
+const buildDateTime = (date, time) => {
+  const [hour, minute] = String(time || "00:00")
+    .split(":")
+    .map((v) => parseInt(v, 10));
+
+  const d = new Date(date);
+
+  return new Date(
+    d.getFullYear(),
+    d.getMonth(),
+    d.getDate(),
+    hour || 0,
+    minute || 0,
+    0,
+    0,
+  );
+};
+
+const timeToMinutes = (time) => {
+  const [hour, minute] = String(time || "00:00")
+    .split(":")
+    .map((v) => parseInt(v, 10));
+
+  return (hour || 0) * 60 + (minute || 0);
+};
+
+const minutesToTime = (minutes) => {
+  const safeMinutes = Math.max(0, Number(minutes) || 0);
+  const hour = Math.floor(safeMinutes / 60);
+  const minute = safeMinutes % 60;
+
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+};
+
+const isOverlapping = (startA, endA, startB, endB) => {
+  return startA < endB && endA > startB;
+};
+
+const getDayKeyFromDate = (date) => {
+  const day = new Date(date).getDay();
+
+  const map = {
+    0: "nedelja",
+    1: "ponedeljak",
+    2: "utorak",
+    3: "sreda",
+    4: "cetvrtak",
+    5: "petak",
+    6: "subota",
+  };
+
+  return map[day];
+};
+
+const getWorkingHoursForDate = (playroom, date) => {
+  const dayKey = getDayKeyFromDate(date);
+  const dayConfig = playroom?.radnoVreme?.[dayKey];
+
+  if (
+    !dayConfig ||
+    dayConfig.radi === false ||
+    !dayConfig.od ||
+    !dayConfig.do
+  ) {
+    return null;
+  }
+
+  return {
+    vremeOd: dayConfig.od,
+    vremeDo: dayConfig.do,
+  };
+};
+
+const getActiveBookingsForDate = async ({
+  playroomId,
+  datum,
+  session = null,
+}) => {
+  const startDate = new Date(datum);
+  startDate.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(datum);
+  endDate.setHours(23, 59, 59, 999);
+
+  let query = Booking.find({
+    playroomId,
+    datum: { $gte: startDate, $lte: endDate },
+    status: { $ne: BOOKING_STATUS.OTKAZANO },
+  }).sort({ vremeOd: 1 });
+
+  if (session) {
+    query = query.session(session);
+  }
+
+  return query;
+};
+
+const buildDaySegments = ({ workingHours, bookings }) => {
+  if (!workingHours) return [];
+
+  const dayStart = timeToMinutes(workingHours.vremeOd);
+  const dayEnd = timeToMinutes(workingHours.vremeDo);
+
+  const sortedBookings = [...(bookings || [])].sort(
+    (a, b) => timeToMinutes(a.vremeOd) - timeToMinutes(b.vremeOd),
+  );
+
+  const segments = [];
+  let cursor = dayStart;
+
+  for (const booking of sortedBookings) {
+    const bookingStart = timeToMinutes(booking.vremeOd);
+    const bookingEnd = timeToMinutes(booking.vremeDo);
+
+    if (bookingStart > cursor) {
+      segments.push({
+        tip: "slobodno",
+        vremeOd: minutesToTime(cursor),
+        vremeDo: minutesToTime(bookingStart),
+      });
+    }
+
+    segments.push({
+      tip: "zauzeto",
+      vremeOd: booking.vremeOd,
+      vremeDo: booking.vremeDo,
+      booking,
+    });
+
+    cursor = Math.max(cursor, bookingEnd);
+  }
+
+  if (cursor < dayEnd) {
+    segments.push({
+      tip: "slobodno",
+      vremeOd: minutesToTime(cursor),
+      vremeDo: minutesToTime(dayEnd),
+    });
+  }
+
+  return segments;
+};
+
+const reserveSlot = async ({
+  slotId,
+  user,
+  payload,
+  session: externalSession = null,
+}) => {
+  const ownSession = !externalSession;
+  const session = externalSession || (await mongoose.startSession());
+  let booking = null;
+
+  try {
+    console.log("ðŸ“Œ RESERVE SLOT:", {
+      slotId,
+      user: user?._id || null,
+      time: new Date().toISOString(),
+    });
+    if (ownSession) {
+      session.startTransaction();
+    }
+
+    if (
+      !payload?.imeRoditelja ||
+      !payload?.prezimeRoditelja ||
+      !payload?.emailRoditelja ||
+      !payload?.telefonRoditelja
+    ) {
+      throw new ErrorResponse("Nedostaju podaci za rezervaciju", 400);
+    }
+    if (!payload?.cenaId) {
+      throw new ErrorResponse("Cena je obavezna", 400);
+    }
+
+    if (!payload?.brojDece || Number(payload.brojDece) < 1) {
+      throw new ErrorResponse("Broj dece mora biti najmanje 1", 400);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(slotId)) {
+      throw new ErrorResponse("Nevalidan slot ID", 400);
+    }
+
+    const slot = await TimeSlot.findOneAndUpdate(
+      {
+        _id: slotId,
+        zauzeto: false,
+        aktivno: true,
+        vanRadnogVremena: false,
+      },
+      {
+        $set: {
+          zauzeto: true,
+        },
+      },
+      {
+        new: true,
+        session,
+      },
+    );
+
+    if (!slot) {
+      throw new ErrorResponse("Termin je veÄ‡ zauzet ili ne postoji", 400);
+    }
+
+    const slotEnd = buildDateTime(slot.datum, slot.vremeDo);
+
+    if (slotEnd <= new Date()) {
+      await TimeSlot.findByIdAndUpdate(
+        slot._id,
+        { $set: { zauzeto: false } },
+        { session },
+      );
+
+      throw new ErrorResponse("Ne moÅ¾eÅ¡ rezervisati proÅ¡li termin", 400);
+    }
+
+    const playroom = await Playroom.findById(slot.playroomId).session(session);
+
+    if (!playroom) {
+      await TimeSlot.findByIdAndUpdate(
+        slot._id,
+        { $set: { zauzeto: false } },
+        { session },
+      );
+
+      throw new ErrorResponse("Igraonica nije pronaÄ‘ena", 404);
+    }
+
+    const brojDece = Number(payload.brojDece) || 1;
+    const trajanjeSati = (() => {
+      const start = buildDateTime(slot.datum, slot.vremeOd);
+      const end = buildDateTime(slot.datum, slot.vremeDo);
+      const diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+      return diff > 0 ? diff : 1;
+    })();
+
+    const cena = Array.isArray(playroom.cene)
+      ? playroom.cene.find((c) => String(c._id) === String(payload.cenaId))
+      : null;
+
+    if (!cena) {
+      await TimeSlot.findByIdAndUpdate(
+        slot._id,
+        { $set: { zauzeto: false } },
+        { session },
+      );
+
+      throw new ErrorResponse("Izabrana cena nije pronaÄ‘ena", 400);
+    }
+
+    let ukupnaCena = 0;
+
+    if (cena.tip === "fiksno") {
+      ukupnaCena += Number(cena.cena) || 0;
+    }
+
+    if (cena.tip === "po_osobi") {
+      ukupnaCena += (Number(cena.cena) || 0) * brojDece;
+    }
+
+    if (cena.tip === "po_satu") {
+      ukupnaCena += (Number(cena.cena) || 0) * trajanjeSati;
+    }
+
+    let selectedPaket = null;
+
+    if (payload.paketId) {
+      selectedPaket = Array.isArray(playroom.paketi)
+        ? playroom.paketi.find((p) => String(p._id) === String(payload.paketId))
+        : null;
+
+      if (!selectedPaket) {
+        await TimeSlot.findByIdAndUpdate(
+          slot._id,
+          { $set: { zauzeto: false } },
+          { session },
+        );
+
+        throw new ErrorResponse("Izabrani paket nije pronaÄ‘en", 400);
+      }
+
+      ukupnaCena += Number(selectedPaket.cena) || 0;
+    }
+
+    const selectedUsluge = [];
+
+    const uniqueUslugeIds = Array.isArray(payload.usluge)
+      ? [...new Set(payload.usluge.map((id) => String(id)))]
+      : [];
+    if (uniqueUslugeIds.length > 0) {
+      for (const uslugaId of uniqueUslugeIds) {
+        const usluga = Array.isArray(playroom.dodatneUsluge)
+          ? playroom.dodatneUsluge.find(
+              (u) => String(u._id) === String(uslugaId),
+            )
+          : null;
+
+        if (!usluga) {
+          await TimeSlot.findByIdAndUpdate(
+            slot._id,
+            { $set: { zauzeto: false } },
+            { session },
+          );
+
+          throw new ErrorResponse(
+            "Jedna od izabranih usluga nije pronaÄ‘ena",
+            400,
+          );
+        }
+
+        selectedUsluge.push({
+          naziv: usluga.naziv,
+          cena: Number(usluga.cena) || 0,
+          tip: usluga.tip || "fiksno",
+          opis: usluga.opis || "",
+        });
+
+        if (usluga.tip === "fiksno") {
+          ukupnaCena += Number(usluga.cena) || 0;
+        }
+
+        if (usluga.tip === "po_osobi") {
+          ukupnaCena += (Number(usluga.cena) || 0) * brojDece;
+        }
+
+        if (usluga.tip === "po_satu") {
+          ukupnaCena += (Number(usluga.cena) || 0) * trajanjeSati;
+        }
+      }
+    }
+
+    let created;
+
+    try {
+      created = await Booking.create(
+        [
+          {
+            roditeljId: user?._id || null,
+            playroomId: slot.playroomId,
+            timeSlotId: slot._id,
+            datum: slot.datum,
+            vremeOd: slot.vremeOd,
+            vremeDo: slot.vremeDo,
+            ukupnaCena,
+            status: BOOKING_STATUS.CEKANJE,
+            napomena: payload.napomena || "",
+            imeRoditelja: payload.imeRoditelja.trim(),
+            prezimeRoditelja: payload.prezimeRoditelja.trim(),
+            emailRoditelja: payload.emailRoditelja.trim().toLowerCase(),
+            telefonRoditelja: payload.telefonRoditelja.trim(),
+            brojDece,
+            izabranaCena: {
+              naziv: cena.naziv,
+              cena: Number(cena.cena) || 0,
+              tip: cena.tip || "fiksno",
+              opis: cena.opis || "",
+            },
+            izabraniPaket: selectedPaket
+              ? {
+                  naziv: selectedPaket.naziv,
+                  cena: Number(selectedPaket.cena) || 0,
+                  opis: selectedPaket.opis || "",
+                }
+              : undefined,
+            izabraneUsluge: selectedUsluge,
+          },
+        ],
+        { session },
+      );
+    } catch (err) {
+      if (err.code === 11000) {
+        await TimeSlot.findByIdAndUpdate(
+          slot._id,
+          { $set: { zauzeto: false } },
+          { session },
+        );
+
+        throw new ErrorResponse("Termin je upravo zauzet, pokuÅ¡aj ponovo", 400);
+      }
+
+      throw err;
+    }
+
+    booking = created[0];
+
+    if (ownSession) {
+      await session.commitTransaction();
+    }
+
+    console.log("âœ… BOOKING CREATED:", {
+      bookingId: booking._id,
+      slotId,
+      user: user?._id || null,
+      time: new Date().toISOString(),
+    });
+
+    return booking;
+  } catch (err) {
+    if (ownSession) {
+      await session.abortTransaction();
+    }
+    throw err;
+  } finally {
+    if (ownSession) {
+      session.endSession();
+    }
+  }
+};
+
+const reserveCustomInterval = async ({
+  playroomId,
+  datum,
+  vremeOd,
+  vremeDo,
+  user,
+  payload,
+  session: externalSession = null,
+}) => {
+  const ownSession = !externalSession;
+  const session = externalSession || (await mongoose.startSession());
+  let booking = null;
+
+  try {
+    if (ownSession) {
+      session.startTransaction();
+    }
+
+    if (
+      !payload?.imeRoditelja ||
+      !payload?.prezimeRoditelja ||
+      !payload?.emailRoditelja ||
+      !payload?.telefonRoditelja
+    ) {
+      throw new ErrorResponse("Nedostaju podaci za rezervaciju", 400);
+    }
+
+    if (!payload?.cenaId) {
+      throw new ErrorResponse("Cena je obavezna", 400);
+    }
+
+    if (!payload?.brojDece || Number(payload.brojDece) < 1) {
+      throw new ErrorResponse("Broj dece mora biti najmanje 1", 400);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(playroomId)) {
+      throw new ErrorResponse("Nevalidan ID igraonice", 400);
+    }
+
+    const bookingDate = new Date(datum);
+    bookingDate.setHours(0, 0, 0, 0);
+
+    const playroom = await Playroom.findById(playroomId).session(session);
+
+    if (!playroom) {
+      throw new ErrorResponse("Igraonica nije pronaÄ‘ena", 404);
+    }
+
+    const workingHours = getWorkingHoursForDate(playroom, bookingDate);
+
+    if (!workingHours) {
+      throw new ErrorResponse("Igraonica ne radi tog dana", 400);
+    }
+
+    const startMinutes = timeToMinutes(vremeOd);
+    const endMinutes = timeToMinutes(vremeDo);
+    const workingStart = timeToMinutes(workingHours.vremeOd);
+    const workingEnd = timeToMinutes(workingHours.vremeDo);
+
+    if (endMinutes <= startMinutes) {
+      throw new ErrorResponse(
+        "Vreme zavrÅ¡etka mora biti posle vremena poÄetka",
+        400,
+      );
+    }
+
+    if (startMinutes < workingStart || endMinutes > workingEnd) {
+      throw new ErrorResponse(
+        "Rezervacija mora biti unutar radnog vremena igraonice",
+        400,
+      );
+    }
+
+    const bookingEndDate = buildDateTime(bookingDate, vremeDo);
+
+    if (bookingEndDate <= new Date()) {
+      throw new ErrorResponse("Ne moÅ¾eÅ¡ rezervisati proÅ¡li termin", 400);
+    }
+
+    const existingBookings = await getActiveBookingsForDate({
+      playroomId,
+      datum: bookingDate,
+      session,
+    });
+
+    const hasOverlap = existingBookings.some((existing) =>
+      isOverlapping(
+        startMinutes,
+        endMinutes,
+        timeToMinutes(existing.vremeOd),
+        timeToMinutes(existing.vremeDo),
+      ),
+    );
+
+    if (hasOverlap) {
+      throw new ErrorResponse(
+        "Izabrani termin se preklapa sa postojeÄ‡om rezervacijom",
+        400,
+      );
+    }
+
+    const brojDece = Number(payload.brojDece) || 1;
+    const trajanjeSati = (endMinutes - startMinutes) / 60;
+
+    const cena = Array.isArray(playroom.cene)
+      ? playroom.cene.find((c) => String(c._id) === String(payload.cenaId))
+      : null;
+
+    if (!cena) {
+      throw new ErrorResponse("Izabrana cena nije pronaÄ‘ena", 400);
+    }
+
+    let ukupnaCena = 0;
+
+    if (cena.tip === "fiksno") {
+      ukupnaCena += Number(cena.cena) || 0;
+    }
+
+    if (cena.tip === "po_osobi") {
+      ukupnaCena += (Number(cena.cena) || 0) * brojDece;
+    }
+
+    if (cena.tip === "po_satu") {
+      ukupnaCena += (Number(cena.cena) || 0) * trajanjeSati;
+    }
+
+    let selectedPaket = null;
+
+    if (payload.paketId) {
+      selectedPaket = Array.isArray(playroom.paketi)
+        ? playroom.paketi.find((p) => String(p._id) === String(payload.paketId))
+        : null;
+
+      if (!selectedPaket) {
+        throw new ErrorResponse("Izabrani paket nije pronaÄ‘en", 400);
+      }
+
+      ukupnaCena += Number(selectedPaket.cena) || 0;
+    }
+
+    const selectedUsluge = [];
+    const uniqueUslugeIds = Array.isArray(payload.usluge)
+      ? [...new Set(payload.usluge.map((id) => String(id)))]
+      : [];
+
+    for (const uslugaId of uniqueUslugeIds) {
+      const usluga = Array.isArray(playroom.dodatneUsluge)
+        ? playroom.dodatneUsluge.find((u) => String(u._id) === String(uslugaId))
+        : null;
+
+      if (!usluga) {
+        throw new ErrorResponse(
+          "Jedna od izabranih usluga nije pronaÄ‘ena",
+          400,
+        );
+      }
+
+      selectedUsluge.push({
+        naziv: usluga.naziv,
+        cena: Number(usluga.cena) || 0,
+        tip: usluga.tip || "fiksno",
+        opis: usluga.opis || "",
+      });
+
+      if (usluga.tip === "fiksno") {
+        ukupnaCena += Number(usluga.cena) || 0;
+      }
+
+      if (usluga.tip === "po_osobi") {
+        ukupnaCena += (Number(usluga.cena) || 0) * brojDece;
+      }
+
+      if (usluga.tip === "po_satu") {
+        ukupnaCena += (Number(usluga.cena) || 0) * trajanjeSati;
+      }
+    }
+
+    const created = await Booking.create(
+      [
+        {
+          roditeljId: user?._id || null,
+          playroomId,
+          timeSlotId: null,
+          datum: bookingDate,
+          vremeOd,
+          vremeDo,
+          ukupnaCena,
+          status: BOOKING_STATUS.CEKANJE,
+          napomena: payload.napomena || "",
+          imeRoditelja: payload.imeRoditelja.trim(),
+          prezimeRoditelja: payload.prezimeRoditelja.trim(),
+          emailRoditelja: payload.emailRoditelja.trim().toLowerCase(),
+          telefonRoditelja: payload.telefonRoditelja.trim(),
+          brojDece,
+          izabranaCena: {
+            naziv: cena.naziv,
+            cena: Number(cena.cena) || 0,
+            tip: cena.tip || "fiksno",
+            opis: cena.opis || "",
+          },
+          izabraniPaket: selectedPaket
+            ? {
+                naziv: selectedPaket.naziv,
+                cena: Number(selectedPaket.cena) || 0,
+                opis: selectedPaket.opis || "",
+              }
+            : undefined,
+          izabraneUsluge: selectedUsluge,
+        },
+      ],
+      { session },
+    );
+
+    booking = created[0];
+
+    if (ownSession) {
+      await session.commitTransaction();
+    }
+
+    return booking;
+  } catch (err) {
+    if (ownSession) {
+      await session.abortTransaction();
+    }
+    throw err;
+  } finally {
+    if (ownSession) {
+      session.endSession();
+    }
+  }
+};
+
+const {
+  sendBookingConfirmation,
+  sendBookingCancellation,
+  sendBookingConfirmationToOwner,
+} = require("../utils/emailService");
+
+// ðŸ”¥ CENTRALIZOVANO SLANJE EMAILOVA
+const handleBookingEmails = async (bookingId) => {
+  try {
+    const booking = await Booking.findById(bookingId)
+      .populate({
+        path: "playroomId",
+        select: "naziv adresa grad vlasnikId",
+        populate: {
+          path: "vlasnikId",
+          select: "ime prezime email",
+        },
+      })
+      .populate("roditeljId", "ime prezime email telefon")
+      .populate("timeSlotId");
+
+    if (!booking) return;
+
+    const userForEmail = booking.roditeljId || {
+      ime: booking.imeRoditelja,
+      prezime: booking.prezimeRoditelja,
+      email: booking.emailRoditelja,
+      telefon: booking.telefonRoditelja,
+    };
+
+    const playroom = booking.playroomId;
+
+    const timeSlot = {
+      datum: booking.datum,
+      vremeOd: booking.vremeOd,
+      vremeDo: booking.vremeDo,
+    };
+
+    if (userForEmail.email) {
+      await sendBookingConfirmation(booking, userForEmail, playroom, timeSlot);
+    }
+
+    if (playroom?.vlasnikId?.email) {
+      await sendBookingConfirmationToOwner(
+        booking,
+        userForEmail,
+        playroom,
+        timeSlot,
+        playroom.vlasnikId,
+      );
+    }
+  } catch (err) {
+    console.error("EMAIL ERROR:", err.message);
+  }
+};
+
+const createBookingWithEmails = async (data) => {
+  const booking = await reserveSlot(data);
+
+  setImmediate(async () => {
+    try {
+      await handleBookingEmails(booking._id);
+    } catch (error) {
+      console.error("GreÅ¡ka pri slanju booking emailova:", error.message);
+    }
+  });
+
+  return booking;
+};
+
+const getBookingWithRelations = async (bookingId, session = null) => {
+  let query = Booking.findById(bookingId)
+    .populate({
+      path: "playroomId",
+      select: "naziv adresa grad vlasnikId",
+      populate: {
+        path: "vlasnikId",
+        select: "ime prezime email",
+      },
+    })
+    .populate("roditeljId", "ime prezime email telefon")
+    .populate("timeSlotId");
+
+  if (session) {
+    query = query.session(session);
+  }
+
+  return query;
+};
+
+const canUserManageBooking = (booking, user) => {
+  if (!booking || !user) return false;
+
+  const isAdmin = user.role === "admin";
+
+  const isOwnerOfBooking =
+    booking.roditeljId &&
+    booking.roditeljId._id &&
+    booking.roditeljId._id.toString() === user.id;
+
+  const isPlayroomOwner =
+    booking.playroomId?.vlasnikId &&
+    (booking.playroomId.vlasnikId._id?.toString() === user.id ||
+      booking.playroomId.vlasnikId.toString() === user.id);
+
+  return {
+    isAdmin,
+    isOwnerOfBooking,
+    isPlayroomOwner,
+  };
+};
+
+const canConfirmPastBooking = (booking) => {
+  const bookingEnd = buildDateTime(booking.datum, booking.vremeDo);
+
+  return bookingEnd > new Date();
+};
+
+const cancelBookingById = async ({ bookingId, currentUser }) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const booking = await getBookingWithRelations(bookingId, session);
+
+    if (!booking) {
+      throw new ErrorResponse("Rezervacija nije pronaÄ‘ena", 404);
+    }
+
+    const { isAdmin, isOwnerOfBooking, isPlayroomOwner } = canUserManageBooking(
+      booking,
+      currentUser,
+    );
+
+    if (!isOwnerOfBooking && !isPlayroomOwner && !isAdmin) {
+      throw new ErrorResponse("Nemate pravo da otkaÅ¾ete ovu rezervaciju", 403);
+    }
+
+    if (booking.status === BOOKING_STATUS.OTKAZANO) {
+      throw new ErrorResponse("Rezervacija je veÄ‡ otkazana", 400);
+    }
+
+    if (booking.status === BOOKING_STATUS.ZAVRSENO) {
+      throw new ErrorResponse(
+        "ZavrÅ¡ena rezervacija ne moÅ¾e biti otkazana",
+        400,
+      );
+    }
+
+    booking.status = BOOKING_STATUS.OTKAZANO;
+    await booking.save({ session });
+
+    const unlockedSlot = await unlockSlot(
+      booking.timeSlotId?._id || booking.timeSlotId,
+      session,
+    );
+
+    if (!unlockedSlot) {
+      throw new ErrorResponse("Slot za ovu rezervaciju nije pronaÄ‘en", 404);
+    }
+
+    await session.commitTransaction();
+
+    console.log("âŒ BOOKING CANCELED:", {
+      bookingId,
+      user: currentUser?.id || null,
+      time: new Date().toISOString(),
+    });
+
+    setImmediate(async () => {
+      try {
+        await sendCancellationEmail(booking);
+
+        if (booking.playroomId?.vlasnikId?.email) {
+          await require("../utils/emailService").sendCancellationToOwner(
+            booking,
+            booking.roditeljId,
+            booking.playroomId,
+            {
+              datum: booking.datum,
+              vremeOd: booking.vremeOd,
+              vremeDo: booking.vremeDo,
+            },
+            booking.playroomId.vlasnikId,
+          );
+        }
+      } catch (error) {
+        console.error(
+          "GreÅ¡ka pri slanju emaila nakon otkazivanja rezervacije:",
+          error.message,
+        );
+      }
+    });
+
+    return booking;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
+
+const confirmBookingById = async ({ bookingId, currentUser }) => {
+  const booking = await getBookingWithRelations(bookingId);
+
+  if (!booking) {
+    throw new ErrorResponse("Rezervacija nije pronaÄ‘ena", 404);
+  }
+
+  const { isAdmin, isPlayroomOwner } = canUserManageBooking(
+    booking,
+    currentUser,
+  );
+
+  if (!isPlayroomOwner && !isAdmin) {
+    throw new ErrorResponse("Nemate pravo da potvrdite ovu rezervaciju", 403);
+  }
+
+  if (booking.status === BOOKING_STATUS.OTKAZANO) {
+    throw new ErrorResponse("Otkazana rezervacija ne moÅ¾e biti potvrÄ‘ena", 400);
+  }
+
+  if (booking.status === BOOKING_STATUS.POTVRDJENO) {
+    throw new ErrorResponse("Rezervacija je veÄ‡ potvrÄ‘ena", 400);
+  }
+
+  if (booking.status === BOOKING_STATUS.ZAVRSENO) {
+    throw new ErrorResponse(
+      "ZavrÅ¡ena rezervacija ne moÅ¾e biti ponovo potvrÄ‘ena",
+      400,
+    );
+  }
+
+  if (!canConfirmPastBooking(booking)) {
+    throw new ErrorResponse("ProÅ¡li termin ne moÅ¾e biti potvrÄ‘en", 400);
+  }
+
+  booking.status = BOOKING_STATUS.POTVRDJENO;
+  await booking.save();
+
+  console.log("âœ… BOOKING CONFIRMED:", {
+    bookingId,
+    user: currentUser?.id || null,
+    time: new Date().toISOString(),
+  });
+
+  setImmediate(async () => {
+    try {
+      await sendConfirmationEmail(booking);
+
+      if (booking.playroomId?.vlasnikId?.email) {
+        await sendBookingConfirmationToOwner(
+          booking,
+          booking.roditeljId,
+          booking.playroomId,
+          {
+            datum: booking.datum,
+            vremeOd: booking.vremeOd,
+            vremeDo: booking.vremeDo,
+          },
+          booking.playroomId.vlasnikId,
+        );
+      }
+    } catch (error) {
+      console.error(
+        "GreÅ¡ka pri slanju emaila nakon potvrde rezervacije:",
+        error.message,
+      );
+    }
+  });
+
+  return booking;
+};
+
+const sendCancellationEmail = async (booking) => {
+  try {
+    const userForEmail = booking.roditeljId || {
+      ime: booking.imeRoditelja,
+      prezime: booking.prezimeRoditelja,
+      email: booking.emailRoditelja,
+    };
+
+    const playroom = booking.playroomId;
+
+    const slot = {
+      datum: booking.datum,
+      vremeOd: booking.vremeOd,
+      vremeDo: booking.vremeDo,
+    };
+
+    if (userForEmail.email) {
+      await sendBookingCancellation(userForEmail, playroom, slot);
+    }
+  } catch (error) {
+    console.error("GreÅ¡ka pri slanju emaila (cancel):", error.message);
+  }
+};
+
+const sendConfirmationEmail = async (booking) => {
+  try {
+    const userForEmail = booking.roditeljId || {
+      ime: booking.imeRoditelja,
+      prezime: booking.prezimeRoditelja,
+      email: booking.emailRoditelja,
+    };
+
+    const playroom = booking.playroomId;
+
+    const slot = {
+      datum: booking.datum,
+      vremeOd: booking.vremeOd,
+      vremeDo: booking.vremeDo,
+    };
+
+    if (userForEmail.email) {
+      await sendBookingConfirmation(booking, userForEmail, playroom, slot);
+    }
+  } catch (error) {
+    console.error("GreÅ¡ka pri slanju emaila (confirm):", error.message);
+  }
+};
+
+const lockSlot = async (slotId) => {
+  return TimeSlot.findOneAndUpdate(
+    {
+      _id: slotId,
+      zauzeto: false,
+      aktivno: true,
+      vanRadnogVremena: false,
+    },
+    {
+      $set: {
+        zauzeto: true,
+      },
+    },
+    { new: true },
+  );
+};
+
+const unlockSlot = async (slotId, session = null) => {
+  if (!slotId || !mongoose.Types.ObjectId.isValid(slotId)) {
+    throw new ErrorResponse("Nevalidan slot ID za otkljuÄavanje", 400);
+  }
+
+  const options = { new: true };
+  if (session) {
+    options.session = session;
+  }
+
+  return TimeSlot.findByIdAndUpdate(
+    slotId,
+    {
+      $set: {
+        zauzeto: false,
+      },
+    },
+    options,
+  );
+};
+
+module.exports = {
+  reserveSlot,
+  createBookingWithEmails,
+  handleBookingEmails,
+  sendCancellationEmail,
+  sendConfirmationEmail,
+  lockSlot,
+  unlockSlot,
+  cancelBookingById,
+  confirmBookingById,
+  getBookingWithRelations,
+  reserveCustomInterval,
+  buildDaySegments,
+  getActiveBookingsForDate,
+  getWorkingHoursForDate,
+  timeToMinutes,
+  minutesToTime,
+};
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\services\playroomService.js
+==================================================
+const Playroom = require("../models/Playroom");
+const PLAYROOM_STATUS = require("../constants/playroomStatus");
+const {
+  generateTimeSlotsForPlayroom,
+  syncTimeSlotsWithWorkingHours,
+} = require("../utils/generateTimeSlots");
+
+const createPlayroomWithSlots = async (playroomData) => {
+  const playroom = await Playroom.create(playroomData);
+
+  try {
+    const slotResult = await generateTimeSlotsForPlayroom(playroom._id, 30);
+
+    return {
+      playroom,
+      slotResult,
+      slotError: null,
+    };
+  } catch (error) {
+    console.error(
+      "GreÅ¡ka pri generisanju termina nakon kreiranja igraonice:",
+      error,
+    );
+
+    return {
+      playroom,
+      slotResult: null,
+      slotError: error.message,
+    };
+  }
+};
+
+const verifyPlayroomAndGenerateSlots = async (playroomId) => {
+  const playroom = await Playroom.findById(playroomId);
+
+  if (!playroom) {
+    const error = new Error("Igraonica nije pronaÄ‘ena");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (playroom.verifikovan && playroom.status === PLAYROOM_STATUS.AKTIVAN) {
+    return {
+      playroom,
+      slotResult: {
+        createdCount: 0,
+        existingCount: 0,
+        skippedDays: 0,
+      },
+    };
+  }
+
+  playroom.verifikovan = true;
+  playroom.status = PLAYROOM_STATUS.AKTIVAN;
+  await playroom.save();
+
+  const slotResult = await generateTimeSlotsForPlayroom(playroom._id, 30);
+
+  return {
+    playroom,
+    slotResult,
+  };
+};
+
+const regenerateSlotsForPlayroom = async (playroomId) => {
+  const playroom = await Playroom.findById(playroomId);
+
+  if (!playroom) {
+    const error = new Error("Igraonica nije pronaÄ‘ena");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const result = await syncTimeSlotsWithWorkingHours(playroom._id, 30);
+
+  if (!result.success) {
+    const error = new Error(
+      result.message || "GreÅ¡ka pri sinhronizaciji termina",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return result;
+};
+
+module.exports = {
+  createPlayroomWithSlots,
+  verifyPlayroomAndGenerateSlots,
+  regenerateSlotsForPlayroom,
+};
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\services\timeSlotService.js
+==================================================
+const TimeSlot = require("../models/TimeSlot");
+const Booking = require("../models/Booking");
+const BOOKING_STATUS = require("../constants/bookingStatus");
+
+const findDuplicateSlot = async ({ playroomId, datum, vremeOd, vremeDo }) => {
+  return TimeSlot.findOne({
+    playroomId,
+    datum,
+    vremeOd,
+    vremeDo,
+  });
+};
+
+const hasActiveBookingForSlot = async (timeSlotId) => {
+  const existingBooking = await Booking.findOne({
+    timeSlotId,
+    status: { $ne: BOOKING_STATUS.OTKAZANO },
+  });
+
+  return !!existingBooking;
+};
+
+const deactivateSlotIfAllowed = async (timeSlot) => {
+  const hasActiveBooking = await hasActiveBookingForSlot(timeSlot._id);
+
+  if (hasActiveBooking || timeSlot.zauzeto) {
+    const error = new Error(
+      "Ne moÅ¾eÅ¡ deaktivirati termin koji ima rezervaciju ili je zauzet",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const updated = await TimeSlot.findByIdAndUpdate(
+    timeSlot._id,
+    {
+      $set: { aktivno: false },
+    },
+    { new: true },
+  );
+
+  return updated;
+};
+
+const deleteSlotIfAllowed = async (timeSlot) => {
+  const hasActiveBooking = await hasActiveBookingForSlot(timeSlot._id);
+
+  if (hasActiveBooking || timeSlot.zauzeto) {
+    const error = new Error(
+      "Ne moÅ¾eÅ¡ obrisati termin koji ima rezervaciju ili je zauzet",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await TimeSlot.findByIdAndDelete(timeSlot._id);
+
+  return true;
+};
+
+module.exports = {
+  findDuplicateSlot,
+  hasActiveBookingForSlot,
+  deactivateSlotIfAllowed,
+  deleteSlotIfAllowed,
+};
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\utils\apiResponse.js
+==================================================
+const successResponse = (
+  res,
+  data = null,
+  message = "UspeÅ¡no",
+  status = 200,
+  meta = null,
+) => {
+  return res.status(status).json({
+    success: true,
+    message,
+    data,
+    ...(meta && { meta }),
+  });
+};
+
+const errorResponse = (
+  res,
+  message = "GreÅ¡ka",
+  status = 500,
+  errors = null,
+) => {
+  return res.status(status).json({
+    success: false,
+    message,
+    ...(errors && { errors }),
+  });
+};
+
+module.exports = {
+  successResponse,
+  errorResponse,
+};
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\utils\emailService.js
+==================================================
+const nodemailer = require("nodemailer");
+
+// ðŸ”’ lazy transporter (da ne crashuje app ako env nije spreman)
+let transporter;
+
+const getTransporter = () => {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+  }
+  return transporter;
+};
+
+// ==============================
+// ðŸ§  HTML GENERATOR
+// ==============================
+const generateEmailHtml = (
+  title,
+  subtitle,
+  booking,
+  roditelj,
+  playroom,
+  timeSlot,
+  selectedOstaleCene = [],
+  selectedUsluge = [],
+  isOwner = false,
+) => {
+  const ukupnoOsoba = (booking?.brojDece || 0) + (booking?.brojRoditelja || 0);
+
+  const formatExtras = (items = []) =>
+    items
+      .map((item) => {
+        const price =
+          item.tip === "po_osobi" ? item.cena * ukupnoOsoba : item.cena;
+
+        return `
+          <div class="price-item">
+            <span>${item.naziv}</span>
+            <strong>+${price} RSD</strong>
+          </div>
+        `;
+      })
+      .join("");
+
+  const besplatne =
+    playroom?.besplatnePogodnosti?.length > 0
+      ? playroom.besplatnePogodnosti
+          .map((p) => `<span class="free">âœ“ ${p}</span>`)
+          .join("")
+      : "Nema pogodnosti";
+
+  return `
+    <html>
+      <body style="font-family:Arial;background:#f5f5f5;padding:20px;">
+        <div style="max-width:600px;margin:auto;background:#fff;border-radius:16px;overflow:hidden;">
+          
+          <div style="background:${
+            isOwner ? "#4caf50" : "#ff6b4a"
+          };color:#fff;padding:20px;text-align:center;">
+            <h2>${title}</h2>
+            <p>${subtitle}</p>
+          </div>
+
+          <div style="padding:20px;">
+            <p><strong>${
+              isOwner ? playroom?.vlasnikId?.ime || "" : roditelj?.ime || ""
+            }</strong>,</p>
+
+            <p>Igraonica: <strong>${playroom?.naziv}</strong></p>
+
+            <p>ðŸ“… ${new Date(timeSlot?.datum).toLocaleDateString("sr-RS")}</p>
+            <p>â° ${timeSlot?.vremeOd} - ${timeSlot?.vremeDo}</p>
+
+            <hr/>
+
+            <p>ðŸ‘¶ Deca: ${booking?.brojDece}</p>
+            <p>ðŸ‘¨ Roditelji: ${booking?.brojRoditelja}</p>
+
+            <hr/>
+
+            ${formatExtras(selectedOstaleCene)}
+            ${formatExtras(selectedUsluge)}
+
+            <h3>ðŸ’° ${booking?.ukupnaCena} RSD</h3>
+
+            <hr/>
+
+            <div>${besplatne}</div>
+          </div>
+
+          <div style="padding:10px;text-align:center;color:#777;font-size:12px;">
+            Â© Svet Igraonica
+          </div>
+
+        </div>
+      </body>
+    </html>
+  `;
+};
+
+// ==============================
+// ðŸ“© SEND HELPER
+// ==============================
+const sendMail = async (options) => {
+  try {
+    const transporter = getTransporter();
+    await transporter.sendMail(options);
+    return true;
+  } catch (err) {
+    console.error("âŒ Email error:", err.message);
+    return false;
+  }
+};
+
+// ==============================
+// ðŸ“§ RODITELJ - POTVRDA
+// ==============================
+exports.sendBookingConfirmation = async (
+  booking,
+  roditelj,
+  playroom,
+  timeSlot,
+  selectedOstaleCene,
+  selectedUsluge,
+) => {
+  return sendMail({
+    from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+    to: roditelj.email,
+    subject: `âœ… Potvrda rezervacije - ${playroom.naziv}`,
+    html: generateEmailHtml(
+      "Rezervacija potvrÄ‘ena",
+      "",
+      booking,
+      roditelj,
+      playroom,
+      timeSlot,
+      selectedOstaleCene,
+      selectedUsluge,
+      false,
+    ),
+  });
+};
+
+// ==============================
+// ðŸ“§ VLASNIK - NOVA REZERVACIJA
+// ==============================
+exports.sendBookingConfirmationToOwner = async (
+  booking,
+  roditelj,
+  playroom,
+  timeSlot,
+  vlasnik,
+  selectedOstaleCene,
+  selectedUsluge,
+) => {
+  return sendMail({
+    from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+    to: vlasnik.email,
+    subject: `ðŸ†• Nova rezervacija - ${playroom.naziv}`,
+    html: generateEmailHtml(
+      "Nova rezervacija",
+      "",
+      booking,
+      roditelj,
+      playroom,
+      timeSlot,
+      selectedOstaleCene,
+      selectedUsluge,
+      true,
+    ),
+  });
+};
+
+// ==============================
+// âŒ OTKAZIVANJE
+// ==============================
+exports.sendBookingCancellation = async (user, playroom, timeSlot) => {
+  return sendMail({
+    from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+    to: user.email,
+    subject: `âŒ Otkazivanje - ${playroom.naziv}`,
+    html: `<p>Rezervacija otkazana (${playroom.naziv})</p>`,
+  });
+};
+
+exports.sendCancellationToOwner = async (
+  booking,
+  roditelj,
+  playroom,
+  timeSlot,
+  vlasnik,
+) => {
+  return sendMail({
+    from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+    to: vlasnik.email,
+    subject: `âŒ Otkazano - ${playroom.naziv}`,
+    html: `<p>Rezervacija otkazana</p>`,
+  });
+};
+
+exports.sendMail = sendMail;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\utils\errorResponse.js
+==================================================
+class ErrorResponse extends Error {
+  constructor(message, statusCode) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
+
+module.exports = ErrorResponse;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\utils\generateTimeSlots.js
+==================================================
+const TimeSlot = require("../models/TimeSlot");
+const Playroom = require("../models/Playroom");
+const PLAYROOM_STATUS = require("../constants/playroomStatus");
+
+const DAY_MAP = {
+  monday: "ponedeljak",
+  tuesday: "utorak",
+  wednesday: "sreda",
+  thursday: "cetvrtak",
+  friday: "petak",
+  saturday: "subota",
+  sunday: "nedelja",
+};
+
+const DEFAULT_CAPACITY = 20;
+const DEFAULT_PRICE = 800;
+
+const getStartOfDay = (date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const getEndOfDay = (date) => {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+};
+
+const getDateKey = (date) => {
+  return getStartOfDay(date).toISOString().split("T")[0];
+};
+
+const parseTimeToMinutes = (time = "") => {
+  const [hours, minutes] = String(time)
+    .split(":")
+    .map((v) => parseInt(v, 10));
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  return hours * 60 + minutes;
+};
+
+const formatMinutesToTime = (minutes) => {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+};
+
+const getWorkingHoursForDate = (playroom, date) => {
+  const weekday = date
+    .toLocaleDateString("en-US", { weekday: "long" })
+    .toLowerCase();
+
+  const dayKey = DAY_MAP[weekday];
+  const radnoVreme = playroom.radnoVreme?.[dayKey];
+
+  if (!radnoVreme) {
+    return { works: false, reason: "Nema radnog vremena" };
+  }
+
+  if (radnoVreme.radi === false) {
+    return { works: false, reason: "Neradni dan" };
+  }
+
+  if (!radnoVreme.od || !radnoVreme.do) {
+    return { works: false, reason: "Nedostaje od/do" };
+  }
+
+  const startMinutes = parseTimeToMinutes(radnoVreme.od);
+  const endMinutes = parseTimeToMinutes(radnoVreme.do);
+
+  if (
+    startMinutes === null ||
+    endMinutes === null ||
+    startMinutes >= endMinutes
+  ) {
+    return { works: false, reason: "Neispravno radno vreme" };
+  }
+
+  return {
+    works: true,
+    startMinutes,
+    endMinutes,
+  };
+};
+
+const buildExpectedSlotsForDate = (playroom, date) => {
+  const workingHours = getWorkingHoursForDate(playroom, date);
+
+  if (!workingHours.works) return [];
+
+  const slots = [];
+
+  for (
+    let current = workingHours.startMinutes;
+    current + 60 <= workingHours.endMinutes;
+    current += 60
+  ) {
+    const vremeOd = formatMinutesToTime(current);
+    const vremeDo = formatMinutesToTime(current + 60);
+
+    slots.push({
+      datum: getStartOfDay(date),
+      vremeOd,
+      vremeDo,
+      key: `${getDateKey(date)}_${vremeOd}_${vremeDo}`,
+    });
+  }
+
+  return slots;
+};
+
+const createSlotPayload = (playroom, date, vremeOd, vremeDo) => ({
+  playroomId: playroom._id,
+  datum: getStartOfDay(date),
+  vremeOd,
+  vremeDo,
+
+  cena: playroom.osnovnaCena ?? DEFAULT_PRICE,
+  zauzeto: false,
+  aktivno: true,
+  vanRadnogVremena: false,
+  napomenaAdmin: "",
+});
+
+/**
+ * GeneriÅ¡i termine za jednu igraonicu za narednih N dana
+ */
+const generateTimeSlotsForPlayroom = async (playroomId, days = 30) => {
+  try {
+    const playroom = await Playroom.findById(playroomId);
+    if (!playroom) {
+      return {
+        createdCount: 0,
+        existingCount: 0,
+        skippedDays: 0,
+        error: "Igraonica nije pronaÄ‘ena",
+      };
+    }
+
+    if (!playroom.radnoVreme) {
+      return {
+        createdCount: 0,
+        existingCount: 0,
+        skippedDays: 0,
+        error: "Nema definisano radno vreme",
+      };
+    }
+
+    const startDate = getStartOfDay(new Date());
+    const endDate = getEndOfDay(
+      new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000),
+    );
+
+    let createdCount = 0;
+    let existingCount = 0;
+    let skippedDays = 0;
+
+    for (
+      let d = new Date(startDate);
+      d <= endDate;
+      d.setDate(d.getDate() + 1)
+    ) {
+      const currentDate = new Date(d);
+      const expectedSlots = buildExpectedSlotsForDate(playroom, currentDate);
+
+      if (expectedSlots.length === 0) {
+        skippedDays++;
+        continue;
+      }
+
+      const startOfDay = getStartOfDay(currentDate);
+      const endOfDay = getEndOfDay(currentDate);
+
+      const existingSlots = await TimeSlot.find({
+        playroomId: playroom._id,
+        datum: { $gte: startOfDay, $lte: endOfDay },
+      }).select("_id vremeOd vremeDo");
+
+      const existingKeys = new Set(
+        existingSlots.map(
+          (slot) =>
+            `${getDateKey(currentDate)}_${slot.vremeOd}_${slot.vremeDo}`,
+        ),
+      );
+
+      for (const slotData of expectedSlots) {
+        if (existingKeys.has(slotData.key)) {
+          existingCount++;
+          continue;
+        }
+
+        try {
+          await TimeSlot.create(
+            createSlotPayload(
+              playroom,
+              currentDate,
+              slotData.vremeOd,
+              slotData.vremeDo,
+            ),
+          );
+          createdCount++;
+        } catch (err) {
+          if (err.code === 11000) {
+            existingCount++;
+          } else {
+            throw err;
+          }
+        }
+      }
+    }
+
+    return {
+      createdCount,
+      existingCount,
+      skippedDays,
+    };
+  } catch (error) {
+    console.error("GreÅ¡ka pri generisanju termina:", error);
+    return {
+      createdCount: 0,
+      existingCount: 0,
+      skippedDays: 0,
+      error: error.message,
+    };
+  }
+};
+
+/**
+ * GeneriÅ¡i termine za sve verifikovane igraonice
+ */
+const generateAllTimeSlots = async (days = 30) => {
+  try {
+    const playrooms = await Playroom.find({
+      verifikovan: true,
+      status: PLAYROOM_STATUS.AKTIVAN,
+    });
+
+    if (playrooms.length === 0) {
+      return { totalCreated: 0, totalExisting: 0, results: [] };
+    }
+
+    let totalCreated = 0;
+    let totalExisting = 0;
+    const results = [];
+
+    for (const playroom of playrooms) {
+      const result = await generateTimeSlotsForPlayroom(playroom._id, days);
+
+      totalCreated += result.createdCount || 0;
+      totalExisting += result.existingCount || 0;
+
+      results.push({
+        playroomId: playroom._id,
+        naziv: playroom.naziv,
+        ...result,
+      });
+    }
+
+    return { totalCreated, totalExisting, results };
+  } catch (error) {
+    console.error("GreÅ¡ka pri generisanju termina za sve igraonice:", error);
+    return {
+      totalCreated: 0,
+      totalExisting: 0,
+      error: error.message,
+      results: [],
+    };
+  }
+};
+
+/**
+ * ObriÅ¡i sve termine za igraonicu bez aktivnih rezervacija
+ */
+const deleteAllTimeSlotsForPlayroom = async (playroomId) => {
+  try {
+    const result = await TimeSlot.deleteMany({
+      playroomId,
+      zauzeto: false,
+      aktivno: false,
+    });
+
+    return { deletedCount: result.deletedCount };
+  } catch (error) {
+    console.error("GreÅ¡ka pri brisanju termina:", error);
+    return { error: error.message };
+  }
+};
+
+/**
+ * Resetuj termine za igraonicu (samo slotovi bez rezervacija)
+ */
+const resetTimeSlotsForPlayroom = async (playroomId, days = 30) => {
+  try {
+    await deleteAllTimeSlotsForPlayroom(playroomId);
+    return await generateTimeSlotsForPlayroom(playroomId, days);
+  } catch (error) {
+    console.error("GreÅ¡ka pri resetovanju termina:", error);
+    return { error: error.message };
+  }
+};
+
+/**
+ * GeneriÅ¡i termine samo za jedan dan
+ */
+const generateTimeSlotsForDay = async (playroomId, datum) => {
+  try {
+    const playroom = await Playroom.findById(playroomId);
+    if (!playroom) {
+      return {
+        createdCount: 0,
+        existingCount: 0,
+        error: "Igraonica nije pronaÄ‘ena",
+      };
+    }
+
+    const targetDate = getStartOfDay(new Date(datum));
+    const expectedSlots = buildExpectedSlotsForDate(playroom, targetDate);
+
+    if (expectedSlots.length === 0) {
+      return {
+        createdCount: 0,
+        existingCount: 0,
+        message: "Igraonica ne radi ovog dana",
+      };
+    }
+
+    const startOfDay = getStartOfDay(targetDate);
+    const endOfDay = getEndOfDay(targetDate);
+
+    const existingSlots = await TimeSlot.find({
+      playroomId,
+      datum: { $gte: startOfDay, $lte: endOfDay },
+    }).select("_id vremeOd vremeDo");
+
+    const existingKeys = new Set(
+      existingSlots.map(
+        (slot) => `${getDateKey(targetDate)}_${slot.vremeOd}_${slot.vremeDo}`,
+      ),
+    );
+
+    let createdCount = 0;
+    let existingCount = 0;
+
+    for (const slotData of expectedSlots) {
+      if (existingKeys.has(slotData.key)) {
+        existingCount++;
+        continue;
+      }
+
+      try {
+        await TimeSlot.create(
+          createSlotPayload(
+            playroom,
+            targetDate,
+            slotData.vremeOd,
+            slotData.vremeDo,
+          ),
+        );
+        createdCount++;
+      } catch (err) {
+        if (err.code === 11000) {
+          existingCount++;
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    return {
+      createdCount,
+      existingCount,
+      message: `Generisano ${createdCount} termina za ${datum}`,
+    };
+  } catch (error) {
+    console.error("GreÅ¡ka pri generisanju termina za dan:", error);
+    return { error: error.message };
+  }
+};
+
+/**
+ * Sinhronizuj termine sa radnim vremenom bez brisanja slotova sa rezervacijama
+ */
+const syncTimeSlotsWithWorkingHours = async (playroomId, days = 30) => {
+  try {
+    const playroom = await Playroom.findById(playroomId);
+    if (!playroom) {
+      return { success: false, message: "Igraonica nije pronaÄ‘ena" };
+    }
+
+    const startDate = getStartOfDay(new Date());
+    const endDate = getEndOfDay(
+      new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000),
+    );
+
+    const expectedKeys = new Set();
+
+    let createdCount = 0;
+    let deactivatedCount = 0;
+    let conflictCount = 0;
+    let reactivatedCount = 0;
+
+    for (
+      let d = new Date(startDate);
+      d <= endDate;
+      d.setDate(d.getDate() + 1)
+    ) {
+      const currentDate = new Date(d);
+      const expectedSlots = buildExpectedSlotsForDate(playroom, currentDate);
+
+      for (const slotData of expectedSlots) {
+        expectedKeys.add(slotData.key);
+      }
+
+      const startOfDay = getStartOfDay(currentDate);
+      const endOfDay = getEndOfDay(currentDate);
+
+      const existingSlots = await TimeSlot.find({
+        playroomId,
+        datum: { $gte: startOfDay, $lte: endOfDay },
+      });
+
+      const existingMap = new Map(
+        existingSlots.map((slot) => [
+          `${getDateKey(currentDate)}_${slot.vremeOd}_${slot.vremeDo}`,
+          slot,
+        ]),
+      );
+
+      for (const slotData of expectedSlots) {
+        const existingSlot = existingMap.get(slotData.key);
+
+        if (!existingSlot) {
+          try {
+            await TimeSlot.create(
+              createSlotPayload(
+                playroom,
+                currentDate,
+                slotData.vremeOd,
+                slotData.vremeDo,
+              ),
+            );
+            createdCount++;
+          } catch (err) {
+            if (err.code === 11000) {
+              // slot je u meÄ‘uvremenu veÄ‡ kreiran
+            } else {
+              throw err;
+            }
+          }
+          continue;
+        }
+
+        const updates = {};
+        let shouldUpdate = false;
+
+        if (existingSlot.aktivno === false) {
+          updates.aktivno = true;
+          shouldUpdate = true;
+        }
+
+        if (existingSlot.vanRadnogVremena === true) {
+          updates.vanRadnogVremena = false;
+          shouldUpdate = true;
+        }
+
+        if (existingSlot.napomenaAdmin) {
+          updates.napomenaAdmin = "";
+          shouldUpdate = true;
+        }
+
+        if (
+          (existingSlot.maxDece || 0) !==
+          (playroom.kapacitet?.deca || DEFAULT_CAPACITY)
+        ) {
+          updates.maxDece = playroom.kapacitet?.deca || DEFAULT_CAPACITY;
+          shouldUpdate = true;
+        }
+
+        if (
+          (existingSlot.cena || 0) !== (playroom.osnovnaCena ?? DEFAULT_PRICE)
+        ) {
+          updates.cena = playroom.osnovnaCena ?? DEFAULT_PRICE;
+          shouldUpdate = true;
+        }
+
+        if (shouldUpdate) {
+          await TimeSlot.findByIdAndUpdate(existingSlot._id, updates);
+          reactivatedCount++;
+        }
+      }
+    }
+
+    const allSlotsInRange = await TimeSlot.find({
+      playroomId,
+      datum: { $gte: startDate, $lte: endDate },
+    });
+
+    for (const slot of allSlotsInRange) {
+      const slotKey = `${getDateKey(slot.datum)}_${slot.vremeOd}_${slot.vremeDo}`;
+      const shouldExist = expectedKeys.has(slotKey);
+
+      if (shouldExist) continue;
+
+      if (slot.zauzeto) {
+        await TimeSlot.findByIdAndUpdate(slot._id, {
+          vanRadnogVremena: true,
+          napomenaAdmin:
+            "Slot je van novog radnog vremena, ali ima postojeÄ‡u rezervaciju.",
+        });
+        conflictCount++;
+      } else {
+        await TimeSlot.findByIdAndUpdate(slot._id, {
+          aktivno: false,
+          vanRadnogVremena: true,
+          napomenaAdmin: "Slot deaktiviran zbog promene radnog vremena.",
+        });
+        deactivatedCount++;
+      }
+    }
+
+    return {
+      success: true,
+      createdCount,
+      deactivatedCount,
+      conflictCount,
+      reactivatedCount,
+    };
+  } catch (error) {
+    console.error("GreÅ¡ka pri sinhronizaciji termina:", error);
+    return {
+      success: false,
+      message: error.message,
+    };
+  }
+};
+
+module.exports = {
+  generateTimeSlotsForPlayroom,
+  generateAllTimeSlots,
+  deleteAllTimeSlotsForPlayroom,
+  resetTimeSlotsForPlayroom,
+  generateTimeSlotsForDay,
+  syncTimeSlotsWithWorkingHours,
+};
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\utils\generateToken.js
+==================================================
+const jwt = require("jsonwebtoken");
+
+const generateAccessToken = (user) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET nije definisan");
+  }
+
+  return jwt.sign(
+    {
+      id: user._id,
+      role: user.role,
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    },
+  );
+};
+
+module.exports = generateAccessToken;
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\validations\authValidation.js
+==================================================
+const { z } = require("zod");
+
+const registerSchema = z.object({
+  body: z.object({
+    ime: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
+    prezime: z.string().min(2, "Prezime mora imati bar 2 karaktera").trim(),
+    email: z
+      .string()
+      .email("Neispravan format email adrese")
+      .toLowerCase()
+      .trim(),
+    password: z
+      .string()
+      .min(6, "Lozinka mora imati bar 6 karaktera")
+      .max(50, "Lozinka je preduga"),
+    telefon: z
+      .string()
+      .trim()
+      .regex(/^[0-9]+$/, "Telefon moÅ¾e sadrÅ¾ati samo brojeve")
+      .min(8, "Telefon mora imati bar 8 cifara"),
+
+    role: z.enum(["roditelj", "vlasnik"]).optional(),
+  }),
+  params: z.object({}).optional(),
+  query: z.object({}).optional(),
+});
+
+const loginSchema = z.object({
+  body: z.object({
+    email: z
+      .string()
+      .email("Neispravan format email adrese")
+      .toLowerCase()
+      .trim(),
+    password: z.string().min(1, "Lozinka je obavezna"),
+  }),
+  params: z.object({}).optional(),
+  query: z.object({}).optional(),
+});
+
+module.exports = { registerSchema, loginSchema };
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\validations\bookingValidation.js
+==================================================
+const { z } = require("zod");
+
+const objectId = z.string().regex(/^[a-f\d]{24}$/i, "ID nije validan");
+
+const createBookingSchema = z.object({
+  body: z.object({
+    playroomId: objectId,
+    datum: z.string().min(1, "Datum je obavezan"),
+    vremeOd: z.string().regex(/^\d{2}:\d{2}$/, "Vreme od nije validno"),
+    vremeDo: z.string().regex(/^\d{2}:\d{2}$/, "Vreme do nije validno"),
+    cenaId: objectId,
+    paketId: objectId.optional().nullable(),
+    usluge: z.array(objectId).optional(),
+    brojDece: z.coerce.number().min(1, "Broj dece mora biti najmanje 1"),
+    imeRoditelja: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
+    prezimeRoditelja: z
+      .string()
+      .min(2, "Prezime mora imati bar 2 karaktera")
+      .trim(),
+    emailRoditelja: z.string().email("Neispravan email").toLowerCase().trim(),
+    telefonRoditelja: z
+      .string()
+      .min(6, "Telefon mora imati bar 6 cifara")
+      .regex(/^[0-9]+$/, "Telefon moÅ¾e sadrÅ¾ati samo brojeve")
+      .trim(),
+    napomena: z
+      .string()
+      .max(500, "Napomena moÅ¾e imati najviÅ¡e 500 karaktera")
+      .optional(),
+  }),
+  params: z.object({}).optional(),
+  query: z.object({}).optional(),
+});
+
+const createGuestBookingSchema = z
+  .object({
+    body: z.object({
+      playroomId: objectId,
+
+      datum: z.string().min(1, "Datum je obavezan"),
+      vremeOd: z.string().regex(/^\d{2}:\d{2}$/, "Vreme od nije validno"),
+      vremeDo: z.string().regex(/^\d{2}:\d{2}$/, "Vreme do nije validno"),
+      cenaId: objectId,
+      paketId: objectId.optional().nullable(),
+      usluge: z.array(objectId).optional(),
+      brojDece: z.coerce.number().min(1, "Broj dece mora biti najmanje 1"),
+      ime: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
+      prezime: z.string().min(2, "Prezime mora imati bar 2 karaktera").trim(),
+      email: z.string().email("Neispravan email").toLowerCase().trim(),
+      telefon: z
+        .string()
+        .min(6, "Telefon mora imati bar 6 cifara")
+        .regex(/^[0-9]+$/, "Telefon moÅ¾e sadrÅ¾ati samo brojeve")
+        .trim(),
+      password: z.string().min(6, "Lozinka mora imati bar 6 karaktera"),
+      confirmPassword: z
+        .string()
+        .min(6, "Potvrda lozinke mora imati bar 6 karaktera"),
+      napomena: z
+        .string()
+        .max(500, "Napomena moÅ¾e imati najviÅ¡e 500 karaktera")
+        .optional(),
+    }),
+    params: z.object({}).optional(),
+    query: z.object({}).optional(),
+  })
+  .refine((data) => data.body.password === data.body.confirmPassword, {
+    message: "Lozinke se ne poklapaju",
+    path: ["body", "confirmPassword"],
+  });
+
+const bookingIdParamSchema = z.object({
+  body: z.object({}).optional(),
+  params: z.object({
+    id: objectId,
+  }),
+  query: z.object({}).optional(),
+});
+
+const manualBookingSchema = z.object({
+  body: z.object({
+    playroomId: objectId,
+    datum: z.string().min(1),
+    vremeOd: z.string().regex(/^\d{2}:\d{2}$/),
+    vremeDo: z.string().regex(/^\d{2}:\d{2}$/),
+    imeRoditelja: z.string().min(2),
+    prezimeRoditelja: z.string().min(2),
+    emailRoditelja: z.string().email(),
+    telefonRoditelja: z.string().regex(/^[0-9]+$/),
+    napomena: z.string().optional(),
+  }),
+});
+
+module.exports = {
+  createBookingSchema,
+  createGuestBookingSchema,
+  bookingIdParamSchema,
+  manualBookingSchema,
+};
+
+
+
+==================================================
+FAJL: D:\svet-igraonica\backend\validations\timeSlotValidation.js
+==================================================
+const { z } = require("zod");
+
+const objectId = z.string().regex(/^[a-f\d]{24}$/i, "ID nije validan");
+
+const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+const createTimeSlotSchema = z.object({
+  body: z.object({
+    playroomId: objectId,
+    datum: z.string().min(1, "Datum je obavezan"),
+    vremeOd: z.string().regex(timeRegex, "vremeOd mora biti u formatu HH:MM"),
+    vremeDo: z.string().regex(timeRegex, "vremeDo mora biti u formatu HH:MM"),
+    cena: z
+      .number({
+        required_error: "Cena je obavezna",
+        invalid_type_error: "Cena mora biti broj",
+      })
+      .min(0, "Cena ne moÅ¾e biti negativna"),
+  }),
+  params: z.object({}).optional(),
+  query: z.object({}).optional(),
+});
+
+const updateTimeSlotSchema = z.object({
+  body: z
+    .object({
+      maxDece: z
+        .number()
+        .int()
+        .min(1, "maxDece mora biti veÄ‡i od 0")
+        .optional(),
+      cena: z.number().min(0, "Cena ne moÅ¾e biti negativna").optional(),
+      aktivno: z.boolean().optional(),
+    })
+    .refine(
+      (data) => Object.keys(data).length > 0,
+      "MoraÅ¡ poslati bar jedno polje za izmenu",
+    ),
+  params: z.object({
+    id: objectId,
+  }),
+  query: z.object({}).optional(),
+});
+
+const manualBookTimeSlotSchema = z.object({
+  body: z.object({
+    brojDece: z
+      .number()
+      .int()
+      .min(1, "Broj dece mora biti veÄ‡i od 0")
+      .optional(),
+    napomena: z
+      .string()
+      .max(500, "Napomena moÅ¾e imati najviÅ¡e 500 karaktera")
+      .optional(),
+  }),
+  params: z.object({
+    id: objectId,
+  }),
+  query: z.object({}).optional(),
+});
+
+const playroomDateQuerySchema = z.object({
+  body: z.object({}).optional(),
+  params: z.object({
+    playroomId: objectId,
+  }),
+  query: z.object({
+    datum: z.string().min(1, "Datum je obavezan"),
+  }),
+});
+
+const timeSlotIdParamSchema = z.object({
+  body: z.object({}).optional(),
+  params: z.object({
+    id: objectId,
+  }),
+  query: z.object({}).optional(),
+});
+
+module.exports = {
+  createTimeSlotSchema,
+  updateTimeSlotSchema,
+  manualBookTimeSlotSchema,
+  playroomDateQuerySchema,
+  timeSlotIdParamSchema,
+};
+

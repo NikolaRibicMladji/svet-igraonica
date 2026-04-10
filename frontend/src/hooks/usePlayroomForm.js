@@ -356,10 +356,27 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
   };
 
   const handleAddCena = () => {
-    const naziv = novaCena.naziv.trim();
-    const cena = Number(novaCena.cena);
+    const naziv = sanitizeText(novaCena.naziv);
+    const cena = toNumberOrZero(novaCena.cena);
+    const dozvoljeniNazivi = ["Dete", "Roditelj"];
 
-    if (!naziv || !Number.isFinite(cena) || cena < 0) {
+    if (!naziv) {
+      setError("Izaberi naziv cene.");
+      return;
+    }
+
+    if (!dozvoljeniNazivi.includes(naziv)) {
+      setError('Naziv cene može biti samo "Dete" ili "Roditelj".');
+      return;
+    }
+
+    if (cene.some((item) => item.naziv === naziv)) {
+      setError(`Cena za "${naziv}" već postoji.`);
+      return;
+    }
+
+    if (cena <= 0) {
+      setError("Unesi ispravnu cenu.");
       return;
     }
 
@@ -369,7 +386,7 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
         naziv,
         cena,
         tip: novaCena.tip || "fiksno",
-        opis: novaCena.opis.trim(),
+        opis: sanitizeText(novaCena.opis),
       },
     ]);
 
@@ -379,6 +396,8 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
       tip: "fiksno",
       opis: "",
     });
+
+    setError("");
   };
 
   const handleRemoveCena = (index) => {

@@ -12,20 +12,22 @@ const AdditionalPricesSection = ({
       <h3>
         💰 Cene{" "}
         <span className="input-recommendation">
-          (npr. dnevna karta, po satu, po osobi...)
+          (npr. Dete, po satu, po osobi...)
         </span>
       </h3>
 
       <div className="dynamic-input">
         <div className="add-item">
-          <input
-            type="text"
-            placeholder="Naziv (npr. dete, roditelj...)"
+          <select
             value={novaCena.naziv}
             onChange={(e) =>
               setNovaCena((prev) => ({ ...prev, naziv: e.target.value }))
             }
-          />
+          >
+            <option value="">-- Izaberi naziv --</option>
+            <option value="Dete">Dete</option>
+            <option value="Roditelj">Roditelj</option>
+          </select>
 
           <input
             type="number"
@@ -56,7 +58,12 @@ const AdditionalPricesSection = ({
               setNovaCena((prev) => ({ ...prev, opis: e.target.value }))
             }
           />
-
+          {cene.some((item) => item.naziv === novaCena.naziv) &&
+            novaCena.naziv && (
+              <div className="error-message">
+                Cena za "{novaCena.naziv}" je već dodata.
+              </div>
+            )}
           <button type="button" onClick={handleAddCena}>
             + Dodaj
           </button>
