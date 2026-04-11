@@ -271,6 +271,33 @@ const Book = () => {
     return h * 60 + m;
   };
 
+  const isQuarterHour = (time) => {
+    const [h, m] = String(time || "00:00")
+      .split(":")
+      .map(Number);
+
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return false;
+
+    return [0, 15, 30, 45].includes(m);
+  };
+
+  const generateQuarterHourOptions = (startTime, endTime) => {
+    if (!startTime || !endTime) return [];
+
+    const startMinutes = timeToMinutes(startTime);
+    const endMinutes = timeToMinutes(endTime);
+
+    const options = [];
+
+    for (let current = startMinutes; current <= endMinutes; current += 15) {
+      const hours = String(Math.floor(current / 60)).padStart(2, "0");
+      const minutes = String(current % 60).padStart(2, "0");
+      options.push(`${hours}:${minutes}`);
+    }
+
+    return options;
+  };
+
   const doesOverlapBusyInterval = (start, end) => {
     const busyIntervals = Array.isArray(availability?.busyIntervals)
       ? availability.busyIntervals
@@ -302,15 +329,6 @@ const Book = () => {
       return;
     }
 
-    const imaAktivnuCenu =
-      (Number(brojDece) || 0) > 0 || (Number(brojRoditelja) || 0) > 0;
-
-    if (!imaAktivnuCenu) {
-      setError("Unesite broj dece ili broj roditelja.");
-      scrollToTop();
-      return;
-    }
-
     if (!availability?.workingHours) {
       setError("Igraonica ne radi tog dana.");
       scrollToTop();
@@ -338,12 +356,6 @@ const Book = () => {
 
     if (!imaNesto) {
       setError("Unesite bar jednu stavku.");
-      return;
-    }
-
-    if (!brojDece || Number(brojDece) < 1) {
-      setError("Unesite broj dece.");
-      scrollToTop();
       return;
     }
 
@@ -397,6 +409,12 @@ const Book = () => {
       }
     }
 
+    if (!isQuarterHour(selectedStartTime) || !isQuarterHour(selectedEndTime)) {
+      setError("Vreme mora biti u koracima od 15 minuta.");
+      scrollToTop();
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -408,7 +426,7 @@ const Book = () => {
         cenaId: selectedCenaId,
         paketId: selectedPaketId || null,
         usluge: selectedUslugeIds,
-        brojDece: Number(brojDece) || 1,
+        brojDece: Number(brojDece) || 0,
         brojRoditelja: Number(brojRoditelja) || 0,
         ime: korisnikPodaci.ime.trim(),
         prezime: korisnikPodaci.prezime.trim(),
@@ -508,6 +526,23 @@ const Book = () => {
   const tipDete = cenaDeteObj?.tip || "fiksno";
   const tipRoditelj = cenaRoditeljObj?.tip || "fiksno";
 
+  const availableStartTimes = availability?.workingHours
+    ? generateQuarterHourOptions(
+        availability.workingHours.vremeOd,
+        availability.workingHours.vremeDo,
+      ).slice(0, -1)
+    : [];
+
+  const availableEndTimes =
+    availability?.workingHours && selectedStartTime
+      ? generateQuarterHourOptions(
+          selectedStartTime,
+          availability.workingHours.vremeDo,
+        ).filter(
+          (time) => timeToMinutes(time) > timeToMinutes(selectedStartTime),
+        )
+      : [];
+
   return (
     <div className="container book-page" ref={topRef}>
       <button
@@ -547,8 +582,8 @@ const Book = () => {
               setKolicineCena({});
               setKolicinePaketa({});
               setKolicineUsluga({});
-              setBrojDece(1);
-              setBrojRoditelja(0);
+              setBrojDece("");
+              setBrojRoditelja("");
               setNapomena("");
               setError("");
             }}
@@ -602,23 +637,46 @@ const Book = () => {
                     </div>
                   )}
 
-                  <div className="form-row">
+                  <div className="form-row time-row">
                     <div className="form-group">
                       <label>Vreme od *</label>
-                      <input
-                        type="time"
+                      <select
+                        className="booking-select"
                         value={selectedStartTime}
-                        onChange={(e) => setSelectedStartTime(e.target.value)}
-                      />
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setSelectedStartTime(value);
+                          setSelectedEndTime("");
+                        }}
+                      >
+                        <option value="">Izaberi vreme</option>
+                        {availableStartTimes.map((time) => (
+                          <option key={time} value={time}>
+                            {time}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div className="form-group">
                       <label>Vreme do *</label>
-                      <input
-                        type="time"
+                      <select
+                        className="booking-select"
                         value={selectedEndTime}
                         onChange={(e) => setSelectedEndTime(e.target.value)}
-                      />
+                        disabled={!selectedStartTime}
+                      >
+                        <option value="">
+                          {selectedStartTime
+                            ? "Izaberi vreme"
+                            : "Prvo izaberi vreme od"}
+                        </option>
+                        {availableEndTimes.map((time) => (
+                          <option key={time} value={time}>
+                            {time}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </>
@@ -637,14 +695,15 @@ const Book = () => {
                   </p>
                 </div>
 
-                <div className="form-row">
+                <div className="form-row count-row">
                   <div className="form-group">
-                    <label className="count-label">Broj dece *</label>
+                    <label className="count-label">Broj dece</label>
                     <input
                       className="count-input"
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
+                      placeholder=""
                       value={brojDece}
                       onChange={(e) => {
                         const value = e.target.value;
@@ -662,6 +721,7 @@ const Book = () => {
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
+                      placeholder=""
                       value={brojRoditelja}
                       onChange={(e) => {
                         const value = e.target.value;

@@ -530,6 +530,57 @@
   color: #ff6b4a;
 }
 
+.time-row,
+.count-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: end;
+}
+
+.booking-select,
+.count-input,
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid #d9e2ec;
+  border-radius: 14px;
+  padding: 0 16px;
+  font-size: 16px;
+  background: #fff;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.form-group textarea {
+  min-height: 110px;
+  padding: 14px 16px;
+  resize: vertical;
+}
+
+.booking-select:focus,
+.count-input:focus,
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #ff6b4a;
+  box-shadow: 0 0 0 4px rgba(255, 107, 74, 0.12);
+}
+
+.booking-select:disabled {
+  background: #f4f6f8;
+  color: #8a94a6;
+  cursor: not-allowed;
+}
+
+.count-label {
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
 /* =========================================
    RESPONSIVE
 ========================================= */
@@ -545,5 +596,11 @@
 
   .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .time-row,
+  .count-row {
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
 }

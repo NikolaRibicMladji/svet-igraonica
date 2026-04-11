@@ -2,12 +2,31 @@ const { z } = require("zod");
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, "ID nije validan");
 
+const isQuarterHour = (value) => {
+  if (!/^\d{2}:\d{2}$/.test(value)) return false;
+
+  const [hours, minutes] = value.split(":").map(Number);
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return false;
+  if (hours < 0 || hours > 23) return false;
+  if (minutes < 0 || minutes > 59) return false;
+
+  return [0, 15, 30, 45].includes(minutes);
+};
+
 const createBookingSchema = z.object({
   body: z.object({
     playroomId: objectId,
     datum: z.string().min(1, "Datum je obavezan"),
-    vremeOd: z.string().regex(/^\d{2}:\d{2}$/, "Vreme od nije validno"),
-    vremeDo: z.string().regex(/^\d{2}:\d{2}$/, "Vreme do nije validno"),
+    vremeOd: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
+      .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
+
+    vremeDo: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
+      .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
     cenaId: objectId,
     paketId: objectId.optional().nullable(),
     usluge: z.array(objectId).optional(),
@@ -38,8 +57,15 @@ const createGuestBookingSchema = z
       playroomId: objectId,
 
       datum: z.string().min(1, "Datum je obavezan"),
-      vremeOd: z.string().regex(/^\d{2}:\d{2}$/, "Vreme od nije validno"),
-      vremeDo: z.string().regex(/^\d{2}:\d{2}$/, "Vreme do nije validno"),
+      vremeOd: z
+        .string()
+        .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
+        .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
+
+      vremeDo: z
+        .string()
+        .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
+        .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
       cenaId: objectId,
       paketId: objectId.optional().nullable(),
       usluge: z.array(objectId).optional(),
@@ -81,8 +107,15 @@ const manualBookingSchema = z.object({
   body: z.object({
     playroomId: objectId,
     datum: z.string().min(1),
-    vremeOd: z.string().regex(/^\d{2}:\d{2}$/),
-    vremeDo: z.string().regex(/^\d{2}:\d{2}$/),
+    vremeOd: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
+      .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
+
+    vremeDo: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
+      .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
     imeRoditelja: z.string().min(2),
     prezimeRoditelja: z.string().min(2),
     emailRoditelja: z.string().email(),

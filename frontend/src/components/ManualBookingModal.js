@@ -52,6 +52,49 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
 
   if (!slot) return null;
 
+  const toMinutes = (time) => {
+    const [h, m] = String(time || "00:00")
+      .split(":")
+      .map(Number);
+    return h * 60 + m;
+  };
+
+  const generateQuarterHourOptions = (startTime, endTime) => {
+    if (!startTime || !endTime) return [];
+
+    const startMinutes = toMinutes(startTime);
+    const endMinutes = toMinutes(endTime);
+
+    const options = [];
+
+    for (let current = startMinutes; current <= endMinutes; current += 15) {
+      const hours = String(Math.floor(current / 60)).padStart(2, "0");
+      const minutes = String(current % 60).padStart(2, "0");
+      options.push(`${hours}:${minutes}`);
+    }
+
+    return options;
+  };
+
+  const isQuarterHour = (time) => {
+    const [_, m] = String(time || "00:00")
+      .split(":")
+      .map(Number);
+    return [0, 15, 30, 45].includes(m);
+  };
+
+  const availableStartTimes =
+    slot?.vremeOd && slot?.vremeDo
+      ? generateQuarterHourOptions(slot.vremeOd, slot.vremeDo).slice(0, -1)
+      : [];
+
+  const availableEndTimes =
+    slot?.vremeDo && vremeOd
+      ? generateQuarterHourOptions(vremeOd, slot.vremeDo).filter(
+          (time) => toMinutes(time) > toMinutes(vremeOd),
+        )
+      : [];
+
   const handleConfirm = async () => {
     setLoading(true);
     setError("");
@@ -74,12 +117,11 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
         return;
       }
 
-      const toMinutes = (time) => {
-        const [h, m] = String(time || "00:00")
-          .split(":")
-          .map(Number);
-        return h * 60 + m;
-      };
+      if (!isQuarterHour(vremeOd) || !isQuarterHour(vremeDo)) {
+        setError("Vreme mora biti u koracima od 15 minuta.");
+        setLoading(false);
+        return;
+      }
 
       if (toMinutes(vremeDo) <= toMinutes(vremeOd)) {
         setError("Vreme završetka mora biti posle vremena početka.");
@@ -203,22 +245,39 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
           </div>
           <div className="form-group">
             <label>⏰ Vreme od</label>
-            <input
-              type="time"
+            <select
               value={vremeOd}
-              onChange={(e) => setVremeOd(e.target.value)}
+              onChange={(e) => {
+                setVremeOd(e.target.value);
+                setVremeDo("");
+              }}
               disabled={loading}
-            />
+            >
+              <option value="">Izaberi vreme</option>
+              {availableStartTimes.map((time) => (
+                <option key={time} value={time}>
+                  {time}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="form-group">
             <label>⏰ Vreme do</label>
-            <input
-              type="time"
+            <select
               value={vremeDo}
               onChange={(e) => setVremeDo(e.target.value)}
-              disabled={loading}
-            />
+              disabled={loading || !vremeOd}
+            >
+              <option value="">
+                {vremeOd ? "Izaberi vreme" : "Prvo izaberi vreme od"}
+              </option>
+              {availableEndTimes.map((time) => (
+                <option key={time} value={time}>
+                  {time}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="form-group">

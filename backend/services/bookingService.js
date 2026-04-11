@@ -473,6 +473,12 @@ const reserveCustomInterval = async ({
     const endMinutes = timeToMinutes(vremeDo);
     const workingStart = timeToMinutes(workingHours.vremeOd);
     const workingEnd = timeToMinutes(workingHours.vremeDo);
+    if (startMinutes % 15 !== 0 || endMinutes % 15 !== 0) {
+      throw new ErrorResponse(
+        "Vreme mora biti zadato u koracima od 15 minuta",
+        400,
+      );
+    }
 
     if (endMinutes <= startMinutes) {
       throw new ErrorResponse(
