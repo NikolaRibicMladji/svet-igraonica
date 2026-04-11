@@ -38,7 +38,6 @@ const PlayroomDetails = () => {
         const result = await getPlayroomById(id);
 
         if (result?.success) {
-          console.log("DETAILS PLAYROOM:", result.data);
           setPlayroom(result.data);
         } else {
           setPlayroom(null);
@@ -201,7 +200,17 @@ const PlayroomDetails = () => {
 
           <div className="detail-item">
             <label>📧 Email</label>
-            <p>{playroom.kontaktEmail || "-"}</p>
+            {playroom.kontaktEmail ? (
+              <a
+                href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(playroom.kontaktEmail)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {playroom.kontaktEmail}
+              </a>
+            ) : (
+              <p>-</p>
+            )}
           </div>
 
           <div className="detail-item">
@@ -272,7 +281,7 @@ const PlayroomDetails = () => {
                   rel="noreferrer"
                   className="social-link-small instagram"
                 >
-                  📸 Instagram
+                  Instagram
                 </a>
               )}
 
@@ -283,7 +292,7 @@ const PlayroomDetails = () => {
                   rel="noreferrer"
                   className="social-link-small facebook"
                 >
-                  📘 Facebook
+                  Facebook
                 </a>
               )}
 
@@ -294,7 +303,7 @@ const PlayroomDetails = () => {
                   rel="noreferrer"
                   className="social-link-small tiktok"
                 >
-                  🎵 TikTok
+                  TikTok
                 </a>
               )}
 
@@ -305,7 +314,7 @@ const PlayroomDetails = () => {
                   rel="noreferrer"
                   className="social-link-small website"
                 >
-                  🌐 Veb sajt
+                  Veb sajt
                 </a>
               )}
             </div>

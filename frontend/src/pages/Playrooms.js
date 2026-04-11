@@ -173,17 +173,16 @@ const Playrooms = () => {
                       {/* TELEFON + EMAIL */}
                       <div className="contact-row">
                         {playroom.kontaktTelefon && (
-                          <a
-                            href={`tel:${playroom.kontaktTelefon}`}
-                            className="contact-item"
-                          >
+                          <div className="contact-item">
                             {playroom.kontaktTelefon}
-                          </a>
+                          </div>
                         )}
 
                         {playroom.kontaktEmail && (
                           <a
-                            href={`mailto:${playroom.kontaktEmail}`}
+                            href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(playroom.kontaktEmail)}`}
+                            target="_blank"
+                            rel="noreferrer"
                             className="contact-item"
                           >
                             {playroom.kontaktEmail}

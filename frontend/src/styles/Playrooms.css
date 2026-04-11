@@ -293,7 +293,7 @@
 }
 
 /* TELEFON */
-.contact-item[href^="tel"]::before {
+.contact-row .contact-item:first-child::before {
   background-image: url("../../public/icons/phone.png");
 }
 
