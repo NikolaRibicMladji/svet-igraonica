@@ -980,7 +980,11 @@ const Book = () => {
                 </div>
 
                 <div className="form-group">
-                  <label>📝 Napomena (opciono)</label>
+                  <label className="booking-section-title">
+                    📝 Napomena{" "}
+                    <span className="inline-bracket-text">(opciono)</span>
+                  </label>
+
                   <textarea
                     rows="3"
                     value={napomena}
