@@ -38,6 +38,7 @@ const PlayroomDetails = () => {
         const result = await getPlayroomById(id);
 
         if (result?.success) {
+          console.log("DETAILS PLAYROOM:", result.data);
           setPlayroom(result.data);
         } else {
           setPlayroom(null);

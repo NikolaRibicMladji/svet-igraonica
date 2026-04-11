@@ -169,32 +169,74 @@ const Playrooms = () => {
                       📍 {playroom.adresa}, {playroom.grad}
                     </div>
 
-                    <div className="playroom-free-features">
-                      {Array.isArray(playroom.besplatnePogodnosti) &&
-                      playroom.besplatnePogodnosti.length > 0 ? (
-                        <div className="free-features-preview">
-                          {playroom.besplatnePogodnosti
-                            .slice(0, 3)
-                            .map((feat, idx) => (
-                              <span
-                                key={`${feat}-${idx}`}
-                                className="free-feature-tag"
-                              >
-                                ✓ {feat}
-                              </span>
-                            ))}
+                    <div className="playroom-contact-preview">
+                      {/* TELEFON + EMAIL */}
+                      <div className="contact-row">
+                        {playroom.kontaktTelefon && (
+                          <a
+                            href={`tel:${playroom.kontaktTelefon}`}
+                            className="contact-item"
+                          >
+                            {playroom.kontaktTelefon}
+                          </a>
+                        )}
 
-                          {playroom.besplatnePogodnosti.length > 3 && (
-                            <span className="free-feature-tag">
-                              +{playroom.besplatnePogodnosti.length - 3}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="no-free-features">
-                          Nema navedenih pogodnosti
-                        </span>
-                      )}
+                        {playroom.kontaktEmail && (
+                          <a
+                            href={`mailto:${playroom.kontaktEmail}`}
+                            className="contact-item"
+                          >
+                            {playroom.kontaktEmail}
+                          </a>
+                        )}
+                      </div>
+
+                      {/* DRUŠTVENE MREŽE */}
+                      <div className="social-row">
+                        {playroom.drustveneMreze?.instagram && (
+                          <a
+                            href={playroom.drustveneMreze.instagram}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="social-item"
+                          >
+                            Instagram
+                          </a>
+                        )}
+
+                        {playroom.drustveneMreze?.tiktok && (
+                          <a
+                            href={playroom.drustveneMreze.tiktok}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="social-item"
+                          >
+                            TikTok
+                          </a>
+                        )}
+
+                        {playroom.drustveneMreze?.facebook && (
+                          <a
+                            href={playroom.drustveneMreze.facebook}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="social-item"
+                          >
+                            Facebook
+                          </a>
+                        )}
+
+                        {playroom.drustveneMreze?.website && (
+                          <a
+                            href={playroom.drustveneMreze.website}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="social-item website-link"
+                          >
+                            Veb sajt
+                          </a>
+                        )}
+                      </div>
                     </div>
 
                     <div className="playroom-rating">

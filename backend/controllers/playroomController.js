@@ -158,7 +158,7 @@ exports.getPlayroomById = async (req, res, next) => {
     delete data.updatedAt;
 
     // ❌ ukloni email ako NE želiš javno
-    delete data.kontaktEmail;
+    // delete data.kontaktEmail;
 
     res.status(200).json({
       success: true,

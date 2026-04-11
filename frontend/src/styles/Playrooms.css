@@ -217,6 +217,110 @@
   cursor: pointer;
 }
 
+.playroom-contact-preview {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.contact-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.social-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.contact-item,
+.social-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 24px;
+  font-size: 0.85rem;
+  color: #64748b;
+  text-decoration: none;
+}
+
+.contact-item:hover,
+.social-item:hover {
+  color: #ff6b4a;
+}
+
+.contact-item::before,
+.social-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* =========================
+   PRAVE IKONICE (IMAGE)
+========================= */
+
+/* osnovno */
+.contact-item,
+.social-item {
+  position: relative;
+  padding-left: 22px;
+}
+
+/* IKONICA PRE TEKSTA */
+.contact-item::before,
+.social-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+/* TELEFON */
+.contact-item[href^="tel"]::before {
+  background-image: url("../../public/icons/phone.png");
+}
+
+/* EMAIL */
+.contact-item[href^="mailto"]::before {
+  background-image: url("../../public/icons/email.png");
+}
+
+/* INSTAGRAM */
+.social-item[href*="instagram"]::before {
+  background-image: url("../../public/icons/instagram.png");
+}
+
+/* FACEBOOK */
+.social-item[href*="facebook"]::before {
+  background-image: url("../../public/icons/facebook.png");
+}
+
+/* TIKTOK */
+.social-item[href*="tiktok"]::before {
+  background-image: url("../../public/icons/tiktok.png");
+}
+
+/* WEBSITE */
+.social-item.website-link::before {
+  background-image: url("../../public/icons/web.png");
+}
 /* ============================================
    EMPTY
 ============================================ */
