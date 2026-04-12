@@ -116,21 +116,15 @@ app.use("/api/reviews", apiLimiter, require("./routes/reviewRoutes"));
 app.use("/api/upload", apiLimiter, require("./routes/uploadRoutes"));
 app.use("/api/temp-upload", apiLimiter, require("./routes/tempUploadRoutes"));
 
-// SPA fallback / dev root
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../frontend/build")));
-
-  app.get("*", (req, res) => {
-    res.sendFile(path.resolve(__dirname, "../frontend/build/index.html"));
+// Root ruta za API servis
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: `Svet igraonica API radi u ${
+      process.env.NODE_ENV || "development"
+    } modu!`,
   });
-} else {
-  app.get("/", (req, res) => {
-    res.status(200).json({
-      success: true,
-      message: "Svet igraonica API radi u development modu!",
-    });
-  });
-}
+});
 
 // Error handler mora poslednji
 app.use(errorHandler);
