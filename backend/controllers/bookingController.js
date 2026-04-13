@@ -24,7 +24,7 @@ exports.createBooking = async (req, res, next) => {
       vremeDo: req.body.vremeDo,
       user: req.user || null,
       payload: {
-        cenaId: req.body.cenaId || "",
+        cenaIds: Array.isArray(req.body.cenaIds) ? req.body.cenaIds : [],
         paketId: req.body.paketId || null,
         usluge: Array.isArray(req.body.usluge) ? req.body.usluge : [],
         brojDece: Number(req.body.brojDece) || 1,
@@ -106,7 +106,7 @@ exports.createGuestBooking = async (req, res, next) => {
       vremeDo: req.body.vremeDo,
       user: createdUser,
       payload: {
-        cenaId: req.body.cenaId || "",
+        cenaIds: Array.isArray(req.body.cenaIds) ? req.body.cenaIds : [],
         paketId: req.body.paketId || null,
         usluge: Array.isArray(req.body.usluge) ? req.body.usluge : [],
         brojDece: Number(req.body.brojDece) || 1,

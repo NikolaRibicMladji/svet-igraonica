@@ -48,6 +48,9 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
       opis: initialData?.opis || "",
       kontaktTelefon: initialData?.kontaktTelefon || "",
       kontaktEmail: initialData?.kontaktEmail || "",
+      rezimRezervacije: initialData?.rezimRezervacije || "fleksibilno",
+      trajanjeTermina: initialData?.trajanjeTermina || 60,
+      vremePripremeTermina: initialData?.vremePripremeTermina ?? 0,
       kapacitet: {
         deca: initialData?.kapacitet?.deca || "",
         roditelji: initialData?.kapacitet?.roditelji || "",
@@ -359,15 +362,9 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
   const handleAddCena = () => {
     const naziv = sanitizeText(novaCena.naziv);
     const cena = toNumberOrZero(novaCena.cena);
-    const dozvoljeniNazivi = ["Dete", "Roditelj"];
 
     if (!naziv) {
-      setError("Izaberi naziv cene.");
-      return;
-    }
-
-    if (!dozvoljeniNazivi.includes(naziv)) {
-      setError('Naziv cene može biti samo "Dete" ili "Roditelj".');
+      setError("Izaberi naziv");
       return;
     }
 
@@ -621,6 +618,9 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
       opis: sanitizeText(formData.opis),
       kontaktTelefon: sanitizeText(formData.kontaktTelefon),
       kontaktEmail: sanitizeText(formData.kontaktEmail),
+      rezimRezervacije: formData.rezimRezervacije || "fleksibilno",
+      trajanjeTermina: Number(formData.trajanjeTermina) || 60,
+      vremePripremeTermina: Number(formData.vremePripremeTermina) || 0,
       kapacitet: {
         deca: toNumberOrZero(formData.kapacitet.deca),
         roditelji: formData.kapacitet.roditelji

@@ -21,14 +21,10 @@ const Book = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
-  const [selectedCenaId, setSelectedCenaId] = useState("");
+  const [selectedCenaIds, setSelectedCenaIds] = useState([]);
   const [selectedPaketId, setSelectedPaketId] = useState("");
   const [selectedUslugeIds, setSelectedUslugeIds] = useState([]);
-  const [brojDece, setBrojDece] = useState("");
-  const [brojRoditelja, setBrojRoditelja] = useState("");
-  const [kolicineCena, setKolicineCena] = useState({});
-  const [kolicinePaketa, setKolicinePaketa] = useState({});
-  const [kolicineUsluga, setKolicineUsluga] = useState({});
+
   const bookingFormRef = useRef(null);
   const topRef = useRef(null);
 
@@ -57,25 +53,12 @@ const Book = () => {
 
   const hasSelectedDate = Boolean(selectedDate);
 
-  const handleKolicinaChange = (cenaId, value) => {
-    setKolicineCena((prev) => ({
-      ...prev,
-      [cenaId]: Number(value) || 0,
-    }));
-  };
-
-  const handleKolicinaPaketaChange = (paketId, value) => {
-    setKolicinePaketa((prev) => ({
-      ...prev,
-      [paketId]: Number(value) || 0,
-    }));
-  };
-
-  const handleKolicinaUslugeChange = (uslugaId, value) => {
-    setKolicineUsluga((prev) => ({
-      ...prev,
-      [uslugaId]: Number(value) || 0,
-    }));
+  const handleCenaToggle = (cenaId) => {
+    setSelectedCenaIds((prev) =>
+      prev.includes(String(cenaId))
+        ? prev.filter((id) => id !== String(cenaId))
+        : [...prev, String(cenaId)],
+    );
   };
 
   const loadPlayroom = useCallback(async () => {
@@ -166,9 +149,9 @@ const Book = () => {
     }, 100);
   };
 
-  const selectedCena = Array.isArray(playroom?.cene)
-    ? playroom.cene.find((c) => String(c._id) === String(selectedCenaId))
-    : null;
+  const selectedCene = Array.isArray(playroom?.cene)
+    ? playroom.cene.filter((c) => selectedCenaIds.includes(String(c._id)))
+    : [];
 
   const selectedPaket = Array.isArray(playroom?.paketi)
     ? playroom.paketi.find((p) => String(p._id) === String(selectedPaketId))
@@ -192,39 +175,45 @@ const Book = () => {
     return diff / 60;
   };
 
+  const getSlotDurationLabel = () => {
+    if (!selectedStartTime || !selectedEndTime) return "";
+
+    const startMinutes = timeToMinutes(selectedStartTime);
+    const endMinutes = timeToMinutes(selectedEndTime);
+    const diff = endMinutes - startMinutes;
+
+    if (!Number.isFinite(diff) || diff <= 0) return "";
+
+    const sati = Math.floor(diff / 60);
+    const minuti = diff % 60;
+
+    if (sati > 0 && minuti > 0) {
+      return `${sati}h ${minuti}min`;
+    }
+
+    if (sati > 0) {
+      return `${sati}h`;
+    }
+
+    return `${minuti}min`;
+  };
+
   const calculateTotal = () => {
     let total = 0;
     const trajanjeSati = getSlotDurationInHours();
-    const brojDeceNum = Number(brojDece) || 0;
 
-    if (Array.isArray(playroom.cene)) {
-      playroom.cene.forEach((c) => {
-        const naziv = String(c.naziv || "").toLowerCase();
-        const kolicinaDece = Number(brojDece) || 0;
-        const kolicinaRoditelja = Number(brojRoditelja) || 0;
-
-        let kolicina = 0;
-
-        if (naziv === "dete") {
-          kolicina = kolicinaDece;
-        } else if (naziv === "roditelj") {
-          kolicina = kolicinaRoditelja;
-        } else {
-          kolicina = Number(kolicineCena[c._id]) || 0;
-        }
-
-        if (kolicina <= 0 && c.tip !== "fiksno") return;
-
+    if (Array.isArray(selectedCene)) {
+      selectedCene.forEach((c) => {
         if (c.tip === "fiksno") {
           total += Number(c.cena) || 0;
         }
 
-        if (c.tip === "po_osobi") {
-          total += (Number(c.cena) || 0) * kolicina;
+        if (c.tip === "po_satu") {
+          total += (Number(c.cena) || 0) * trajanjeSati;
         }
 
-        if (c.tip === "po_satu") {
-          total += (Number(c.cena) || 0) * kolicina * trajanjeSati;
+        if (c.tip === "po_osobi") {
+          total += Number(c.cena) || 0;
         }
       });
     }
@@ -235,9 +224,7 @@ const Book = () => {
       }
 
       if (selectedPaket.tip === "po_osobi") {
-        total +=
-          (Number(selectedPaket.cena) || 0) *
-          ((Number(brojDece) || 0) + (Number(brojRoditelja) || 0));
+        total += Number(selectedPaket.cena) || 0;
       }
 
       if (selectedPaket.tip === "po_satu") {
@@ -251,9 +238,7 @@ const Book = () => {
       }
 
       if (u.tip === "po_osobi") {
-        total +=
-          (Number(u.cena) || 0) *
-          ((Number(brojDece) || 0) + (Number(brojRoditelja) || 0));
+        total += Number(u.cena) || 0;
       }
 
       if (u.tip === "po_satu") {
@@ -352,10 +337,9 @@ const Book = () => {
       return;
     }
 
-    const imaNesto = Object.values(kolicineCena).some((v) => v > 0);
-
-    if (!imaNesto) {
-      setError("Unesite bar jednu stavku.");
+    if (selectedCenaIds.length === 0) {
+      setError("Izaberi bar jednu stavku iz cenovnika.");
+      scrollToTop();
       return;
     }
 
@@ -423,11 +407,11 @@ const Book = () => {
         datum: selectedDate,
         vremeOd: selectedStartTime,
         vremeDo: selectedEndTime,
-        cenaId: selectedCenaId,
+        cenaIds: selectedCenaIds,
         paketId: selectedPaketId || null,
         usluge: selectedUslugeIds,
-        brojDece: Number(brojDece) || 0,
-        brojRoditelja: Number(brojRoditelja) || 0,
+        brojDece: 1,
+
         ime: korisnikPodaci.ime.trim(),
         prezime: korisnikPodaci.prezime.trim(),
         email: korisnikPodaci.email.trim().toLowerCase(),
@@ -500,28 +484,6 @@ const Book = () => {
     return "fiksna cena";
   };
 
-  const getCountFieldPriceText = (item, fallbackBesplatno = true) => {
-    if (!item) {
-      return fallbackBesplatno ? "besplatno" : "";
-    }
-
-    const cena = Number(item.cena) || 0;
-
-    if (item.tip === "po_osobi") {
-      return `${cena} RSD po osobi`;
-    }
-
-    if (item.tip === "po_satu") {
-      return `${cena} RSD po satu`;
-    }
-
-    if (item.tip === "fiksno") {
-      return `${cena} RSD`;
-    }
-
-    return `${cena} RSD`;
-  };
-
   if (loading) {
     return <div className="container loading">Učitavanje...</div>;
   }
@@ -534,19 +496,9 @@ const Book = () => {
     );
   }
 
-  const cenaDeteObj = playroom?.cene?.find(
-    (c) => String(c.naziv).toLowerCase() === "dete",
-  );
-
-  const cenaRoditeljObj = playroom?.cene?.find(
-    (c) => String(c.naziv).toLowerCase() === "roditelj",
-  );
-
-  const cenaDete = Number(cenaDeteObj?.cena) || 0;
-  const cenaRoditelj = Number(cenaRoditeljObj?.cena) || 0;
-
-  const tipDete = cenaDeteObj?.tip || "fiksno";
-  const tipRoditelj = cenaRoditeljObj?.tip || "fiksno";
+  const isFiksno = playroom?.rezimRezervacije === "fiksno";
+  const trajanjeTermina = Number(playroom?.trajanjeTermina) || 60;
+  const vremePripremeTermina = Number(playroom?.vremePripremeTermina) || 0;
 
   const availableStartTimes = availability?.workingHours
     ? generateQuarterHourOptions(
@@ -560,9 +512,16 @@ const Book = () => {
       ? generateQuarterHourOptions(
           selectedStartTime,
           availability.workingHours.vremeDo,
-        ).filter(
-          (time) => timeToMinutes(time) > timeToMinutes(selectedStartTime),
-        )
+        ).filter((time) => {
+          const startMinutes = timeToMinutes(selectedStartTime);
+          const currentMinutes = timeToMinutes(time);
+
+          if (isFiksno) {
+            return currentMinutes === startMinutes + trajanjeTermina;
+          }
+
+          return currentMinutes > startMinutes;
+        })
       : [];
 
   return (
@@ -598,14 +557,10 @@ const Book = () => {
               setSelectedDate(value);
               setSelectedStartTime("");
               setSelectedEndTime("");
-              setSelectedCenaId("");
+              setSelectedCenaIds([]);
               setSelectedPaketId("");
               setSelectedUslugeIds([]);
-              setKolicineCena({});
-              setKolicinePaketa({});
-              setKolicineUsluga({});
-              setBrojDece("");
-              setBrojRoditelja("");
+
               setNapomena("");
               setError("");
             }}
@@ -668,7 +623,15 @@ const Book = () => {
                         onChange={(e) => {
                           const value = e.target.value;
                           setSelectedStartTime(value);
-                          setSelectedEndTime("");
+
+                          if (playroom?.rezimRezervacije === "fiksno") {
+                            const endMinutes =
+                              timeToMinutes(value) + trajanjeTermina;
+                            const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
+                            setSelectedEndTime(endTime);
+                          } else {
+                            setSelectedEndTime("");
+                          }
                         }}
                       >
                         <option value="">Izaberi vreme</option>
@@ -680,26 +643,33 @@ const Book = () => {
                       </select>
                     </div>
 
-                    <div className="form-group">
-                      <label>Vreme do *</label>
-                      <select
-                        className="booking-select"
-                        value={selectedEndTime}
-                        onChange={(e) => setSelectedEndTime(e.target.value)}
-                        disabled={!selectedStartTime}
-                      >
-                        <option value="">
-                          {selectedStartTime
-                            ? "Izaberi vreme"
-                            : "Prvo izaberi vreme od"}
-                        </option>
-                        {availableEndTimes.map((time) => (
-                          <option key={time} value={time}>
-                            {time}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    {!isFiksno ? (
+                      <div className="form-group">
+                        <label>Vreme do *</label>
+                        <select
+                          className="booking-select"
+                          value={selectedEndTime}
+                          onChange={(e) => setSelectedEndTime(e.target.value)}
+                        >
+                          <option value="">Izaberi vreme</option>
+                          {availableEndTimes.map((time) => (
+                            <option key={time} value={time}>
+                              {time}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="form-group">
+                        <label>Trajanje termina</label>
+                        <input
+                          type="text"
+                          value={`${trajanjeTermina} minuta`}
+                          disabled
+                          className="date-input"
+                        />
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -714,85 +684,40 @@ const Book = () => {
                   <p>
                     ⏰ Vreme: {selectedStartTime || "-"} -{" "}
                     {selectedEndTime || "-"}
+                    {selectedStartTime && selectedEndTime
+                      ? ` (${getSlotDurationLabel()})`
+                      : ""}
                   </p>
-                </div>
-
-                <div className="form-row count-row">
-                  <div className="form-group">
-                    <label className="count-label">
-                      Broj dece{" "}
-                      <span className="inline-bracket-text">
-                        ({getCountFieldPriceText(cenaDeteObj, true)})
-                      </span>
-                    </label>
-                    <input
-                      className="count-input"
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      placeholder=""
-                      value={brojDece}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (/^\d*$/.test(value)) {
-                          setBrojDece(value);
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="count-label">
-                      Broj roditelja{" "}
-                      <span className="inline-bracket-text">
-                        ({getCountFieldPriceText(cenaRoditeljObj, true)})
-                      </span>
-                    </label>
-                    <input
-                      className="count-input"
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      placeholder=""
-                      value={brojRoditelja}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (/^\d*$/.test(value)) {
-                          setBrojRoditelja(value);
-                        }
-                      }}
-                    />
-                  </div>
                 </div>
 
                 {Array.isArray(playroom.cene) && playroom.cene.length > 0 && (
                   <div className="form-group">
-                    <div className="booking-options-list">
+                    <label className="booking-section-title">
+                      Stavke iz cenovnika
+                    </label>
+
+                    <div className="booking-options-list booking-options-list--flat">
                       {playroom.cene
                         .filter((c) => {
                           const naziv = String(c.naziv || "").toLowerCase();
                           return naziv !== "dete" && naziv !== "roditelj";
                         })
-                        .map((c) => (
-                          <div key={c._id} className="option-card">
-                            <div className="option-card-header">
-                              <strong>{c.naziv}</strong> - {c.cena} RSD ({c.tip}
-                              )
-                            </div>
+                        .map((cena) => (
+                          <div key={cena._id} className="option-card">
+                            <label className="option-check-row">
+                              <span>
+                                <strong>{cena.naziv}</strong> - {cena.cena} RSD
+                                ({getPricingLabel(cena)})
+                              </span>
 
-                            {c.tip !== "fiksno" && (
                               <input
-                                type="number"
-                                min="0"
-                                inputMode="numeric"
-                                pattern="[0-9]*"
-                                placeholder="Količina"
-                                value={kolicineCena[c._id] || 0}
-                                onChange={(e) =>
-                                  handleKolicinaChange(c._id, e.target.value)
-                                }
+                                type="checkbox"
+                                checked={selectedCenaIds.includes(
+                                  String(cena._id),
+                                )}
+                                onChange={() => handleCenaToggle(cena._id)}
                               />
-                            )}
+                            </label>
                           </div>
                         ))}
                     </div>
@@ -995,90 +920,32 @@ const Book = () => {
 
                 <div className="order-summary">
                   <h4>🛒 Pregled rezervacije</h4>
-                  {/* DECA */}
-                  {(Number(brojDece) || 0) > 0 && cenaDete > 0 && (
-                    <div className="summary-item">
-                      <span>Deca</span>
-                      <span>
-                        {tipDete === "po_satu"
-                          ? `${cenaDete} × ${Number(brojDece) || 0} × ${getSlotDurationInHours()}h = ${
-                              cenaDete *
-                              (Number(brojDece) || 0) *
-                              getSlotDurationInHours()
-                            } RSD`
-                          : tipDete === "po_osobi"
-                            ? `${cenaDete} × ${Number(brojDece) || 0} = ${
-                                cenaDete * (Number(brojDece) || 0)
-                              } RSD`
-                            : `${cenaDete} RSD`}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* RODITELJI */}
-                  {(Number(brojRoditelja) || 0) > 0 && cenaRoditelj > 0 && (
-                    <div className="summary-item">
-                      <span>Roditelji</span>
-                      <span>
-                        {tipRoditelj === "po_satu"
-                          ? `${cenaRoditelj} × ${Number(brojRoditelja) || 0} × ${getSlotDurationInHours()}h = ${
-                              cenaRoditelj *
-                              (Number(brojRoditelja) || 0) *
-                              getSlotDurationInHours()
-                            } RSD`
-                          : tipRoditelj === "po_osobi"
-                            ? `${cenaRoditelj} × ${Number(brojRoditelja) || 0} = ${
-                                cenaRoditelj * (Number(brojRoditelja) || 0)
-                              } RSD`
-                            : `${cenaRoditelj} RSD`}
-                      </span>
-                    </div>
-                  )}
-                  {playroom.cene
-                    .filter((c) => {
-                      const naziv = String(c.naziv || "").toLowerCase();
-                      return naziv !== "dete" && naziv !== "roditelj";
-                    })
-                    .map((c) => (
-                      <div key={c._id} className="option-card">
-                        <div className="option-card-header">
-                          <strong>{c.naziv}</strong> - {c.cena} RSD ({c.tip})
+                  {selectedCene.length > 0 && (
+                    <div className="reservation-summary-items">
+                      {selectedCene.map((item) => (
+                        <div key={item._id} className="summary-item">
+                          <span>{item.naziv}</span>
+                          <span>
+                            {item.tip === "po_satu"
+                              ? `${item.cena} × ${getSlotDurationInHours()}h = ${
+                                  item.cena * getSlotDurationInHours()
+                                } RSD`
+                              : `${item.cena} RSD`}
+                          </span>
                         </div>
-
-                        {c.tip !== "fiksno" && (
-                          <input
-                            type="number"
-                            min="0"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            placeholder="Količina"
-                            value={kolicineCena[c._id] || 0}
-                            onChange={(e) =>
-                              handleKolicinaChange(c._id, e.target.value)
-                            }
-                          />
-                        )}
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  )}
                   {selectedPaket && (
                     <div className="summary-item">
                       <span>{selectedPaket.naziv}</span>
                       <span>
-                        {selectedPaket.tip === "po_osobi"
-                          ? `${selectedPaket.cena} RSD × ${
-                              (Number(brojDece) || 0) +
-                              (Number(brojRoditelja) || 0)
-                            } = ${
+                        {selectedPaket.tip === "po_satu"
+                          ? `${selectedPaket.cena} RSD × ${getSlotDurationInHours()}h = ${
                               (Number(selectedPaket.cena) || 0) *
-                              ((Number(brojDece) || 0) +
-                                (Number(brojRoditelja) || 0))
+                              getSlotDurationInHours()
                             } RSD`
-                          : selectedPaket.tip === "po_satu"
-                            ? `${selectedPaket.cena} RSD × ${getSlotDurationInHours()}h = ${
-                                (Number(selectedPaket.cena) || 0) *
-                                getSlotDurationInHours()
-                              } RSD`
-                            : `${selectedPaket.cena} RSD`}
+                          : `${selectedPaket.cena} RSD`}
                       </span>
                     </div>
                   )}
@@ -1086,20 +953,11 @@ const Book = () => {
                     <div className="summary-item" key={u._id}>
                       <span>{u.naziv}</span>
                       <span>
-                        {u.tip === "po_osobi"
-                          ? `${u.cena} RSD × ${
-                              (Number(brojDece) || 0) +
-                              (Number(brojRoditelja) || 0)
-                            } = ${
-                              (Number(u.cena) || 0) *
-                              ((Number(brojDece) || 0) +
-                                (Number(brojRoditelja) || 0))
+                        {u.tip === "po_satu"
+                          ? `${u.cena} RSD × ${getSlotDurationInHours()}h = ${
+                              (Number(u.cena) || 0) * getSlotDurationInHours()
                             } RSD`
-                          : u.tip === "po_satu"
-                            ? `${u.cena} RSD × ${getSlotDurationInHours()}h = ${
-                                (Number(u.cena) || 0) * getSlotDurationInHours()
-                              } RSD`
-                            : `${u.cena} RSD`}
+                          : `${u.cena} RSD`}
                       </span>
                     </div>
                   ))}

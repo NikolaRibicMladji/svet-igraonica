@@ -45,6 +45,18 @@ const formatMinutesToTime = (minutes) => {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 };
 
+const getSlotSettings = (playroom) => {
+  const slotDuration = Number(playroom?.trajanjeTermina) || 60;
+  const prepDuration = Number(playroom?.vremePripremeTermina) || 0;
+  const slotStep = slotDuration + prepDuration;
+
+  return {
+    slotDuration,
+    prepDuration,
+    slotStep,
+  };
+};
+
 const getWorkingHoursForDate = (playroom, date) => {
   const weekday = date
     .toLocaleDateString("en-US", { weekday: "long" })
@@ -88,15 +100,16 @@ const buildExpectedSlotsForDate = (playroom, date) => {
 
   if (!workingHours.works) return [];
 
+  const { slotDuration, slotStep } = getSlotSettings(playroom);
   const slots = [];
 
   for (
     let current = workingHours.startMinutes;
-    current + 60 <= workingHours.endMinutes;
-    current += 60
+    current + slotDuration <= workingHours.endMinutes;
+    current += slotStep
   ) {
     const vremeOd = formatMinutesToTime(current);
-    const vremeDo = formatMinutesToTime(current + 60);
+    const vremeDo = formatMinutesToTime(current + slotDuration);
 
     slots.push({
       datum: getStartOfDay(date),

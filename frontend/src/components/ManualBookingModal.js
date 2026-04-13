@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import "../styles/ManualBookingModal.css";
 
 const formatDate = (datum) => {
@@ -20,11 +20,7 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
   const [error, setError] = useState("");
   const [vremeOd, setVremeOd] = useState("");
   const [vremeDo, setVremeDo] = useState("");
-
-  const cenaPoDetetu = useMemo(() => {
-    const cena = Number(slot?.cena);
-    return Number.isFinite(cena) ? cena : 0;
-  }, [slot]);
+  const [selectedCenaIds, setSelectedCenaIds] = useState([]);
 
   useEffect(() => {
     if (!slot) return;
@@ -32,6 +28,7 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
     setNapomena("");
     setError("");
     setLoading(false);
+    setSelectedCenaIds([]);
   }, [slot]);
 
   useEffect(() => {
@@ -49,6 +46,14 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
       document.body.style.overflow = "";
     };
   }, [loading, onClose]);
+
+  const playroomCene = slot?.playroom?.cene || [];
+
+  const toggleCena = (id) => {
+    setSelectedCenaIds((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
+    );
+  };
 
   if (!slot) return null;
 
@@ -95,11 +100,67 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
         )
       : [];
 
+  const getSlotDurationInHours = () => {
+    if (!vremeOd || !vremeDo) return 0;
+
+    const startMinutes = toMinutes(vremeOd);
+    const endMinutes = toMinutes(vremeDo);
+    const diff = endMinutes - startMinutes;
+
+    if (!Number.isFinite(diff) || diff <= 0) return 0;
+
+    return diff / 60;
+  };
+
+  const ukupno = playroomCene
+    .filter((cena) => selectedCenaIds.includes(cena._id))
+    .reduce((sum, cena) => {
+      const cenaVrednost = Number(cena.cena) || 0;
+
+      if (cena.tip === "po_satu") {
+        return sum + cenaVrednost * getSlotDurationInHours();
+      }
+
+      if (cena.tip === "po_osobi") {
+        return sum + cenaVrednost;
+      }
+
+      return sum + cenaVrednost;
+    }, 0);
+
+  const getSlotDurationLabel = () => {
+    if (!vremeOd || !vremeDo) return "";
+
+    const startMinutes = toMinutes(vremeOd);
+    const endMinutes = toMinutes(vremeDo);
+    const diff = endMinutes - startMinutes;
+
+    if (!Number.isFinite(diff) || diff <= 0) return "";
+
+    const sati = Math.floor(diff / 60);
+    const minuti = diff % 60;
+
+    if (sati > 0 && minuti > 0) {
+      return `${sati}h ${minuti}min`;
+    }
+
+    if (sati > 0) {
+      return `${sati}h`;
+    }
+
+    return `${minuti}min`;
+  };
+
   const handleConfirm = async () => {
     setLoading(true);
     setError("");
 
     try {
+      if (selectedCenaIds.length === 0) {
+        setError("Izaberi bar jednu stavku iz cenovnika.");
+        setLoading(false);
+        return;
+      }
       if (!ime || !prezime || !email || !telefon) {
         setError("Sva polja su obavezna.");
         setLoading(false);
@@ -141,10 +202,13 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
       }
 
       await onSubmit?.({
-        playroomId: slot.playroomId || slot.playroom?._id || slot.playroomId,
+        playroomId: slot.playroomId || slot.playroom?._id,
         datum: slot.datum,
         vremeOd,
         vremeDo,
+
+        cenaIds: selectedCenaIds, // 🔥 KLJUČNO
+
         imeRoditelja: ime.trim(),
         prezimeRoditelja: prezime.trim(),
         emailRoditelja: email.trim(),
@@ -186,16 +250,41 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
 
         <div className="modal-body">
           <div className="booking-summary">
+            <div className="form-group">
+              <label>💰 Stavke iz cenovnika</label>
+
+              <div className="extras-list">
+                {playroomCene.length === 0 ? (
+                  <div className="empty-state">
+                    Nema definisanih cena za ovu igraonicu.
+                  </div>
+                ) : (
+                  playroomCene.map((cena) => (
+                    <label key={cena._id} className="extra-item-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selectedCenaIds.includes(cena._id)}
+                        onChange={() => toggleCena(cena._id)}
+                      />
+
+                      <span>
+                        <strong>{cena.naziv}</strong> - {cena.cena} RSD (
+                        {cena.tip})
+                      </span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
             <p>
               <strong>Datum:</strong> {formatDate(slot.datum)}
             </p>
             <p>
-              <strong>Termin:</strong> {slot.vremeOd || "-"} -{" "}
-              {slot.vremeDo || "-"}
+              <strong>Termin:</strong> {vremeOd || slot.vremeOd || "-"} -{" "}
+              {vremeDo || slot.vremeDo || "-"}
+              {vremeOd && vremeDo ? ` (${getSlotDurationLabel()})` : ""}
             </p>
-            <p>
-              <strong>Cena termina:</strong> {cenaPoDetetu} RSD
-            </p>
+
             <p>
               <strong>Model rezervacije:</strong> Jedan termin = jedna
               rezervacija
@@ -294,11 +383,10 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
               disabled={loading}
             />
           </div>
-
-          <div className="total-price">
-            <span>Ukupno:</span>
-            <strong>{cenaPoDetetu} RSD</strong>
-          </div>
+        </div>
+        <div className="total-price">
+          <span>Ukupno:</span>
+          <strong>{ukupno} RSD</strong>
         </div>
 
         <div className="modal-footer">

@@ -9,7 +9,7 @@ const createPlayroomWithSlots = async (playroomData) => {
   const playroom = await Playroom.create(playroomData);
 
   try {
-    const slotResult = await generateTimeSlotsForPlayroom(playroom._id, 30);
+    const slotResult = await generateTimeSlotsForPlayroom(playroom._id);
 
     return {
       playroom,
@@ -71,7 +71,7 @@ const regenerateSlotsForPlayroom = async (playroomId) => {
     throw error;
   }
 
-  const result = await syncTimeSlotsWithWorkingHours(playroom._id, 30);
+  const result = await syncTimeSlotsWithWorkingHours(playroom._id);
 
   if (!result.success) {
     const error = new Error(

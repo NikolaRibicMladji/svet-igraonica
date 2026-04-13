@@ -11,23 +11,19 @@ const AdditionalPricesSection = ({
     <div className="form-section">
       <h3>
         💰 Cene{" "}
-        <span className="input-recommendation">
-          (npr. Dete, po satu, po osobi...)
-        </span>
+        <span className="input-recommendation">(npr. Prostor, po satu...)</span>
       </h3>
 
       <div className="dynamic-input">
         <div className="add-item">
-          <select
+          <input
+            type="text"
+            placeholder="Naziv (npr. Prostor, Dete, Roditelj...)"
             value={novaCena.naziv}
             onChange={(e) =>
               setNovaCena((prev) => ({ ...prev, naziv: e.target.value }))
             }
-          >
-            <option value="">-- Izaberi naziv --</option>
-            <option value="Dete">Dete</option>
-            <option value="Roditelj">Roditelj</option>
-          </select>
+          />
 
           <input
             type="number"
@@ -58,8 +54,11 @@ const AdditionalPricesSection = ({
               setNovaCena((prev) => ({ ...prev, opis: e.target.value }))
             }
           />
-          {cene.some((item) => item.naziv === novaCena.naziv) &&
-            novaCena.naziv && (
+          {cene.some(
+            (item) =>
+              item.naziv.toLowerCase() === novaCena.naziv.trim().toLowerCase(),
+          ) &&
+            novaCena.naziv.trim() && (
               <div className="error-message">
                 Cena za "{novaCena.naziv}" je već dodata.
               </div>

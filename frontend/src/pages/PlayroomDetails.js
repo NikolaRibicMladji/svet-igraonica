@@ -226,6 +226,14 @@ const PlayroomDetails = () => {
                 : "Neograničeno"}
             </p>
           </div>
+          <div className="detail-item">
+            <label>⏰ Režim rezervacije</label>
+            <p>
+              {playroom.rezimRezervacije === "fiksno"
+                ? `Fiksni termini (${playroom.trajanjeTermina || 60} min)`
+                : "Fleksibilno od-do"}
+            </p>
+          </div>
         </div>
         <div className="detail-item full-width">
           <label>📝 Opis</label>

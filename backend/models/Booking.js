@@ -54,27 +54,32 @@ const BookingSchema = new mongoose.Schema(
       min: 1,
     },
 
-    izabranaCena: {
-      naziv: {
-        type: String,
-        default: "",
-        trim: true,
-      },
-      cena: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      tip: {
-        type: String,
-        enum: ["fiksno", "po_osobi", "po_satu"],
-        default: "fiksno",
-      },
-      opis: {
-        type: String,
-        default: "",
-        trim: true,
-      },
+    izabraneCene: {
+      type: [
+        {
+          naziv: {
+            type: String,
+            default: "",
+            trim: true,
+          },
+          cena: {
+            type: Number,
+            default: 0,
+            min: 0,
+          },
+          tip: {
+            type: String,
+            enum: ["fiksno", "po_osobi", "po_satu"],
+            default: "fiksno",
+          },
+          opis: {
+            type: String,
+            default: "",
+            trim: true,
+          },
+        },
+      ],
+      default: [],
     },
 
     izabraniPaket: {

@@ -388,6 +388,7 @@ exports.getAvailableTimeSlots = async (req, res, next) => {
 
     const segments = bookingService.buildDaySegments({
       workingHours,
+      preparationMinutes: Number(playroom.vremePripremeTermina) || 0,
       bookings: bookings.map((b) => ({
         vremeOd: b.vremeOd,
         vremeDo: b.vremeDo,
@@ -544,6 +545,7 @@ exports.manualBookTimeSlot = async (req, res, next) => {
 
     const { id } = req.params;
     const {
+      cenaIds,
       imeRoditelja,
       prezimeRoditelja,
       emailRoditelja,
@@ -627,61 +629,35 @@ exports.manualBookTimeSlot = async (req, res, next) => {
       });
     }
 
-    const ukupnaCena = Number(lockedSlot.cena) || 0;
+    await TimeSlot.findByIdAndUpdate(
+      lockedSlot._id,
+      { $set: { zauzeto: false } },
+      { session },
+    );
 
-    let created;
-
-    try {
-      created = await Booking.create(
-        [
-          {
-            roditeljId: null,
-            timeSlotId: lockedSlot._id,
-            playroomId: lockedSlot.playroomId,
-            datum: lockedSlot.datum,
-            vremeOd: lockedSlot.vremeOd,
-            vremeDo: lockedSlot.vremeDo,
-            ukupnaCena,
-            napomena: napomena || "",
-            status: BOOKING_STATUS.POTVRDJENO,
-            imeRoditelja: imeRoditelja.trim(),
-            prezimeRoditelja: prezimeRoditelja.trim(),
-            emailRoditelja: emailRoditelja.trim().toLowerCase(),
-            telefonRoditelja: telefonRoditelja.trim(),
-          },
-        ],
-        { session },
-      );
-    } catch (err) {
-      if (err.code === 11000) {
-        await TimeSlot.findOneAndUpdate(
-          {
-            _id: lockedSlot._id,
-            zauzeto: true,
-          },
-          {
-            $set: { zauzeto: false },
-          },
-          { session },
-        );
-
-        await session.abortTransaction();
-
-        return res.status(400).json({
-          success: false,
-          message: "Termin je upravo zauzet",
-        });
-      }
-
-      throw err;
-    }
+    const booking = await bookingService.reserveSlot({
+      slotId: lockedSlot._id,
+      user: null,
+      payload: {
+        cenaIds: Array.isArray(cenaIds) ? cenaIds : [],
+        paketId: null,
+        usluge: [],
+        brojDece: 1,
+        imeRoditelja: imeRoditelja || "",
+        prezimeRoditelja: prezimeRoditelja || "",
+        emailRoditelja: emailRoditelja || "",
+        telefonRoditelja: telefonRoditelja || "",
+        napomena: napomena || "",
+      },
+      session,
+    });
 
     await session.commitTransaction();
 
     return res.status(200).json({
       success: true,
-      data: created[0],
-      message: `Termin je uspešno zauzet. Ukupno: ${ukupnaCena} RSD`,
+      data: booking,
+      message: `Termin je uspešno zauzet. Ukupno: ${booking.ukupnaCena} RSD`,
     });
   } catch (error) {
     await session.abortTransaction();
@@ -743,7 +719,7 @@ exports.manualBookInterval = async (req, res, next) => {
       vremeDo,
       user: null,
       payload: {
-        cenaId: String(defaultCena._id),
+        cenaIds: [String(defaultCena._id)],
         paketId: null,
         usluge: [],
         brojDece: 1,

@@ -199,6 +199,10 @@
   font-size: 0.9rem;
 }
 
+.extra-item-checkbox input:checked + span {
+  font-weight: 600;
+  color: #ff6b4a;
+}
 @media (max-width: 480px) {
   .modal-content {
     width: 100%;

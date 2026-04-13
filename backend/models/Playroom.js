@@ -213,6 +213,22 @@ const PlayroomSchema = new mongoose.Schema(
       subota: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
       nedelja: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
     },
+    rezimRezervacije: {
+      type: String,
+      enum: ["fleksibilno", "fiksno"],
+      default: "fleksibilno",
+    },
+
+    trajanjeTermina: {
+      type: Number,
+      enum: [15, 30, 45, 60, 90, 120, 150, 180],
+      default: 60,
+    },
+    vremePripremeTermina: {
+      type: Number,
+      enum: [0, 5, 10, 15, 20, 25, 30],
+      default: 0,
+    },
 
     kapacitet: {
       deca: {

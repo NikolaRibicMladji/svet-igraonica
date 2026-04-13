@@ -221,6 +221,37 @@ exports.updatePlayroom = async (req, res, next) => {
       ? normalizeRadnoVreme(req.body.radnoVreme)
       : oldRadnoVreme;
 
+    const oldRezimRezervacije = playroom.rezimRezervacije || "fleksibilno";
+    const oldTrajanjeTermina = Number(playroom.trajanjeTermina) || 60;
+    const oldVremePripremeTermina = Number(playroom.vremePripremeTermina) || 0;
+
+    const hasRezimRezervacijeUpdate = Object.prototype.hasOwnProperty.call(
+      req.body,
+      "rezimRezervacije",
+    );
+
+    const hasTrajanjeTerminaUpdate = Object.prototype.hasOwnProperty.call(
+      req.body,
+      "trajanjeTermina",
+    );
+
+    const hasVremePripremeTerminaUpdate = Object.prototype.hasOwnProperty.call(
+      req.body,
+      "vremePripremeTermina",
+    );
+
+    const newRezimRezervacije = hasRezimRezervacijeUpdate
+      ? req.body.rezimRezervacije
+      : oldRezimRezervacije;
+
+    const newTrajanjeTermina = hasTrajanjeTerminaUpdate
+      ? Number(req.body.trajanjeTermina)
+      : oldTrajanjeTermina;
+
+    const newVremePripremeTermina = hasVremePripremeTerminaUpdate
+      ? Number(req.body.vremePripremeTermina)
+      : oldVremePripremeTermina;
+
     playroom = await Playroom.findByIdAndUpdate(
       req.params.id,
       {
@@ -238,8 +269,16 @@ exports.updatePlayroom = async (req, res, next) => {
 
     let syncResult = null;
 
-    if (hasRadnoVremeUpdate && !isEqual(oldRadnoVreme, newRadnoVreme)) {
-      syncResult = await syncTimeSlotsWithWorkingHours(playroom._id, 30);
+    const shouldSyncSlots =
+      (hasRadnoVremeUpdate && !isEqual(oldRadnoVreme, newRadnoVreme)) ||
+      (hasRezimRezervacijeUpdate &&
+        oldRezimRezervacije !== newRezimRezervacije) ||
+      (hasTrajanjeTerminaUpdate && oldTrajanjeTermina !== newTrajanjeTermina) ||
+      (hasVremePripremeTerminaUpdate &&
+        oldVremePripremeTermina !== newVremePripremeTermina);
+
+    if (shouldSyncSlots) {
+      syncResult = await syncTimeSlotsWithWorkingHours(playroom._id);
 
       if (!syncResult.success) {
         return res.status(400).json({

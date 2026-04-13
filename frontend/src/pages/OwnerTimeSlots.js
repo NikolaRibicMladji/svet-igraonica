@@ -131,6 +131,9 @@ const OwnerTimeSlots = () => {
         datum: selectedDate,
         vremeOd: bookingData.vremeOd,
         vremeDo: bookingData.vremeDo,
+
+        cenaIds: bookingData.cenaIds, // 🔥 OVO JE KLJUČNO
+
         imeRoditelja: bookingData.imeRoditelja,
         prezimeRoditelja: bookingData.prezimeRoditelja,
         emailRoditelja: bookingData.emailRoditelja,

@@ -27,7 +27,7 @@ const createBookingSchema = z.object({
       .string()
       .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
       .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
-    cenaId: objectId,
+    cenaIds: z.array(objectId).min(1, "Izaberi bar jednu stavku"),
     paketId: objectId.optional().nullable(),
     usluge: z.array(objectId).optional(),
     brojDece: z.coerce.number().min(1, "Broj dece mora biti najmanje 1"),
@@ -66,7 +66,7 @@ const createGuestBookingSchema = z
         .string()
         .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
         .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
-      cenaId: objectId,
+      cenaIds: z.array(objectId).min(1, "Izaberi bar jednu stavku"),
       paketId: objectId.optional().nullable(),
       usluge: z.array(objectId).optional(),
       brojDece: z.coerce.number().min(1, "Broj dece mora biti najmanje 1"),
@@ -116,6 +116,9 @@ const manualBookingSchema = z.object({
       .string()
       .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
       .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
+
+    cenaIds: z.array(objectId).min(1, "Izaberi bar jednu stavku"),
+
     imeRoditelja: z.string().min(2),
     prezimeRoditelja: z.string().min(2),
     emailRoditelja: z.string().email(),

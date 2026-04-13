@@ -38,6 +38,10 @@ const minutesToTime = (minutes) => {
 
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 };
+const getPreparationMinutes = (playroom) => {
+  const value = Number(playroom?.vremePripremeTermina);
+  return Number.isFinite(value) && value >= 0 ? value : 0;
+};
 
 const isOverlapping = (startA, endA, startB, endB) => {
   return startA < endB && endA > startB;
@@ -102,7 +106,11 @@ const getActiveBookingsForDate = async ({
   return query;
 };
 
-const buildDaySegments = ({ workingHours, bookings }) => {
+const buildDaySegments = ({
+  workingHours,
+  bookings,
+  preparationMinutes = 0,
+}) => {
   if (!workingHours) return [];
 
   const dayStart = timeToMinutes(workingHours.vremeOd);
@@ -117,7 +125,10 @@ const buildDaySegments = ({ workingHours, bookings }) => {
 
   for (const booking of sortedBookings) {
     const bookingStart = timeToMinutes(booking.vremeOd);
-    const bookingEnd = timeToMinutes(booking.vremeDo);
+    const bookingEnd = Math.min(
+      timeToMinutes(booking.vremeDo) + preparationMinutes,
+      dayEnd,
+    );
 
     if (bookingStart > cursor) {
       segments.push({
@@ -176,8 +187,8 @@ const reserveSlot = async ({
     ) {
       throw new ErrorResponse("Nedostaju podaci za rezervaciju", 400);
     }
-    if (!payload?.cenaId) {
-      throw new ErrorResponse("Cena je obavezna", 400);
+    if (!Array.isArray(payload?.cenaIds) || payload.cenaIds.length === 0) {
+      throw new ErrorResponse("Izaberi bar jednu stavku iz cenovnika", 400);
     }
 
     if (!payload?.brojDece || Number(payload.brojDece) < 1) {
@@ -224,6 +235,39 @@ const reserveSlot = async ({
 
     const playroom = await Playroom.findById(slot.playroomId).session(session);
 
+    const preparationMinutes = getPreparationMinutes(playroom);
+
+    const existingBookings = await getActiveBookingsForDate({
+      playroomId: slot.playroomId,
+      datum: slot.datum,
+      session,
+    });
+
+    const slotStartMinutes = timeToMinutes(slot.vremeOd);
+    const slotEndMinutes = timeToMinutes(slot.vremeDo);
+
+    const hasOverlap = existingBookings.some((existing) =>
+      isOverlapping(
+        slotStartMinutes,
+        slotEndMinutes,
+        timeToMinutes(existing.vremeOd),
+        timeToMinutes(existing.vremeDo) + preparationMinutes,
+      ),
+    );
+
+    if (hasOverlap) {
+      await TimeSlot.findByIdAndUpdate(
+        slot._id,
+        { $set: { zauzeto: false } },
+        { session },
+      );
+
+      throw new ErrorResponse(
+        "Termin nije dostupan zbog vremena za pripremu između rezervacija",
+        400,
+      );
+    }
+
     if (!playroom) {
       await TimeSlot.findByIdAndUpdate(
         slot._id,
@@ -242,33 +286,37 @@ const reserveSlot = async ({
       return diff > 0 ? diff : 1;
     })();
 
-    const cena = Array.isArray(playroom.cene)
-      ? playroom.cene.find((c) => String(c._id) === String(payload.cenaId))
-      : null;
+    const selectedCenaIds = payload.cenaIds.map((id) => String(id));
 
-    if (!cena) {
+    const selectedCene = Array.isArray(playroom.cene)
+      ? playroom.cene.filter((c) => selectedCenaIds.includes(String(c._id)))
+      : [];
+
+    if (selectedCene.length === 0) {
       await TimeSlot.findByIdAndUpdate(
         slot._id,
         { $set: { zauzeto: false } },
         { session },
       );
 
-      throw new ErrorResponse("Izabrana cena nije pronađena", 400);
+      throw new ErrorResponse("Izabrane cene nisu pronađene", 400);
     }
 
     let ukupnaCena = 0;
 
-    if (cena.tip === "fiksno") {
-      ukupnaCena += Number(cena.cena) || 0;
-    }
+    selectedCene.forEach((c) => {
+      if (c.tip === "fiksno") {
+        ukupnaCena += Number(c.cena) || 0;
+      }
 
-    if (cena.tip === "po_osobi") {
-      ukupnaCena += (Number(cena.cena) || 0) * brojDece;
-    }
+      if (c.tip === "po_osobi") {
+        ukupnaCena += Number(c.cena) || 0;
+      }
 
-    if (cena.tip === "po_satu") {
-      ukupnaCena += (Number(cena.cena) || 0) * trajanjeSati;
-    }
+      if (c.tip === "po_satu") {
+        ukupnaCena += (Number(c.cena) || 0) * trajanjeSati;
+      }
+    });
 
     let selectedPaket = null;
 
@@ -357,12 +405,12 @@ const reserveSlot = async ({
             emailRoditelja: payload.emailRoditelja.trim().toLowerCase(),
             telefonRoditelja: payload.telefonRoditelja.trim(),
             brojDece,
-            izabranaCena: {
-              naziv: cena.naziv,
-              cena: Number(cena.cena) || 0,
-              tip: cena.tip || "fiksno",
-              opis: cena.opis || "",
-            },
+            izabraneCene: selectedCene.map((c) => ({
+              naziv: c.naziv,
+              cena: Number(c.cena) || 0,
+              tip: c.tip || "fiksno",
+              opis: c.opis || "",
+            })),
             izabraniPaket: selectedPaket
               ? {
                   naziv: selectedPaket.naziv,
@@ -442,8 +490,8 @@ const reserveCustomInterval = async ({
       throw new ErrorResponse("Nedostaju podaci za rezervaciju", 400);
     }
 
-    if (!payload?.cenaId) {
-      throw new ErrorResponse("Cena je obavezna", 400);
+    if (!Array.isArray(payload?.cenaIds) || payload.cenaIds.length === 0) {
+      throw new ErrorResponse("Izaberi bar jednu stavku iz cenovnika", 400);
     }
 
     if (!payload?.brojDece || Number(payload.brojDece) < 1) {
@@ -506,12 +554,14 @@ const reserveCustomInterval = async ({
       session,
     });
 
+    const preparationMinutes = getPreparationMinutes(playroom);
+
     const hasOverlap = existingBookings.some((existing) =>
       isOverlapping(
         startMinutes,
         endMinutes,
         timeToMinutes(existing.vremeOd),
-        timeToMinutes(existing.vremeDo),
+        timeToMinutes(existing.vremeDo) + preparationMinutes,
       ),
     );
 
@@ -525,27 +575,31 @@ const reserveCustomInterval = async ({
     const brojDece = Number(payload.brojDece) || 1;
     const trajanjeSati = (endMinutes - startMinutes) / 60;
 
-    const cena = Array.isArray(playroom.cene)
-      ? playroom.cene.find((c) => String(c._id) === String(payload.cenaId))
-      : null;
+    const selectedCenaIds = payload.cenaIds.map((id) => String(id));
 
-    if (!cena) {
-      throw new ErrorResponse("Izabrana cena nije pronađena", 400);
+    const selectedCene = Array.isArray(playroom.cene)
+      ? playroom.cene.filter((c) => selectedCenaIds.includes(String(c._id)))
+      : [];
+
+    if (selectedCene.length === 0) {
+      throw new ErrorResponse("Izabrane cene nisu pronađene", 400);
     }
 
     let ukupnaCena = 0;
 
-    if (cena.tip === "fiksno") {
-      ukupnaCena += Number(cena.cena) || 0;
-    }
+    selectedCene.forEach((c) => {
+      if (c.tip === "fiksno") {
+        ukupnaCena += Number(c.cena) || 0;
+      }
 
-    if (cena.tip === "po_osobi") {
-      ukupnaCena += (Number(cena.cena) || 0) * brojDece;
-    }
+      if (c.tip === "po_osobi") {
+        ukupnaCena += Number(c.cena) || 0;
+      }
 
-    if (cena.tip === "po_satu") {
-      ukupnaCena += (Number(cena.cena) || 0) * trajanjeSati;
-    }
+      if (c.tip === "po_satu") {
+        ukupnaCena += (Number(c.cena) || 0) * trajanjeSati;
+      }
+    });
 
     let selectedPaket = null;
 
@@ -615,12 +669,12 @@ const reserveCustomInterval = async ({
           emailRoditelja: payload.emailRoditelja.trim().toLowerCase(),
           telefonRoditelja: payload.telefonRoditelja.trim(),
           brojDece,
-          izabranaCena: {
-            naziv: cena.naziv,
-            cena: Number(cena.cena) || 0,
-            tip: cena.tip || "fiksno",
-            opis: cena.opis || "",
-          },
+          izabraneCene: selectedCene.map((c) => ({
+            naziv: c.naziv,
+            cena: Number(c.cena) || 0,
+            tip: c.tip || "fiksno",
+            opis: c.opis || "",
+          })),
           izabraniPaket: selectedPaket
             ? {
                 naziv: selectedPaket.naziv,

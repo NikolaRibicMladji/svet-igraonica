@@ -6,7 +6,7 @@ import SocialLinksSection from "./playroom-form/SocialLinksSection";
 import WorkingHoursSection from "./playroom-form/WorkingHoursSection";
 import ImagesSection from "./playroom-form/ImagesSection";
 import VideosSection from "./playroom-form/VideosSection";
-
+import BookingModeSection from "./playroom-form/BookingModeSection";
 import AdditionalPricesSection from "./playroom-form/AdditionalPricesSection";
 import PackagesSection from "./playroom-form/PackagesSection";
 import AdditionalServicesSection from "./playroom-form/AdditionalServicesSection";
@@ -94,6 +94,8 @@ const PlayroomForm = ({
           handleChange={handleChange}
           errors={errors}
         />
+
+        <BookingModeSection formData={formData} handleChange={handleChange} />
 
         <ImagesSection
           uploading={uploading}
