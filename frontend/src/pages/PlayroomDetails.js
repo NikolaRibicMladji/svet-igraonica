@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getPlayroomById } from "../services/playroomService";
-
+import { normalizeText } from "../utils/textUtils";
 import "../styles/PlayroomDetails.css";
 import ImageModal from "../components/ImageModal";
 import Reviews from "../components/Reviews";
@@ -118,16 +118,12 @@ const PlayroomDetails = () => {
 
   const cene = Array.isArray(playroom.cene) ? playroom.cene : [];
 
-  const cenaDete = cene.find(
-    (c) => String(c.naziv || "").toLowerCase() === "dete",
-  );
+  const cenaDete = cene.find((c) => normalizeText(c.naziv) === "dete");
 
-  const cenaRoditelj = cene.find(
-    (c) => String(c.naziv || "").toLowerCase() === "roditelj",
-  );
+  const cenaRoditelj = cene.find((c) => normalizeText(c.naziv) === "roditelj");
 
   const ostaleCene = cene.filter((c) => {
-    const naziv = String(c.naziv || "").toLowerCase();
+    const naziv = normalizeText(c.naziv);
     return naziv !== "dete" && naziv !== "roditelj";
   });
 

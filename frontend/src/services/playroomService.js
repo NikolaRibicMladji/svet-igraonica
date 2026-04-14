@@ -20,6 +20,11 @@ export const getAllPlayrooms = async () => {
   }
 };
 
+export const getFilterCities = async () => {
+  const { data } = await api.get("/playrooms/filter-cities");
+  return data;
+};
+
 export const getPlayroomById = async (id) => {
   try {
     const response = await api.get(`/playrooms/${id}`);

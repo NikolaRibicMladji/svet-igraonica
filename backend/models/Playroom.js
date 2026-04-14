@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const PLAYROOM_STATUS = require("../constants/playroomStatus");
+const { normalizeText } = require("../utils/normalizeText");
 
 const dnevnoRadnoVremeSchema = new mongoose.Schema(
   {
@@ -163,7 +164,7 @@ const PlayroomSchema = new mongoose.Schema(
       type: String,
       required: [true, "Naziv igraonice je obavezan"],
       trim: true,
-      unique: true,
+
       maxlength: 150,
     },
 
@@ -228,6 +229,20 @@ const PlayroomSchema = new mongoose.Schema(
       type: Number,
       enum: [0, 5, 10, 15, 20, 25, 30],
       default: 0,
+    },
+    gradNormalized: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    nazivNormalized: {
+      type: String,
+      default: "",
+      trim: true,
+      unique: true,
+      index: true,
     },
 
     kapacitet: {
@@ -340,5 +355,17 @@ PlayroomSchema.index({ vlasnikId: 1, createdAt: -1 });
 PlayroomSchema.index({ verifikovan: 1, status: 1, grad: 1 });
 
 PlayroomSchema.index({ status: 1, verifikovan: 1, rating: -1 });
+
+PlayroomSchema.pre("save", function (next) {
+  if (this.isModified("grad")) {
+    this.gradNormalized = normalizeText(this.grad);
+  }
+
+  if (this.isModified("naziv")) {
+    this.nazivNormalized = normalizeText(this.naziv);
+  }
+
+  next();
+});
 
 module.exports = mongoose.model("Playroom", PlayroomSchema);

@@ -4,6 +4,7 @@ import api from "../services/api";
 import PlayroomFilters from "../components/PlayroomFilters";
 import PlayroomCoverFallback from "../components/PlayroomCoverFallback";
 import "../styles/Playrooms.css";
+import { normalizeText } from "../utils/normalizeText";
 
 const Playrooms = () => {
   const [playrooms, setPlayrooms] = useState([]);
@@ -31,7 +32,7 @@ const Playrooms = () => {
     const queryParams = new URLSearchParams();
 
     if (filters.grad && filters.grad !== "svi") {
-      queryParams.append("grad", filters.grad);
+      queryParams.append("grad", normalizeText(filters.grad));
     }
 
     if (filters.minCena !== "" && filters.minCena !== null) {
@@ -51,7 +52,10 @@ const Playrooms = () => {
     }
 
     if (Array.isArray(filters.pogodnosti) && filters.pogodnosti.length > 0) {
-      queryParams.append("pogodnosti", filters.pogodnosti.join(","));
+      queryParams.append(
+        "pogodnosti",
+        filters.pogodnosti.map((item) => normalizeText(item)).join(","),
+      );
     }
 
     try {
@@ -90,15 +94,16 @@ const Playrooms = () => {
   };
 
   const filteredPlayrooms = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
+    const term = normalizeText(searchTerm);
 
     if (!term) return playrooms;
 
-    return playrooms.filter(
-      (playroom) =>
-        playroom.naziv?.toLowerCase().includes(term) ||
-        playroom.grad?.toLowerCase().includes(term),
-    );
+    return playrooms.filter((playroom) => {
+      const naziv = normalizeText(playroom.naziv);
+      const grad = normalizeText(playroom.grad);
+
+      return naziv.includes(term) || grad.includes(term);
+    });
   }, [playrooms, searchTerm]);
 
   const handleViewDetails = (id) => {

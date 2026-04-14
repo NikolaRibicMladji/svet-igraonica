@@ -8,6 +8,7 @@ import {
 import { getPlayroomById } from "../services/playroomService";
 import { useAuth } from "../context/AuthContext";
 import "../styles/Book.css";
+import { normalizeText } from "../utils/textUtils";
 
 const getLocalDate = () => {
   const d = new Date();
@@ -699,7 +700,7 @@ const Book = () => {
                     <div className="booking-options-list booking-options-list--flat">
                       {playroom.cene
                         .filter((c) => {
-                          const naziv = String(c.naziv || "").toLowerCase();
+                          const naziv = normalizeText(c.naziv);
                           return naziv !== "dete" && naziv !== "roditelj";
                         })
                         .map((cena) => (

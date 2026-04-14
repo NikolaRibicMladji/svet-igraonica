@@ -10,7 +10,10 @@ const {
 } = require("../services/playroomService");
 const { syncTimeSlotsWithWorkingHours } = require("../utils/generateTimeSlots");
 const isEqual = require("lodash.isequal");
-
+const {
+  normalizeText,
+  normalizeDisplayText,
+} = require("../utils/normalizeText");
 const normalizeRadnoVreme = (radnoVreme = {}) => {
   const days = [
     "ponedeljak",
@@ -50,7 +53,7 @@ exports.createPlayroom = async (req, res, next) => {
     req.body.vlasnikId = req.user.id;
 
     const postoji = await Playroom.findOne({
-      naziv: req.body.naziv?.trim(),
+      nazivNormalized: normalizeText(req.body.naziv?.trim()),
     });
 
     if (postoji) {
@@ -60,9 +63,15 @@ exports.createPlayroom = async (req, res, next) => {
       });
     }
 
+    const trimmedNaziv = req.body.naziv?.trim() || "";
+    const trimmedGrad = req.body.grad?.trim() || "";
+
     const result = await createPlayroomWithSlots({
       ...req.body,
-      naziv: req.body.naziv?.trim(),
+      naziv: trimmedNaziv,
+      nazivNormalized: normalizeText(trimmedNaziv),
+      grad: trimmedGrad,
+      gradNormalized: normalizeText(trimmedGrad),
       kontaktEmail: req.body.kontaktEmail?.trim()?.toLowerCase(),
     });
 
@@ -84,7 +93,7 @@ exports.createPlayroom = async (req, res, next) => {
 // @access  Public
 exports.getAllPlayrooms = async (req, res, next) => {
   try {
-    const { grad, minCena, maxCena, pogodnosti, minRating, sortBy } = req.query;
+    const { grad, minRating, sortBy } = req.query;
 
     const query = {
       verifikovan: true,
@@ -92,22 +101,11 @@ exports.getAllPlayrooms = async (req, res, next) => {
     };
 
     if (grad && grad !== "svi") {
-      query.grad = grad;
+      query.gradNormalized = normalizeText(grad);
     }
 
     if (minRating && minRating !== "sve") {
       query.rating = { $gte: parseInt(minRating, 10) };
-    }
-
-    if (pogodnosti) {
-      const pogodnostiArray = pogodnosti
-        .split(",")
-        .map((p) => p.trim())
-        .filter(Boolean);
-
-      if (pogodnostiArray.length > 0) {
-        query.besplatnePogodnosti = { $in: pogodnostiArray };
-      }
     }
 
     let sort = { createdAt: -1 };
@@ -252,20 +250,41 @@ exports.updatePlayroom = async (req, res, next) => {
       ? Number(req.body.vremePripremeTermina)
       : oldVremePripremeTermina;
 
-    playroom = await Playroom.findByIdAndUpdate(
-      req.params.id,
-      {
-        ...req.body,
-        ...(req.body.naziv ? { naziv: req.body.naziv.trim() } : {}),
-        ...(req.body.kontaktEmail
-          ? { kontaktEmail: req.body.kontaktEmail.trim().toLowerCase() }
-          : {}),
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
-    );
+    const updateData = {
+      ...req.body,
+      ...(req.body.naziv ? { naziv: req.body.naziv.trim() } : {}),
+      ...(req.body.grad ? { grad: req.body.grad.trim() } : {}),
+      ...(req.body.kontaktEmail
+        ? { kontaktEmail: req.body.kontaktEmail.trim().toLowerCase() }
+        : {}),
+    };
+
+    if (updateData.naziv) {
+      updateData.nazivNormalized = normalizeText(updateData.naziv);
+    }
+
+    if (updateData.grad) {
+      updateData.gradNormalized = normalizeText(updateData.grad);
+    }
+
+    if (updateData.nazivNormalized) {
+      const existingPlayroom = await Playroom.findOne({
+        _id: { $ne: playroom._id },
+        nazivNormalized: updateData.nazivNormalized,
+      });
+
+      if (existingPlayroom) {
+        return res.status(400).json({
+          success: false,
+          message: "Igraonica sa ovim imenom već postoji",
+        });
+      }
+    }
+
+    playroom = await Playroom.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
     let syncResult = null;
 
@@ -493,6 +512,59 @@ exports.getOwnerStats = async (req, res, next) => {
         playroomName: playroom.naziv,
         ...result,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+// @desc    Dohvati gradove za filter
+// @route   GET /api/playrooms/filter-cities
+// @access  Public
+exports.getFilterCities = async (req, res, next) => {
+  try {
+    const defaultCities = [
+      "Beograd",
+      "Novi Sad",
+      "Niš",
+      "Kragujevac",
+      "Subotica",
+      "Zrenjanin",
+      "Pančevo",
+      "Čačak",
+      "Novi Pazar",
+      "Kraljevo",
+      "Smederevo",
+      "Leskovac",
+      "Užice",
+      "Valjevo",
+      "Kruševac",
+    ];
+
+    const dbCities = await Playroom.distinct("grad", {
+      verifikovan: true,
+      status: PLAYROOM_STATUS.AKTIVAN,
+      grad: { $exists: true, $ne: "" },
+    });
+
+    const cityMap = new Map();
+
+    [...defaultCities, ...dbCities].forEach((city) => {
+      const normalizedKey = normalizeText(city);
+
+      if (!normalizedKey) return;
+
+      if (!cityMap.has(normalizedKey)) {
+        cityMap.set(normalizedKey, normalizeDisplayText(city));
+      }
+    });
+
+    const uniqueCities = Array.from(cityMap.values()).sort((a, b) =>
+      a.localeCompare(b, "sr", { sensitivity: "base" }),
+    );
+
+    res.status(200).json({
+      success: true,
+      data: uniqueCities,
     });
   } catch (error) {
     next(error);

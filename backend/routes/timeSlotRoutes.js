@@ -95,11 +95,4 @@ router.post(
   manualBookTimeSlot,
 );
 
-router.post(
-  "/manual-book-interval",
-  protect,
-  validate(manualBookingSchema),
-  manualBookInterval,
-);
-
 module.exports = router;

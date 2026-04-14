@@ -16,10 +16,12 @@ const {
   verifyPlayroom,
   regenerateTimeSlots,
   getOwnerStats,
+  getFilterCities,
 } = require("../controllers/playroomController");
 
 // 🌐 JAVNE RUTE
 router.get("/", getAllPlayrooms);
+router.get("/filter-cities", getFilterCities);
 
 // 🔒 PRIVATNE - vlasnik
 router.get(

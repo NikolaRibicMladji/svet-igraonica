@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "../styles/PlayroomFilters.css";
+import { getFilterCities } from "../services/playroomService";
+import { normalizeText } from "../utils/normalizeText";
 
 const DEFAULT_FILTERS = {
   grad: "svi",
-  minCena: "",
-  maxCena: "",
-  pogodnosti: [],
   minRating: "sve",
   sortBy: "newest",
 };
@@ -15,38 +14,41 @@ const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
     () => ({
       ...DEFAULT_FILTERS,
       ...initialFilters,
-      pogodnosti: Array.isArray(initialFilters?.pogodnosti)
-        ? initialFilters.pogodnosti
-        : [],
     }),
     [initialFilters],
   );
 
   const [tempFilters, setTempFilters] = useState(mergedInitialFilters);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [gradovi, setGradovi] = useState([
+    { value: "svi", label: "Svi gradovi" },
+  ]);
 
   useEffect(() => {
     setTempFilters(mergedInitialFilters);
   }, [mergedInitialFilters]);
 
-  const pogodnostiList = [
-    { value: "animatori", label: "Animatori", icon: "🎭" },
-    { value: "kafic", label: "Kafić", icon: "☕" },
-    { value: "parking", label: "Parking", icon: "🅿️" },
-    { value: "rodjendani", label: "Rođendani", icon: "🎂" },
-    { value: "wifi", label: "Wi-Fi", icon: "📶" },
-    { value: "trampoline", label: "Trampoline", icon: "🤸" },
-    { value: "kliziste", label: "Klizalište", icon: "⛸️" },
-  ];
+  useEffect(() => {
+    const loadCities = async () => {
+      try {
+        const result = await getFilterCities();
 
-  const gradovi = [
-    { value: "svi", label: "Svi gradovi" },
-    { value: "Beograd", label: "Beograd" },
-    { value: "Novi Sad", label: "Novi Sad" },
-    { value: "Niš", label: "Niš" },
-    { value: "Kragujevac", label: "Kragujevac" },
-    { value: "Subotica", label: "Subotica" },
-  ];
+        if (result?.success && Array.isArray(result.data)) {
+          setGradovi([
+            { value: "svi", label: "Svi gradovi" },
+            ...result.data.map((city) => ({
+              value: normalizeText(city),
+              label: city,
+            })),
+          ]);
+        }
+      } catch (error) {
+        console.error("Greška pri učitavanju gradova za filter:", error);
+      }
+    };
+
+    loadCities();
+  }, []);
 
   const ocene = [
     { value: "sve", label: "Sve ocene" },
@@ -69,50 +71,10 @@ const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
     }));
   };
 
-  const handlePriceChange = (key, value) => {
-    if (value === "") {
-      handleTempChange(key, "");
-      return;
-    }
-
-    const numericValue = Number(value);
-    if (!Number.isNaN(numericValue) && numericValue >= 0) {
-      handleTempChange(key, String(numericValue));
-    }
-  };
-
-  const handlePogodnostToggle = (pogodnost) => {
-    setTempFilters((prev) => {
-      const alreadySelected = prev.pogodnosti.includes(pogodnost);
-
-      return {
-        ...prev,
-        pogodnosti: alreadySelected
-          ? prev.pogodnosti.filter((p) => p !== pogodnost)
-          : [...prev.pogodnosti, pogodnost],
-      };
-    });
-  };
-
   const handleApply = () => {
-    const minCena =
-      tempFilters.minCena === "" ? "" : Number(tempFilters.minCena);
-    const maxCena =
-      tempFilters.maxCena === "" ? "" : Number(tempFilters.maxCena);
-
-    if (minCena !== "" && maxCena !== "" && minCena > maxCena) {
-      onFilterChange?.({
-        ...tempFilters,
-        minCena: maxCena,
-        maxCena: minCena,
-      });
-      return;
-    }
-
     onFilterChange?.({
       ...tempFilters,
-      minCena,
-      maxCena,
+
       minRating:
         tempFilters.minRating === "sve" ? "sve" : Number(tempFilters.minRating),
     });
@@ -126,9 +88,6 @@ const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (tempFilters.grad !== "svi") count++;
-    if (tempFilters.minCena !== "") count++;
-    if (tempFilters.maxCena !== "") count++;
-    if (tempFilters.pogodnosti.length > 0) count++;
     if (tempFilters.minRating !== "sve") count++;
     if (tempFilters.sortBy !== "newest") count++;
     return count;
@@ -215,48 +174,6 @@ const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
                   </option>
                 ))}
               </select>
-            </div>
-          </div>
-
-          <div className="filter-group">
-            <label className="filter-label">💰 Cena po detetu (RSD)</label>
-            <div className="price-range">
-              <input
-                type="number"
-                min="0"
-                placeholder="Min"
-                value={tempFilters.minCena}
-                onChange={(e) => handlePriceChange("minCena", e.target.value)}
-                className="price-input"
-              />
-              <span className="price-separator">-</span>
-              <input
-                type="number"
-                min="0"
-                placeholder="Max"
-                value={tempFilters.maxCena}
-                onChange={(e) => handlePriceChange("maxCena", e.target.value)}
-                className="price-input"
-              />
-            </div>
-          </div>
-
-          <div className="filter-group">
-            <label className="filter-label">🎪 Pogodnosti</label>
-            <div className="pogodnosti-grid">
-              {pogodnostiList.map((pog) => (
-                <button
-                  key={pog.value}
-                  type="button"
-                  className={`pogodnost-btn ${
-                    tempFilters.pogodnosti.includes(pog.value) ? "active" : ""
-                  }`}
-                  onClick={() => handlePogodnostToggle(pog.value)}
-                >
-                  <span className="pogodnost-icon">{pog.icon}</span>
-                  <span className="pogodnost-label">{pog.label}</span>
-                </button>
-              ))}
             </div>
           </div>
 
