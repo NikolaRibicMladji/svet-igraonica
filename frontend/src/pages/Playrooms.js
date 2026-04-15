@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import PlayroomFilters from "../components/PlayroomFilters";
@@ -14,18 +14,13 @@ const Playrooms = () => {
     grad: "svi",
     minCena: "",
     maxCena: "",
-    pogodnosti: [],
     minRating: "sve",
     sortBy: "newest",
   });
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadPlayrooms();
-  }, [filters]);
-
-  const loadPlayrooms = async () => {
+  const loadPlayrooms = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -49,13 +44,6 @@ const Playrooms = () => {
 
     if (filters.sortBy) {
       queryParams.append("sortBy", filters.sortBy);
-    }
-
-    if (Array.isArray(filters.pogodnosti) && filters.pogodnosti.length > 0) {
-      queryParams.append(
-        "pogodnosti",
-        filters.pogodnosti.map((item) => normalizeText(item)).join(","),
-      );
     }
 
     try {
@@ -84,14 +72,18 @@ const Playrooms = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
-  const handleFilterChange = (newFilters) => {
+  useEffect(() => {
+    loadPlayrooms();
+  }, [loadPlayrooms]);
+
+  const handleFilterChange = useCallback((newFilters) => {
     setFilters((prev) => ({
       ...prev,
       ...newFilters,
     }));
-  };
+  }, []);
 
   const filteredPlayrooms = useMemo(() => {
     const term = normalizeText(searchTerm);

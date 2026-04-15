@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getPlayroomById } from "../services/playroomService";
-import { normalizeText } from "../utils/textUtils";
+import { normalizeText } from "../utils/normalizeText";
 import "../styles/PlayroomDetails.css";
 import ImageModal from "../components/ImageModal";
 import Reviews from "../components/Reviews";

@@ -30,7 +30,8 @@ const createBookingSchema = z.object({
     cenaIds: z.array(objectId).min(1, "Izaberi bar jednu stavku"),
     paketId: objectId.optional().nullable(),
     usluge: z.array(objectId).optional(),
-    brojDece: z.coerce.number().min(1, "Broj dece mora biti najmanje 1"),
+    brojDece: z.coerce.number().min(0).optional(),
+    brojRoditelja: z.coerce.number().min(0).optional(),
     imeRoditelja: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
     prezimeRoditelja: z
       .string()
@@ -69,7 +70,8 @@ const createGuestBookingSchema = z
       cenaIds: z.array(objectId).min(1, "Izaberi bar jednu stavku"),
       paketId: objectId.optional().nullable(),
       usluge: z.array(objectId).optional(),
-      brojDece: z.coerce.number().min(1, "Broj dece mora biti najmanje 1"),
+      brojDece: z.coerce.number().min(0).optional(),
+      brojRoditelja: z.coerce.number().min(0).optional(),
       ime: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
       prezime: z.string().min(2, "Prezime mora imati bar 2 karaktera").trim(),
       email: z.string().email("Neispravan email").toLowerCase().trim(),
@@ -118,12 +120,23 @@ const manualBookingSchema = z.object({
       .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
 
     cenaIds: z.array(objectId).min(1, "Izaberi bar jednu stavku"),
-
-    imeRoditelja: z.string().min(2),
-    prezimeRoditelja: z.string().min(2),
-    emailRoditelja: z.string().email(),
-    telefonRoditelja: z.string().regex(/^[0-9]+$/),
-    napomena: z.string().optional(),
+    brojDece: z.coerce.number().min(0).optional(),
+    brojRoditelja: z.coerce.number().min(0).optional(),
+    imeRoditelja: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
+    prezimeRoditelja: z
+      .string()
+      .min(2, "Prezime mora imati bar 2 karaktera")
+      .trim(),
+    emailRoditelja: z.string().email("Neispravan email").trim().toLowerCase(),
+    telefonRoditelja: z
+      .string()
+      .min(6, "Telefon mora imati bar 6 cifara")
+      .regex(/^[0-9]+$/, "Telefon može sadržati samo brojeve")
+      .trim(),
+    napomena: z
+      .string()
+      .max(500, "Napomena može imati najviše 500 karaktera")
+      .optional(),
   }),
 });
 

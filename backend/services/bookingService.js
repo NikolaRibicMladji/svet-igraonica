@@ -191,10 +191,6 @@ const reserveSlot = async ({
       throw new ErrorResponse("Izaberi bar jednu stavku iz cenovnika", 400);
     }
 
-    if (!payload?.brojDece || Number(payload.brojDece) < 1) {
-      throw new ErrorResponse("Broj dece mora biti najmanje 1", 400);
-    }
-
     if (!mongoose.Types.ObjectId.isValid(slotId)) {
       throw new ErrorResponse("Nevalidan slot ID", 400);
     }
@@ -278,7 +274,10 @@ const reserveSlot = async ({
       throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
-    const brojDece = Number(payload.brojDece) || 1;
+    const brojDece = payload.brojDece ? Number(payload.brojDece) : 0;
+    const brojRoditelja = payload.brojRoditelja
+      ? Number(payload.brojRoditelja)
+      : 0;
     const trajanjeSati = (() => {
       const start = buildDateTime(slot.datum, slot.vremeOd);
       const end = buildDateTime(slot.datum, slot.vremeDo);
@@ -310,7 +309,7 @@ const reserveSlot = async ({
       }
 
       if (c.tip === "po_osobi") {
-        ukupnaCena += Number(c.cena) || 0;
+        ukupnaCena += (Number(c.cena) || 0) * brojDece;
       }
 
       if (c.tip === "po_satu") {
@@ -326,18 +325,21 @@ const reserveSlot = async ({
         : null;
 
       if (!selectedPaket) {
-        await TimeSlot.findByIdAndUpdate(
-          slot._id,
-          { $set: { zauzeto: false } },
-          { session },
-        );
-
         throw new ErrorResponse("Izabrani paket nije pronađen", 400);
       }
 
-      ukupnaCena += Number(selectedPaket.cena) || 0;
-    }
+      if (selectedPaket.tip === "fiksno" || !selectedPaket.tip) {
+        ukupnaCena += Number(selectedPaket.cena) || 0;
+      }
 
+      if (selectedPaket.tip === "po_osobi") {
+        ukupnaCena += (Number(selectedPaket.cena) || 0) * brojDece;
+      }
+
+      if (selectedPaket.tip === "po_satu") {
+        ukupnaCena += (Number(selectedPaket.cena) || 0) * trajanjeSati;
+      }
+    }
     const selectedUsluge = [];
 
     const uniqueUslugeIds = Array.isArray(payload.usluge)
@@ -398,13 +400,14 @@ const reserveSlot = async ({
             vremeOd: slot.vremeOd,
             vremeDo: slot.vremeDo,
             ukupnaCena,
-            status: BOOKING_STATUS.CEKANJE,
+            status: BOOKING_STATUS.POTVRDJENO,
             napomena: payload.napomena || "",
             imeRoditelja: payload.imeRoditelja.trim(),
             prezimeRoditelja: payload.prezimeRoditelja.trim(),
             emailRoditelja: payload.emailRoditelja.trim().toLowerCase(),
             telefonRoditelja: payload.telefonRoditelja.trim(),
             brojDece,
+            brojRoditelja,
             izabraneCene: selectedCene.map((c) => ({
               naziv: c.naziv,
               cena: Number(c.cena) || 0,
@@ -415,9 +418,10 @@ const reserveSlot = async ({
               ? {
                   naziv: selectedPaket.naziv,
                   cena: Number(selectedPaket.cena) || 0,
+                  tip: selectedPaket.tip || "fiksno",
                   opis: selectedPaket.opis || "",
                 }
-              : undefined,
+              : null,
             izabraneUsluge: selectedUsluge,
           },
         ],
@@ -494,10 +498,6 @@ const reserveCustomInterval = async ({
       throw new ErrorResponse("Izaberi bar jednu stavku iz cenovnika", 400);
     }
 
-    if (!payload?.brojDece || Number(payload.brojDece) < 1) {
-      throw new ErrorResponse("Broj dece mora biti najmanje 1", 400);
-    }
-
     if (!mongoose.Types.ObjectId.isValid(playroomId)) {
       throw new ErrorResponse("Nevalidan ID igraonice", 400);
     }
@@ -572,7 +572,10 @@ const reserveCustomInterval = async ({
       );
     }
 
-    const brojDece = Number(payload.brojDece) || 1;
+    const brojDece = payload.brojDece ? Number(payload.brojDece) : 0;
+    const brojRoditelja = payload.brojRoditelja
+      ? Number(payload.brojRoditelja)
+      : 0;
     const trajanjeSati = (endMinutes - startMinutes) / 60;
 
     const selectedCenaIds = payload.cenaIds.map((id) => String(id));
@@ -593,7 +596,7 @@ const reserveCustomInterval = async ({
       }
 
       if (c.tip === "po_osobi") {
-        ukupnaCena += Number(c.cena) || 0;
+        ukupnaCena += (Number(c.cena) || 0) * brojDece;
       }
 
       if (c.tip === "po_satu") {
@@ -612,7 +615,17 @@ const reserveCustomInterval = async ({
         throw new ErrorResponse("Izabrani paket nije pronađen", 400);
       }
 
-      ukupnaCena += Number(selectedPaket.cena) || 0;
+      if (selectedPaket.tip === "fiksno" || !selectedPaket.tip) {
+        ukupnaCena += Number(selectedPaket.cena) || 0;
+      }
+
+      if (selectedPaket.tip === "po_osobi") {
+        ukupnaCena += (Number(selectedPaket.cena) || 0) * brojDece;
+      }
+
+      if (selectedPaket.tip === "po_satu") {
+        ukupnaCena += (Number(selectedPaket.cena) || 0) * trajanjeSati;
+      }
     }
 
     const selectedUsluge = [];
@@ -662,13 +675,14 @@ const reserveCustomInterval = async ({
           vremeOd,
           vremeDo,
           ukupnaCena,
-          status: BOOKING_STATUS.CEKANJE,
+          status: BOOKING_STATUS.POTVRDJENO,
           napomena: payload.napomena || "",
           imeRoditelja: payload.imeRoditelja.trim(),
           prezimeRoditelja: payload.prezimeRoditelja.trim(),
           emailRoditelja: payload.emailRoditelja.trim().toLowerCase(),
           telefonRoditelja: payload.telefonRoditelja.trim(),
           brojDece,
+          brojRoditelja,
           izabraneCene: selectedCene.map((c) => ({
             naziv: c.naziv,
             cena: Number(c.cena) || 0,
@@ -679,9 +693,10 @@ const reserveCustomInterval = async ({
             ? {
                 naziv: selectedPaket.naziv,
                 cena: Number(selectedPaket.cena) || 0,
+                tip: selectedPaket.tip || "fiksno",
                 opis: selectedPaket.opis || "",
               }
-            : undefined,
+            : null,
           izabraneUsluge: selectedUsluge,
         },
       ],

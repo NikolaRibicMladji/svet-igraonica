@@ -27,7 +27,8 @@ exports.createBooking = async (req, res, next) => {
         cenaIds: Array.isArray(req.body.cenaIds) ? req.body.cenaIds : [],
         paketId: req.body.paketId || null,
         usluge: Array.isArray(req.body.usluge) ? req.body.usluge : [],
-        brojDece: Number(req.body.brojDece) || 1,
+        brojDece: Number(req.body.brojDece) || 0,
+        brojRoditelja: Number(req.body.brojRoditelja) || 0,
         imeRoditelja: req.body.imeRoditelja || req.body.ime || "",
         prezimeRoditelja: req.body.prezimeRoditelja || req.body.prezime || "",
         emailRoditelja: req.body.emailRoditelja || req.body.email || "",
@@ -109,7 +110,8 @@ exports.createGuestBooking = async (req, res, next) => {
         cenaIds: Array.isArray(req.body.cenaIds) ? req.body.cenaIds : [],
         paketId: req.body.paketId || null,
         usluge: Array.isArray(req.body.usluge) ? req.body.usluge : [],
-        brojDece: Number(req.body.brojDece) || 1,
+        brojDece: Number(req.body.brojDece) || 0,
+        brojRoditelja: Number(req.body.brojRoditelja) || 0,
         imeRoditelja: createdUser.ime,
         prezimeRoditelja: createdUser.prezime,
         emailRoditelja: createdUser.email,
@@ -219,31 +221,6 @@ exports.cancelBooking = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Rezervacija je otkazana",
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// @desc    Potvrdi rezervaciju
-// @route   PUT /api/bookings/:id/confirm
-// @access  Private (vlasnik ili admin)
-exports.confirmBooking = async (req, res, next) => {
-  try {
-    console.log("🟣 CONFIRM BOOKING:", {
-      requestId: req.requestId,
-      bookingId: req.params.id,
-      user: req.user?.id || null,
-      time: new Date().toISOString(),
-    });
-    await bookingService.confirmBookingById({
-      bookingId: req.params.id,
-      currentUser: req.user,
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "Rezervacija je potvrđena",
     });
   } catch (error) {
     next(error);

@@ -16,7 +16,7 @@ const {
   getMyBookings,
   getOwnerBookings,
   cancelBooking,
-  confirmBooking,
+
   getBookingById,
 } = require("../controllers/bookingController");
 
@@ -35,7 +35,5 @@ router.get("/owner", getOwnerBookings);
 router.get("/:id", validate(bookingIdParamSchema), getBookingById);
 
 router.put("/:id/cancel", validate(bookingIdParamSchema), cancelBooking);
-
-router.put("/:id/confirm", validate(bookingIdParamSchema), confirmBooking);
 
 module.exports = router;

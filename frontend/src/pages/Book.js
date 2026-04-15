@@ -8,7 +8,7 @@ import {
 import { getPlayroomById } from "../services/playroomService";
 import { useAuth } from "../context/AuthContext";
 import "../styles/Book.css";
-import { normalizeText } from "../utils/textUtils";
+import { normalizeText } from "../utils/normalizeText";
 
 const getLocalDate = () => {
   const d = new Date();
@@ -35,7 +35,8 @@ const Book = () => {
   const [selectedEndTime, setSelectedEndTime] = useState("");
 
   const [napomena, setNapomena] = useState("");
-
+  const [brojDece, setBrojDece] = useState("");
+  const [brojRoditelja, setBrojRoditelja] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -214,7 +215,9 @@ const Book = () => {
         }
 
         if (c.tip === "po_osobi") {
-          total += Number(c.cena) || 0;
+          const broj = brojDece === "" ? 0 : Number(brojDece);
+
+          total += (Number(c.cena) || 0) * broj;
         }
       });
     }
@@ -225,7 +228,8 @@ const Book = () => {
       }
 
       if (selectedPaket.tip === "po_osobi") {
-        total += Number(selectedPaket.cena) || 0;
+        const broj = brojDece === "" ? 0 : Number(brojDece);
+        total += (Number(selectedPaket.cena) || 0) * broj;
       }
 
       if (selectedPaket.tip === "po_satu") {
@@ -239,7 +243,8 @@ const Book = () => {
       }
 
       if (u.tip === "po_osobi") {
-        total += Number(u.cena) || 0;
+        const broj = brojDece === "" ? 0 : Number(brojDece);
+        total += (Number(u.cena) || 0) * broj;
       }
 
       if (u.tip === "po_satu") {
@@ -411,8 +416,8 @@ const Book = () => {
         cenaIds: selectedCenaIds,
         paketId: selectedPaketId || null,
         usluge: selectedUslugeIds,
-        brojDece: 1,
-
+        brojDece: brojDece === "" ? 0 : Number(brojDece),
+        brojRoditelja: brojRoditelja === "" ? 0 : Number(brojRoditelja),
         ime: korisnikPodaci.ime.trim(),
         prezime: korisnikPodaci.prezime.trim(),
         email: korisnikPodaci.email.trim().toLowerCase(),
@@ -561,7 +566,8 @@ const Book = () => {
               setSelectedCenaIds([]);
               setSelectedPaketId("");
               setSelectedUslugeIds([]);
-
+              setBrojDece("");
+              setBrojRoditelja("");
               setNapomena("");
               setError("");
             }}
@@ -817,7 +823,51 @@ const Book = () => {
                       </div>
                     </div>
                   )}
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>
+                      Broj dece{" "}
+                      <span className="inline-bracket-text">(opciono)</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={brojDece}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (
+                          val === "" ||
+                          (Number(val) >= 0 && Number(val) <= 100)
+                        ) {
+                          setBrojDece(val);
+                        }
+                      }}
+                    />
+                  </div>
 
+                  <div className="form-group">
+                    <label>
+                      Broj roditelja{" "}
+                      <span className="inline-bracket-text">(opciono)</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={brojRoditelja}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (
+                          val === "" ||
+                          (Number(val) >= 0 && Number(val) <= 100)
+                        ) {
+                          setrojRoditelja(val);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
                 <div className="user-data-section">
                   <div className="user-data-header">
                     <h4>👤 Vaši podaci</h4>
@@ -921,6 +971,19 @@ const Book = () => {
 
                 <div className="order-summary">
                   <h4>🛒 Pregled rezervacije</h4>
+                  {Number(brojDece) > 0 && (
+                    <div className="summary-item">
+                      <span>👶 Broj dece</span>
+                      <span>{Number(brojDece)}</span>
+                    </div>
+                  )}
+
+                  {Number(brojRoditelja) > 0 && (
+                    <div className="summary-item">
+                      <span>🧑 Broj roditelja</span>
+                      <span>{Number(brojRoditelja)}</span>
+                    </div>
+                  )}
                   {selectedCene.length > 0 && (
                     <div className="reservation-summary-items">
                       {selectedCene.map((item) => (
@@ -931,7 +994,9 @@ const Book = () => {
                               ? `${item.cena} × ${getSlotDurationInHours()}h = ${
                                   item.cena * getSlotDurationInHours()
                                 } RSD`
-                              : `${item.cena} RSD`}
+                              : item.tip === "po_osobi"
+                                ? `${item.cena} × ${Number(brojDece) || 0} = ${(item.cena || 0) * (brojDece || 0)} RSD`
+                                : `${item.cena} RSD`}
                           </span>
                         </div>
                       ))}
@@ -946,7 +1011,12 @@ const Book = () => {
                               (Number(selectedPaket.cena) || 0) *
                               getSlotDurationInHours()
                             } RSD`
-                          : `${selectedPaket.cena} RSD`}
+                          : selectedPaket.tip === "po_osobi"
+                            ? `${selectedPaket.cena} RSD × ${brojDece || 0} = ${
+                                (Number(selectedPaket.cena) || 0) *
+                                (Number(brojDece) || 0)
+                              } RSD`
+                            : `${selectedPaket.cena} RSD`}
                       </span>
                     </div>
                   )}
@@ -958,7 +1028,11 @@ const Book = () => {
                           ? `${u.cena} RSD × ${getSlotDurationInHours()}h = ${
                               (Number(u.cena) || 0) * getSlotDurationInHours()
                             } RSD`
-                          : `${u.cena} RSD`}
+                          : u.tip === "po_osobi"
+                            ? `${u.cena} RSD × ${brojDece || 0} = ${
+                                (Number(u.cena) || 0) * (Number(brojDece) || 0)
+                              } RSD`
+                            : `${u.cena} RSD`}
                       </span>
                     </div>
                   ))}

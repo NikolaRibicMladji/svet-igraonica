@@ -50,8 +50,13 @@ const BookingSchema = new mongoose.Schema(
 
     brojDece: {
       type: Number,
-      default: 1,
-      min: 1,
+      default: 0,
+      min: 0,
+    },
+    brojRoditelja: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
 
     izabraneCene: {
@@ -129,7 +134,7 @@ const BookingSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: Object.values(BOOKING_STATUS),
-      default: BOOKING_STATUS.CEKANJE,
+      default: BOOKING_STATUS.POTVRDJENO,
       index: true,
     },
 

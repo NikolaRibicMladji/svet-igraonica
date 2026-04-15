@@ -17,6 +17,25 @@ const MyBookings = () => {
     loadBookings();
   }, []);
 
+  const calculateDuration = (od, doVreme) => {
+    if (!od || !doVreme) return "-";
+
+    const [h1, m1] = od.split(":").map(Number);
+    const [h2, m2] = doVreme.split(":").map(Number);
+
+    const start = h1 * 60 + m1;
+    const end = h2 * 60 + m2;
+
+    const diff = end - start;
+
+    const sati = Math.floor(diff / 60);
+    const minuti = diff % 60;
+
+    if (sati > 0 && minuti > 0) return `${sati}h ${minuti}min`;
+    if (sati > 0) return `${sati}h`;
+    return `${minuti}min`;
+  };
+
   const loadBookings = async () => {
     setLoading(true);
     setError("");
@@ -25,7 +44,11 @@ const MyBookings = () => {
       const result = await getMyBookings();
 
       if (result?.success) {
-        setBookings(Array.isArray(result.data) ? result.data : []);
+        setBookings(
+          Array.isArray(result.data)
+            ? result.data.sort((a, b) => new Date(b.datum) - new Date(a.datum))
+            : [],
+        );
       } else {
         setBookings([]);
         setError(result?.error || "Greška pri učitavanju rezervacija.");
@@ -80,11 +103,6 @@ const MyBookings = () => {
 
   const getStatusText = (status) => {
     const statusMap = {
-      cekanje: {
-        text: "⏳ Čeka potvrdu",
-        class: "status-pending",
-        clickable: false,
-      },
       potvrdjeno: {
         text: "✅ Potvrđeno",
         class: "status-confirmed",
@@ -112,7 +130,7 @@ const MyBookings = () => {
   };
 
   const canCancelBooking = (status) =>
-    status === "cekanje" || status === "potvrdjeno";
+    String(status).toLowerCase() === "potvrdjeno";
 
   if (loading) {
     return <div className="container loading">Učitavanje...</div>;
@@ -186,13 +204,71 @@ const MyBookings = () => {
                     ⏰ Vreme: {booking.vremeOd || "-"} -{" "}
                     {booking.vremeDo || "-"}
                   </p>
+                  <p>
+                    ⏳ Trajanje:{" "}
+                    {calculateDuration(booking.vremeOd, booking.vremeDo)}
+                  </p>
 
-                  <p>👶 Broj dece: {booking.brojDece || 1}</p>
+                  {booking.brojDece > 0 && (
+                    <p>👶 Broj dece: {booking.brojDece}</p>
+                  )}
 
-                  <p>👨‍👩‍👧 Broj roditelja: {booking.brojRoditelja || 0}</p>
+                  {booking.brojRoditelja > 0 && (
+                    <p>👨‍👩‍👧 Broj roditelja: {booking.brojRoditelja}</p>
+                  )}
 
                   <p>💰 Ukupno: {booking.ukupnaCena || 0} RSD</p>
+                  {Array.isArray(booking.izabraneCene) &&
+                    booking.izabraneCene.length > 0 && (
+                      <div className="booking-selected-items">
+                        <p>
+                          <strong>Izabrane stavke:</strong>
+                        </p>
+                        {booking.izabraneCene.map((item, idx) => (
+                          <p key={`cena-${idx}`}>
+                            • {item.naziv} ({item.tip}) - {item.cena} RSD
+                            {item.opis && <span> - {item.opis}</span>}
+                          </p>
+                        ))}
+                      </div>
+                    )}
 
+                  {booking.izabraniPaket?.naziv && (
+                    <div className="booking-selected-items">
+                      <p>
+                        <strong>Paket:</strong> {booking.izabraniPaket.naziv} (
+                        {booking.izabraniPaket.tip || "fiksno"}) -{" "}
+                        {booking.izabraniPaket.cena} RSD
+                      </p>
+                    </div>
+                  )}
+
+                  {Array.isArray(booking.izabraneUsluge) &&
+                    booking.izabraneUsluge.length > 0 && (
+                      <div className="booking-selected-items">
+                        <p>
+                          <strong>Dodatne usluge:</strong>
+                        </p>
+                        {booking.izabraneUsluge.map((item, idx) => (
+                          <p key={`usluga-${idx}`}>
+                            • {item.naziv} ({item.tip}) - {item.cena} RSD
+                            {item.opis && <span> - {item.opis}</span>}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                  {Array.isArray(booking.besplatnePogodnosti) &&
+                    booking.besplatnePogodnosti.length > 0 && (
+                      <div className="booking-selected-items">
+                        <p>
+                          <strong>Besplatne pogodnosti:</strong>
+                        </p>
+                        {booking.besplatnePogodnosti.map((item, idx) => (
+                          <p key={`pog-${idx}`}>• {item}</p>
+                        ))}
+                      </div>
+                    )}
                   {booking.napomena && <p>📝 Napomena: {booking.napomena}</p>}
                 </div>
 
