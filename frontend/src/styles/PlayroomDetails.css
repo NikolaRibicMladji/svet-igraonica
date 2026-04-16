@@ -512,7 +512,9 @@
   max-width: 500px;
   width: 100%;
   max-height: 80vh;
-  overflow-y: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   animation: slideUp 0.3s ease;
 }
 .price-modal-content::-webkit-scrollbar {
@@ -520,6 +522,9 @@
 }
 
 .price-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -528,6 +533,7 @@
   background: #ff6b4a;
   color: white;
   border-radius: 24px 24px 0 0;
+  flex-shrink: 0;
 }
 
 .price-modal-header h2 {
@@ -551,6 +557,8 @@
 
 .price-modal-body {
   padding: 24px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .price-group {
