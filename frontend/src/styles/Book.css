@@ -686,6 +686,24 @@
   background: #eef2f6;
 }
 
+.date-display {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #667085;
+}
+.item-opis {
+  font-size: 10px;
+  color: inherit;
+  margin-left: 6px;
+  opacity: 0.85;
+
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+.option-check-row > div {
+  max-width: 80%;
+}
 .booking-select:focus,
 .count-input:focus,
 .form-group input:focus,

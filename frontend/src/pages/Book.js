@@ -62,6 +62,27 @@ const Book = () => {
     confirmPassword: "",
   });
 
+  const formatDateShortLat = (date) => {
+    if (!date) return "";
+
+    return new Intl.DateTimeFormat("sr-Latn-RS", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    }).format(new Date(date));
+  };
+
+  const formatDateLat = (date) => {
+    if (!date) return "";
+
+    return new Intl.DateTimeFormat("sr-Latn-RS", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date(date));
+  };
+
   const hasPerPersonSelection = () => {
     const izabraneCene = Array.isArray(playroom?.cene)
       ? playroom.cene.filter((item) => selectedCenaIds.includes(item._id))
@@ -95,15 +116,20 @@ const Book = () => {
 
   const focusBrojDeceField = () => {
     if (brojDeceRef.current) {
-      brojDeceRef.current.scrollIntoView({
+      const elementTop =
+        brojDeceRef.current.getBoundingClientRect().top + window.pageYOffset;
+
+      const offset = 140; // promeni na 120 ili 160 ako hoćeš malo više/manje
+      const targetTop = elementTop - offset;
+
+      window.scrollTo({
+        top: targetTop,
         behavior: "smooth",
-        block: "start",
       });
 
-      // ⏳ sačekaj da se scroll završi pa tek onda fokus
       setTimeout(() => {
         brojDeceRef.current.focus();
-      }, 400);
+      }, 450);
     }
   };
 
@@ -882,6 +908,7 @@ const Book = () => {
             min={getLocalDate()}
             className="date-input"
           />
+          <p className="date-display">{formatDateShortLat(selectedDate)}</p>
         </div>
         {!hasSelectedDate && (
           <div className="booking-info-box">
@@ -893,7 +920,7 @@ const Book = () => {
         {hasSelectedDate && (
           <>
             <div className="slots-section">
-              <h3>Dostupnost za {formatDate(selectedDate)}</h3>
+              <h3>Dostupnost za {formatDateLat(selectedDate)}</h3>
 
               {loadingSlots ? (
                 <div className="loading-slots">Učitavanje termina...</div>
@@ -1061,7 +1088,7 @@ const Book = () => {
                 <h3>Detalji rezervacije</h3>
 
                 <div className="selected-slot-summary">
-                  <p>📅 Datum: {formatDate(selectedDate)}</p>
+                  <p>📅 Datum: {formatDateLat(selectedDate)}</p>
                   <p>
                     ⏰ Vreme: {selectedStartTime || "-"} -{" "}
                     {selectedEndTime || "-"}
@@ -1086,10 +1113,18 @@ const Book = () => {
                         .map((cena) => (
                           <div key={cena._id} className="option-card">
                             <label className="option-check-row">
-                              <span>
-                                <strong>{cena.naziv}</strong> - {cena.cena} RSD
-                                ({getPricingLabel(cena)})
-                              </span>
+                              <div>
+                                <span>
+                                  <strong>{cena.naziv}</strong> - {cena.cena}{" "}
+                                  RSD ({getPricingLabel(cena)})
+                                </span>
+
+                                {cena.opis && (
+                                  <span className="item-opis">
+                                    ({cena.opis})
+                                  </span>
+                                )}
+                              </div>
 
                               <input
                                 type="checkbox"
@@ -1117,12 +1152,18 @@ const Book = () => {
                         {playroom.paketi.map((p) => (
                           <div key={p._id} className="option-card">
                             <label className="option-check-row">
-                              <span>
-                                {p.naziv} - {p.cena} RSD{" "}
-                                <span className="inline-bracket-text">
-                                  ({getPricingLabel(p)})
+                              <div>
+                                <span>
+                                  {p.naziv} - {p.cena} RSD
+                                  <span className="inline-bracket-text">
+                                    ({getPricingLabel(p)})
+                                  </span>
                                 </span>
-                              </span>
+
+                                {p.opis && (
+                                  <span className="item-opis">({p.opis})</span>
+                                )}
+                              </div>
                               <input
                                 type="checkbox"
                                 checked={selectedPaketId === String(p._id)}
@@ -1147,12 +1188,18 @@ const Book = () => {
                         {playroom.dodatneUsluge.map((u) => (
                           <div key={u._id} className="option-card">
                             <label className="option-check-row">
-                              <span>
-                                {u.naziv} - {u.cena} RSD{" "}
-                                <span className="inline-bracket-text">
-                                  ({getPricingLabel(u)})
+                              <div>
+                                <span>
+                                  {u.naziv} - {u.cena} RSD
+                                  <span className="inline-bracket-text">
+                                    ({getPricingLabel(u)})
+                                  </span>
                                 </span>
-                              </span>
+
+                                {u.opis && (
+                                  <span className="item-opis">({u.opis})</span>
+                                )}
+                              </div>
                               <input
                                 type="checkbox"
                                 checked={selectedUslugeIds.includes(
