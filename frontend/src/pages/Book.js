@@ -90,7 +90,7 @@ const Book = () => {
     if (brojDeceRef.current) {
       brojDeceRef.current.scrollIntoView({
         behavior: "smooth",
-        block: "center",
+        block: "start",
       });
 
       // ⏳ sačekaj da se scroll završi pa tek onda fokus
@@ -605,6 +605,14 @@ const Book = () => {
     return "fiksna cena";
   };
 
+  const formatBrojDece = (broj) => {
+    const n = Number(broj) || 0;
+
+    if (n === 1) return "1 dete";
+
+    return `${n} dece`;
+  };
+
   if (loading) {
     return <div className="container loading">Učitavanje...</div>;
   }
@@ -981,6 +989,19 @@ const Book = () => {
                     />
                   </div>
                 </div>
+                <div className="form-group">
+                  <label className="booking-section-title">
+                    📝 Napomena{" "}
+                    <span className="inline-bracket-text">(opciono)</span>
+                  </label>
+
+                  <textarea
+                    rows="3"
+                    value={napomena}
+                    onChange={(e) => setNapomena(e.target.value)}
+                    placeholder="Npr. alergije, posebni zahtevi, dolazak sa kolicima..."
+                  />
+                </div>
                 <div className="user-data-section">
                   <div className="user-data-header">
                     <h4>👤 Vaši podaci</h4>
@@ -1068,20 +1089,6 @@ const Book = () => {
                   )}
                 </div>
 
-                <div className="form-group">
-                  <label className="booking-section-title">
-                    📝 Napomena{" "}
-                    <span className="inline-bracket-text">(opciono)</span>
-                  </label>
-
-                  <textarea
-                    rows="3"
-                    value={napomena}
-                    onChange={(e) => setNapomena(e.target.value)}
-                    placeholder="Npr. alergije, posebni zahtevi, dolazak sa kolicima..."
-                  />
-                </div>
-
                 <div className="order-summary">
                   <h4>🛒 Pregled rezervacije</h4>
                   {Number(brojDece) > 0 && (
@@ -1104,11 +1111,11 @@ const Book = () => {
                           <span>{item.naziv}</span>
                           <span>
                             {item.tip === "po_satu"
-                              ? `${item.cena} × ${getSlotDurationInHours()}h = ${
+                              ? `${item.cena} RSD × ${getSlotDurationInHours()}h = ${
                                   item.cena * getSlotDurationInHours()
                                 } RSD`
                               : item.tip === "po_osobi"
-                                ? `${item.cena} × ${Number(brojDece) || 0} = ${(item.cena || 0) * (brojDece || 0)} RSD`
+                                ? `${item.cena} RSD × ${formatBrojDece(brojDece)} = ${(item.cena || 0) * (Number(brojDece) || 0)} RSD`
                                 : `${item.cena} RSD`}
                           </span>
                         </div>
@@ -1125,7 +1132,7 @@ const Book = () => {
                               getSlotDurationInHours()
                             } RSD`
                           : selectedPaket.tip === "po_osobi"
-                            ? `${selectedPaket.cena} RSD × ${brojDece || 0} = ${
+                            ? `${selectedPaket.cena} RSD × ${formatBrojDece(brojDece)} = ${
                                 (Number(selectedPaket.cena) || 0) *
                                 (Number(brojDece) || 0)
                               } RSD`
@@ -1142,7 +1149,7 @@ const Book = () => {
                               (Number(u.cena) || 0) * getSlotDurationInHours()
                             } RSD`
                           : u.tip === "po_osobi"
-                            ? `${u.cena} RSD × ${brojDece || 0} = ${
+                            ? `${u.cena} RSD × ${formatBrojDece(brojDece)} = ${
                                 (Number(u.cena) || 0) * (Number(brojDece) || 0)
                               } RSD`
                             : `${u.cena} RSD`}
