@@ -1,6 +1,55 @@
 import React from "react";
 
+const getErrorMessage = (name) => {
+  switch (name) {
+    case "instagram":
+      return "Unesite ispravan Instagram link.";
+    case "facebook":
+      return "Unesite ispravan Facebook link.";
+    case "tiktok":
+      return "Unesite ispravan TikTok link.";
+    case "website":
+      return "Unesite ispravan link sajta.";
+    default:
+      return "Unesite ispravan link.";
+  }
+};
+
+const normalizeUrl = (value) => {
+  const trimmed = value.trim();
+
+  if (!trimmed) return "";
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+
+  return `https://${trimmed}`;
+};
+
 const SocialLinksSection = ({ drustveneMreze, handleDrustveneMrezeChange }) => {
+  const handleInvalid = (e) => {
+    e.target.setCustomValidity(getErrorMessage(e.target.name));
+  };
+
+  const handleChange = (e) => {
+    e.target.setCustomValidity("");
+    handleDrustveneMrezeChange(e);
+  };
+
+  const handleBlur = (e) => {
+    const normalizedValue = normalizeUrl(e.target.value);
+
+    if (normalizedValue === e.target.value) return;
+
+    handleDrustveneMrezeChange({
+      target: {
+        name: e.target.name,
+        value: normalizedValue,
+      },
+    });
+  };
+
   return (
     <div className="form-section">
       <h3>🌐 Društvene mreže</h3>
@@ -12,8 +61,10 @@ const SocialLinksSection = ({ drustveneMreze, handleDrustveneMrezeChange }) => {
           type="url"
           name="instagram"
           value={drustveneMreze.instagram}
-          onChange={handleDrustveneMrezeChange}
-          placeholder="https://www.instagram.com/vas_profil/"
+          onChange={handleChange}
+          onBlur={handleBlur}
+          onInvalid={handleInvalid}
+          placeholder="instagram.com/ime_profila"
         />
       </div>
 
@@ -23,8 +74,10 @@ const SocialLinksSection = ({ drustveneMreze, handleDrustveneMrezeChange }) => {
           type="url"
           name="facebook"
           value={drustveneMreze.facebook}
-          onChange={handleDrustveneMrezeChange}
-          placeholder="https://www.facebook.com/vas_profil/"
+          onChange={handleChange}
+          onBlur={handleBlur}
+          onInvalid={handleInvalid}
+          placeholder="facebook.com/ime_stranice"
         />
       </div>
 
@@ -34,8 +87,10 @@ const SocialLinksSection = ({ drustveneMreze, handleDrustveneMrezeChange }) => {
           type="url"
           name="tiktok"
           value={drustveneMreze.tiktok}
-          onChange={handleDrustveneMrezeChange}
-          placeholder="https://www.tiktok.com/@vas_profil"
+          onChange={handleChange}
+          onBlur={handleBlur}
+          onInvalid={handleInvalid}
+          placeholder="tiktok.com/@ime_profila"
         />
       </div>
 
@@ -45,8 +100,10 @@ const SocialLinksSection = ({ drustveneMreze, handleDrustveneMrezeChange }) => {
           type="url"
           name="website"
           value={drustveneMreze.website}
-          onChange={handleDrustveneMrezeChange}
-          placeholder="https://www.vas-sajt.com"
+          onChange={handleChange}
+          onBlur={handleBlur}
+          onInvalid={handleInvalid}
+          placeholder="vas-sajt.com"
         />
       </div>
     </div>
