@@ -387,6 +387,19 @@ const reserveSlot = async ({
       }
     }
 
+    const hasPerPerson = [
+      ...selectedCene,
+      ...(selectedPaket ? [selectedPaket] : []),
+      ...selectedUsluge,
+    ].some((item) => item?.tip === "po_osobi");
+
+    if (hasPerPerson && (!brojDece || brojDece < 1)) {
+      throw new ErrorResponse(
+        "Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po osobi",
+        400,
+      );
+    }
+
     let created;
 
     try {
@@ -663,6 +676,19 @@ const reserveCustomInterval = async ({
       if (usluga.tip === "po_satu") {
         ukupnaCena += (Number(usluga.cena) || 0) * trajanjeSati;
       }
+    }
+
+    const hasPerPerson = [
+      ...selectedCene,
+      ...(selectedPaket ? [selectedPaket] : []),
+      ...selectedUsluge,
+    ].some((item) => item?.tip === "po_osobi");
+
+    if (hasPerPerson && (!brojDece || brojDece < 1)) {
+      throw new ErrorResponse(
+        "Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po osobi",
+        400,
+      );
     }
 
     const created = await Booking.create(

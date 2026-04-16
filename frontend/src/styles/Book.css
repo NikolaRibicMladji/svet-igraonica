@@ -572,6 +572,17 @@
   border-color: #ff6b4a;
 }
 
+.input-error {
+  border: 2px solid #e53935 !important;
+  background-color: #fff5f5;
+}
+
+.input-error:focus {
+  outline: none;
+  border-color: #d32f2f;
+  box-shadow: 0 0 0 2px rgba(229, 57, 53, 0.2);
+}
+
 .form-group textarea {
   min-height: 110px;
   padding: 14px 16px;

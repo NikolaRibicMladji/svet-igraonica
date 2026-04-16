@@ -7,6 +7,7 @@ import {
 } from "../services/bookingService";
 import { getPlayroomById } from "../services/playroomService";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import "../styles/Book.css";
 import { normalizeText } from "../utils/normalizeText";
 
@@ -22,6 +23,7 @@ const Book = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const toast = useToast();
   const [selectedCenaIds, setSelectedCenaIds] = useState([]);
   const [selectedPaketId, setSelectedPaketId] = useState("");
   const [selectedUslugeIds, setSelectedUslugeIds] = useState([]);
@@ -41,7 +43,7 @@ const Book = () => {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
+  const brojDeceRef = useRef(null);
   const [selectedDate, setSelectedDate] = useState("");
 
   const [korisnikPodaci, setKorisnikPodaci] = useState({
@@ -53,14 +55,113 @@ const Book = () => {
     confirmPassword: "",
   });
 
+  const hasPerPersonSelection = () => {
+    const izabraneCene = Array.isArray(playroom?.cene)
+      ? playroom.cene.filter((item) => selectedCenaIds.includes(item._id))
+      : [];
+
+    const izabranPaket =
+      Array.isArray(playroom?.paketi) && selectedPaketId
+        ? playroom.paketi.find((item) => item._id === selectedPaketId)
+        : null;
+
+    const izabraneUsluge = Array.isArray(playroom?.dodatneUsluge)
+      ? playroom.dodatneUsluge.filter((item) =>
+          selectedUslugeIds.includes(item._id),
+        )
+      : [];
+
+    const sveIzabrano = [
+      ...izabraneCene,
+      ...(izabranPaket ? [izabranPaket] : []),
+      ...izabraneUsluge,
+    ];
+
+    return sveIzabrano.some((item) => item?.tip === "po_osobi");
+  };
+
+  const showBrojDeceRequiredNotice = () => {
+    toast.error(
+      "Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po osobi.",
+    );
+  };
+
+  const focusBrojDeceField = () => {
+    if (brojDeceRef.current) {
+      brojDeceRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+
+      // ⏳ sačekaj da se scroll završi pa tek onda fokus
+      setTimeout(() => {
+        brojDeceRef.current.focus();
+      }, 400);
+    }
+  };
+
   const hasSelectedDate = Boolean(selectedDate);
 
   const handleCenaToggle = (cenaId) => {
+    const clickedCena = Array.isArray(playroom?.cene)
+      ? playroom.cene.find((item) => item._id === cenaId)
+      : null;
+
+    const wasSelected = selectedCenaIds.includes(cenaId);
+
     setSelectedCenaIds((prev) =>
-      prev.includes(String(cenaId))
-        ? prev.filter((id) => id !== String(cenaId))
-        : [...prev, String(cenaId)],
+      wasSelected ? prev.filter((id) => id !== cenaId) : [...prev, cenaId],
     );
+
+    if (!wasSelected && clickedCena?.tip === "po_osobi" && !Number(brojDece)) {
+      showBrojDeceRequiredNotice();
+      focusBrojDeceField();
+    }
+  };
+
+  const handlePaketToggle = (paketId) => {
+    const clickedPaket = Array.isArray(playroom?.paketi)
+      ? playroom.paketi.find((item) => String(item._id) === String(paketId))
+      : null;
+
+    const isSameSelected = String(selectedPaketId) === String(paketId);
+
+    if (isSameSelected) {
+      setSelectedPaketId("");
+      return;
+    }
+
+    setSelectedPaketId(String(paketId));
+
+    if (clickedPaket?.tip === "po_osobi" && !Number(brojDece)) {
+      showBrojDeceRequiredNotice();
+      focusBrojDeceField();
+    }
+  };
+
+  const handleUslugaToggle = (uslugaId) => {
+    const clickedUsluga = Array.isArray(playroom?.dodatneUsluge)
+      ? playroom.dodatneUsluge.find(
+          (item) => String(item._id) === String(uslugaId),
+        )
+      : null;
+
+    const wasSelected = selectedUslugeIds.includes(String(uslugaId));
+
+    setSelectedUslugeIds((prev) =>
+      wasSelected
+        ? prev.filter((id) => id !== String(uslugaId))
+        : [...prev, String(uslugaId)],
+    );
+
+    if (
+      !wasSelected &&
+      clickedUsluga?.tip === "po_osobi" &&
+      !Number(brojDece)
+    ) {
+      showBrojDeceRequiredNotice();
+      focusBrojDeceField();
+    }
   };
 
   const loadPlayroom = useCallback(async () => {
@@ -311,6 +412,20 @@ const Book = () => {
     if (!selectedStartTime || !selectedEndTime) {
       setError("Izaberite vreme početka i završetka.");
       scrollToTop();
+      return;
+    }
+    if (
+      hasPerPersonSelection() &&
+      (!Number(brojDece) || Number(brojDece) < 1)
+    ) {
+      setError(
+        "Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po osobi.",
+      );
+
+      showBrojDeceRequiredNotice();
+      focusBrojDeceField();
+      scrollToTop();
+
       return;
     }
 
@@ -752,13 +867,7 @@ const Book = () => {
                               <input
                                 type="checkbox"
                                 checked={selectedPaketId === String(p._id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedPaketId(String(p._id));
-                                  } else {
-                                    setSelectedPaketId("");
-                                  }
-                                }}
+                                onChange={() => handlePaketToggle(p._id)}
                               />
                             </label>
                           </div>
@@ -790,18 +899,7 @@ const Book = () => {
                                 checked={selectedUslugeIds.includes(
                                   String(u._id),
                                 )}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedUslugeIds((prev) => [
-                                      ...prev,
-                                      String(u._id),
-                                    ]);
-                                  } else {
-                                    setSelectedUslugeIds((prev) =>
-                                      prev.filter((id) => id !== String(u._id)),
-                                    );
-                                  }
-                                }}
+                                onChange={() => handleUslugaToggle(u._id)}
                               />
                             </label>
                           </div>
@@ -827,13 +925,22 @@ const Book = () => {
                   <div className="form-group">
                     <label>
                       Broj dece{" "}
-                      <span className="inline-bracket-text">(opciono)</span>
+                      <span className="inline-bracket-text">
+                        {hasPerPersonSelection() ? "(obavezno)" : "(opciono)"}
+                      </span>
                     </label>
                     <input
+                      ref={brojDeceRef}
                       type="number"
-                      min="0"
+                      min={hasPerPersonSelection() ? "1" : "0"}
                       max="100"
+                      required={hasPerPersonSelection()}
                       value={brojDece}
+                      className={
+                        hasPerPersonSelection() && !Number(brojDece)
+                          ? "input-error"
+                          : ""
+                      }
                       onChange={(e) => {
                         const val = e.target.value;
                         if (
@@ -844,6 +951,12 @@ const Book = () => {
                         }
                       }}
                     />
+                    {hasPerPersonSelection() && !Number(brojDece) && (
+                      <p className="field-hint-error">
+                        Broj dece je obavezan jer je izabrana stavka koja se
+                        naplaćuje po osobi.
+                      </p>
+                    )}
                   </div>
 
                   <div className="form-group">
@@ -862,7 +975,7 @@ const Book = () => {
                           val === "" ||
                           (Number(val) >= 0 && Number(val) <= 100)
                         ) {
-                          setrojRoditelja(val);
+                          setBrojRoditelja(val);
                         }
                       }}
                     />
