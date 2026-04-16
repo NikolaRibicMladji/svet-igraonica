@@ -34,14 +34,15 @@ const Book = () => {
   const [selectedUslugeIds, setSelectedUslugeIds] = useState([]);
   const [openStartDropdown, setOpenStartDropdown] = useState(false);
   const [openEndDropdown, setOpenEndDropdown] = useState(false);
-  const bookingFormRef = useRef(null);
+
   const topRef = useRef(null);
 
   const [playroom, setPlayroom] = useState(null);
   const [availability, setAvailability] = useState(null);
   const [selectedStartTime, setSelectedStartTime] = useState("");
   const [selectedEndTime, setSelectedEndTime] = useState("");
-
+  const startDropdownRef = useRef(null);
+  const endDropdownRef = useRef(null);
   const [napomena, setNapomena] = useState("");
   const [brojDece, setBrojDece] = useState("");
   const [brojRoditelja, setBrojRoditelja] = useState("");
@@ -248,6 +249,30 @@ const Book = () => {
     }
   }, [playroom?._id, selectedDate, loadTimeSlots]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        startDropdownRef.current &&
+        !startDropdownRef.current.contains(event.target)
+      ) {
+        setOpenStartDropdown(false);
+      }
+
+      if (
+        endDropdownRef.current &&
+        !endDropdownRef.current.contains(event.target)
+      ) {
+        setOpenEndDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const scrollToTop = () => {
     setTimeout(() => {
       if (topRef.current) {
@@ -274,7 +299,6 @@ const Book = () => {
 
   const isFiksno = playroom?.rezimRezervacije === "fiksno";
   const trajanjeTermina = Number(playroom?.trajanjeTermina) || 60;
-  const vremePripremeTermina = Number(playroom?.vremePripremeTermina) || 0;
 
   const getSlotDurationInHours = () => {
     if (!selectedStartTime || !selectedEndTime) return 1;
@@ -423,45 +447,6 @@ const Book = () => {
 
       return startMinutes < busyEnd && endMinutes > busyStart;
     });
-  };
-
-  const isStartTimeDisabled = (startTime) => {
-    if (!availability?.workingHours) return true;
-
-    const startMinutes = timeToMinutes(startTime);
-    const endMinutes =
-      startMinutes +
-      (playroom?.rezimRezervacije === "fiksno"
-        ? Number(playroom?.trajanjeTermina) || 60
-        : 15);
-
-    const calculatedEndTime = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
-
-    if (
-      timeToMinutes(calculatedEndTime) >
-      timeToMinutes(availability.workingHours.vremeDo)
-    ) {
-      return true;
-    }
-
-    return doesOverlapBusyInterval(startTime, calculatedEndTime);
-  };
-
-  const isEndTimeDisabled = (endTime) => {
-    if (!availability?.workingHours || !selectedStartTime) return true;
-
-    const startMinutes = timeToMinutes(selectedStartTime);
-    const endMinutes = timeToMinutes(endTime);
-
-    if (endMinutes <= startMinutes) {
-      return true;
-    }
-
-    if (endMinutes > timeToMinutes(availability.workingHours.vremeDo)) {
-      return true;
-    }
-
-    return doesOverlapBusyInterval(selectedStartTime, endTime);
   };
 
   const buildAvailabilitySegments = () => {
@@ -852,34 +837,6 @@ const Book = () => {
     );
   }
 
-  const availableStartTimes = availability?.workingHours
-    ? generateQuarterHourOptions(
-        availability.workingHours.vremeOd,
-        availability.workingHours.vremeDo,
-      )
-        .slice(0, -1)
-        .filter((time) => !isStartTimeDisabled(time))
-    : [];
-
-  const availableEndTimes =
-    availability?.workingHours && selectedStartTime
-      ? generateQuarterHourOptions(
-          selectedStartTime,
-          availability.workingHours.vremeDo,
-        )
-          .filter((time) => {
-            const startMinutes = timeToMinutes(selectedStartTime);
-            const currentMinutes = timeToMinutes(time);
-
-            if (isFiksno) {
-              return currentMinutes === startMinutes + trajanjeTermina;
-            }
-
-            return currentMinutes > startMinutes;
-          })
-          .filter((time) => !isEndTimeDisabled(time))
-      : [];
-
   return (
     <div className="container book-page" ref={topRef}>
       <button
@@ -956,7 +913,10 @@ const Book = () => {
                   <div className="form-row time-row">
                     <div className="form-group">
                       <label>Vreme od *</label>
-                      <div className="custom-time-dropdown">
+                      <div
+                        className="custom-time-dropdown"
+                        ref={startDropdownRef}
+                      >
                         <button
                           type="button"
                           className="custom-time-trigger"
@@ -1027,7 +987,10 @@ const Book = () => {
                       <div className="form-group">
                         <label>Vreme do *</label>
 
-                        <div className="custom-time-dropdown">
+                        <div
+                          className="custom-time-dropdown"
+                          ref={endDropdownRef}
+                        >
                           <button
                             type="button"
                             className="custom-time-trigger"
@@ -1042,6 +1005,15 @@ const Book = () => {
 
                           {openEndDropdown && (
                             <div className="custom-time-menu">
+                              <div
+                                className="custom-time-item clear"
+                                onClick={() => {
+                                  setSelectedEndTime("");
+                                  setOpenEndDropdown(false);
+                                }}
+                              >
+                                ✖ Reset
+                              </div>
                               {endDropdownItems.length > 0 ? (
                                 endDropdownItems.map((item) => (
                                   <div
@@ -1085,7 +1057,7 @@ const Book = () => {
             </div>
 
             {availability?.workingHours && !loadingSlots && (
-              <div className="booking-form" ref={bookingFormRef}>
+              <div className="booking-form">
                 <h3>Detalji rezervacije</h3>
 
                 <div className="selected-slot-summary">
