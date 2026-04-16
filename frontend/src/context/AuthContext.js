@@ -131,6 +131,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     loadUser,
+    handleAuthSuccess,
     isAuthenticated: Boolean(user),
   };
 

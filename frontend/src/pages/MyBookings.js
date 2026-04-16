@@ -240,6 +240,10 @@ const MyBookings = () => {
                         {booking.izabraniPaket.tip || "fiksno"}) -{" "}
                         {booking.izabraniPaket.cena} RSD
                       </p>
+
+                      {booking.izabraniPaket.opis && (
+                        <p>- {booking.izabraniPaket.opis}</p>
+                      )}
                     </div>
                   )}
 
