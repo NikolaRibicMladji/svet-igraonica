@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   getUnverifiedPlayrooms,
   verifyPlayroom,
+  getAllUsers,
 } from "../services/adminService";
 import { useAuth } from "../context/AuthContext";
 import "../styles/AdminPanel.css";
@@ -15,13 +16,20 @@ const AdminPanel = () => {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersTotalPages, setUsersTotalPages] = useState(1);
+  const [usersTotal, setUsersTotal] = useState(0);
+
   useEffect(() => {
     if (!authLoading && user?.role === "admin") {
       loadUnverifiedPlayrooms();
+      loadUsers(usersPage);
     } else if (!authLoading) {
       setLoading(false);
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, usersPage]);
 
   const loadUnverifiedPlayrooms = async () => {
     setLoading(true);
@@ -47,6 +55,33 @@ const AdminPanel = () => {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUsers = async (page = 1) => {
+    setUsersLoading(true);
+
+    try {
+      const result = await getAllUsers(page, 10);
+
+      if (result?.success) {
+        setUsers(Array.isArray(result.data) ? result.data : []);
+        setUsersPage(result.page || 1);
+        setUsersTotalPages(result.pages || 1);
+        setUsersTotal(result.total || 0);
+      } else {
+        setUsers([]);
+        setError(result?.error || "Greška pri učitavanju korisnika.");
+      }
+    } catch (err) {
+      setUsers([]);
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Greška pri učitavanju korisnika.",
+      );
+    } finally {
+      setUsersLoading(false);
     }
   };
 
@@ -170,6 +205,82 @@ const AdminPanel = () => {
             );
           })}
         </div>
+      )}
+
+      <h2>Korisnici</h2>
+
+      {usersLoading ? (
+        <p>Učitavanje korisnika...</p>
+      ) : users.length === 0 ? (
+        <div className="empty-state">
+          <p>Nema korisnika za prikaz.</p>
+        </div>
+      ) : (
+        <>
+          <div className="results-count">
+            Prikazano <strong>{users.length}</strong> od{" "}
+            <strong>{usersTotal}</strong> korisnika
+          </div>
+
+          <div className="admin-playrooms-list">
+            {users.map((u) => (
+              <div key={u._id} className="admin-playroom-card">
+                <div className="admin-playroom-info">
+                  <h3>
+                    {u.ime} {u.prezime}
+                  </h3>
+
+                  <p>
+                    <strong>Email:</strong> {u.email || "-"}
+                  </p>
+
+                  <p>
+                    <strong>Telefon:</strong> {u.telefon || "-"}
+                  </p>
+
+                  <p>
+                    <strong>Uloga:</strong> {u.role || "-"}
+                  </p>
+
+                  <p>
+                    <strong>Registrovan:</strong>{" "}
+                    {u.createdAt
+                      ? new Date(u.createdAt).toLocaleDateString("sr-RS")
+                      : "-"}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {usersTotalPages > 1 && (
+            <div className="pagination">
+              <button
+                type="button"
+                className="btn-page"
+                onClick={() => setUsersPage((prev) => Math.max(1, prev - 1))}
+                disabled={usersPage === 1}
+              >
+                ← Prethodna
+              </button>
+
+              <span className="page-info">
+                Strana {usersPage} od {usersTotalPages} ({usersTotal} ukupno)
+              </span>
+
+              <button
+                type="button"
+                className="btn-page"
+                onClick={() =>
+                  setUsersPage((prev) => Math.min(usersTotalPages, prev + 1))
+                }
+                disabled={usersPage >= usersTotalPages}
+              >
+                Sledeća →
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

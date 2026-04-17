@@ -32,13 +32,25 @@ exports.getUnverifiedPlayrooms = async (req, res, next) => {
 // @access  Private (admin)
 exports.getAllUsers = async (req, res, next) => {
   try {
-    const users = await User.find()
-      .select("-password -__v")
-      .sort({ createdAt: -1 });
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.max(parseInt(req.query.limit, 10) || 10, 1);
+    const skip = (page - 1) * limit;
+
+    const [users, total] = await Promise.all([
+      User.find()
+        .select("-password -__v")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      User.countDocuments(),
+    ]);
 
     res.status(200).json({
       success: true,
       count: users.length,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
       data: users,
     });
   } catch (error) {

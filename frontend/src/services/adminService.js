@@ -41,14 +41,17 @@ export const verifyPlayroom = async (id) => {
   }
 };
 
-export const getAllUsers = async () => {
+export const getAllUsers = async (page = 1, limit = 10) => {
   try {
-    const response = await api.get("/admin/users");
+    const response = await api.get(`/admin/users?page=${page}&limit=${limit}`);
 
     return {
       success: true,
-      data: response.data?.data || [],
+      data: Array.isArray(response.data?.data) ? response.data.data : [],
       count: response.data?.count || 0,
+      total: response.data?.total || 0,
+      page: response.data?.page || 1,
+      pages: response.data?.pages || 1,
     };
   } catch (error) {
     console.error("Greška pri učitavanju korisnika:", error);

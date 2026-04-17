@@ -93,7 +93,7 @@ const createParentUser = async ({
   password,
   telefon,
   role = ROLES.RODITELJ,
-  deca = [],
+
   session = null,
 }) => {
   const normalizedEmail = normalizeEmail(email);
@@ -120,7 +120,6 @@ const createParentUser = async ({
         password: hashedPassword,
         telefon: telefon?.trim(),
         role,
-        deca: Array.isArray(deca) ? deca : [],
       },
     ],
     session ? { session } : {},
@@ -130,7 +129,7 @@ const createParentUser = async ({
 };
 
 exports.registerUser = async (data, metadata = {}) => {
-  const { ime, prezime, email, password, telefon, role, deca } = data;
+  const { ime, prezime, email, password, telefon, role } = data;
 
   const userRole = role === ROLES.VLASNIK ? ROLES.VLASNIK : ROLES.RODITELJ;
 
@@ -141,7 +140,6 @@ exports.registerUser = async (data, metadata = {}) => {
     password,
     telefon,
     role: userRole,
-    deca,
   });
 
   const tokens = await generateAuthResponse(user, null, metadata);
@@ -309,7 +307,7 @@ exports.registerGuestParent = async (data, session = null) => {
     password,
     telefon,
     role: ROLES.RODITELJ,
-    deca: [],
+
     session,
   });
 

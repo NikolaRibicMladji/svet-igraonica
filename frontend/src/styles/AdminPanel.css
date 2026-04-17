@@ -80,6 +80,36 @@
   transform: scale(1.03);
 }
 
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 30px;
+  flex-wrap: wrap;
+}
+
+.btn-page {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  background: #ff6b4a;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-page:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 14px;
+  font-weight: 600;
+  color: #344054;
+}
+
 /* SUCCESS */
 
 .success-message {
