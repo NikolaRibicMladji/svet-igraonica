@@ -785,9 +785,22 @@ const Book = () => {
 
       if (result?.success) {
         if (!isAuthenticated) {
-          handleAuthSuccess({ data: result });
-          await loadTimeSlots();
-          navigate("/my-bookings");
+          const authResult = handleAuthSuccess({
+            data: {
+              accessToken: result.accessToken,
+              user: result.user,
+            },
+          });
+
+          if (!authResult?.success) {
+            setError(
+              "Rezervacija je uspešna, ali automatska prijava nije uspela.",
+            );
+            scrollToTop();
+            return;
+          }
+
+          navigate("/booking-success", { replace: true });
           return;
         }
 

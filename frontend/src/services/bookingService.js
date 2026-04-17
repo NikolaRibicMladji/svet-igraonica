@@ -290,6 +290,8 @@ export const createGuestBooking = async (data) => {
     return {
       success: true,
       data: response.data?.data || null,
+      accessToken: response.data?.accessToken,
+      user: response.data?.user,
       message:
         response.data?.message || "Rezervacija uspešna (guest korisnik).",
     };

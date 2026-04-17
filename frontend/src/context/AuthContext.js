@@ -73,8 +73,26 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const handleAuthSuccess = (response) => {
-    const token = response?.data?.accessToken;
-    const userDataRes = response?.data?.user;
+    const payload =
+      response?.data?.accessToken || response?.data?.user
+        ? response.data
+        : response;
+
+    const authData =
+      payload?.data?.accessToken || payload?.data?.user
+        ? payload.data
+        : payload;
+
+    const token = authData?.accessToken || authData?.token || null;
+    const userDataRes = authData?.user || null;
+
+    if (!token || !userDataRes) {
+      console.error("handleAuthSuccess: nedostaju token ili user", response);
+      return {
+        success: false,
+        error: "Nije moguće sačuvati prijavu korisnika.",
+      };
+    }
 
     setAuthData(userDataRes, token);
 

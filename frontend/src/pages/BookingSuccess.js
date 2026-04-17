@@ -9,15 +9,10 @@ const BookingSuccess = () => {
     <div className="success-container">
       <div className="success-icon">✅</div>
 
-      <h1 className="success-title">Rezervacija je uspešno poslata!</h1>
+      <h1 className="success-title">Rezervacija je uspešna!</h1>
 
       <p className="success-text">
-        Vaša rezervacija je evidentirana u sistemu.
-      </p>
-
-      <p className="success-text">
-        Potvrda i dalji status rezervacije biće poslati na vaš email ako je
-        igraonica potvrdi.
+        Vaša rezervacija je evidentirana u sistemu i biće poslata na vaš email.
       </p>
 
       <p className="success-text">Hvala vam što koristite Svet Igraonica!</p>

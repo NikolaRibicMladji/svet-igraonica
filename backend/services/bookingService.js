@@ -787,7 +787,14 @@ const handleBookingEmails = async (bookingId) => {
     };
 
     if (userForEmail.email) {
-      await sendBookingConfirmation(booking, userForEmail, playroom, timeSlot);
+      await sendBookingConfirmation(
+        booking,
+        userForEmail,
+        playroom,
+        timeSlot,
+        booking.izabraneCene,
+        booking.izabraneUsluge,
+      );
     }
 
     if (playroom?.vlasnikId?.email) {
@@ -797,6 +804,8 @@ const handleBookingEmails = async (bookingId) => {
         playroom,
         timeSlot,
         playroom.vlasnikId,
+        booking.izabraneCene,
+        booking.izabraneUsluge,
       );
     }
   } catch (err) {
