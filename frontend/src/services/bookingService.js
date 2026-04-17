@@ -83,6 +83,12 @@ export const deleteTimeSlot = async (id) => {
 // ============ REZERVACIJE ============
 
 export const createBooking = async (data) => {
+  if (!data?.playroomId || !data?.datum || !data?.vremeOd || !data?.vremeDo) {
+    return {
+      success: false,
+      error: "Popunite sva obavezna polja.",
+    };
+  }
   try {
     const payload = {
       playroomId: data.playroomId,
@@ -265,6 +271,22 @@ export const manualBookInterval = async (bookingData) => {
 };
 
 export const createGuestBooking = async (data) => {
+  if (
+    !data?.playroomId ||
+    !data?.datum ||
+    !data?.vremeOd ||
+    !data?.vremeDo ||
+    !data?.ime ||
+    !data?.prezime ||
+    !data?.email ||
+    !data?.telefon ||
+    !data?.password
+  ) {
+    return {
+      success: false,
+      error: "Popunite sva obavezna polja.",
+    };
+  }
   try {
     const payload = {
       playroomId: data.playroomId,

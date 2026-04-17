@@ -51,31 +51,42 @@ const Reviews = ({ playroomId }) => {
 
   const checkIfUserCanReview = useCallback(async () => {
     try {
-      const res = await api.get("/bookings/my");
+      const [reviewsResult, bookingsRes] = await Promise.all([
+        getReviews(playroomId, 1),
+        api.get("/bookings/my"),
+      ]);
 
-      if (res.data?.success) {
-        const hasCompleted = res.data.data.some(
-          (b) =>
-            (typeof b.playroomId === "object"
-              ? b.playroomId?._id
-              : b.playroomId) === playroomId && b.status === "zavrseno",
-        );
+      const reviewList = reviewsResult?.success
+        ? Array.isArray(reviewsResult.data)
+          ? reviewsResult.data
+          : []
+        : [];
 
-        const hasReview = reviews.some(
-          (r) =>
-            (typeof r.userId === "object" ? r.userId?._id : r.userId) ===
-            user?.id,
-        );
+      const bookingList = bookingsRes?.data?.success
+        ? Array.isArray(bookingsRes.data.data)
+          ? bookingsRes.data.data
+          : []
+        : [];
 
-        setCanReview(hasCompleted && !hasReview);
-      } else {
-        setCanReview(false);
-      }
+      const hasCompleted = bookingList.some(
+        (b) =>
+          (typeof b.playroomId === "object"
+            ? b.playroomId?._id
+            : b.playroomId) === playroomId && b.status === "zavrseno",
+      );
+
+      const hasReview = reviewList.some(
+        (r) =>
+          (typeof r.userId === "object" ? r.userId?._id : r.userId) ===
+          user?.id,
+      );
+
+      setCanReview(hasCompleted && !hasReview);
     } catch (err) {
       console.error("Greška pri proveri review prava:", err);
       setCanReview(false);
     }
-  }, [playroomId, reviews, user?.id]);
+  }, [playroomId, user?.id]);
 
   useEffect(() => {
     if (!playroomId) return;
@@ -90,7 +101,7 @@ const Reviews = ({ playroomId }) => {
     } else {
       setCanReview(false);
     }
-  }, [playroomId, isAuthenticated, user?.role, reviews, checkIfUserCanReview]);
+  }, [playroomId, isAuthenticated, user?.role, checkIfUserCanReview]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -1,13 +1,26 @@
 import api from "./api";
 
-export const getAllPlayrooms = async () => {
+export const getAllPlayrooms = async (params = {}) => {
   try {
-    const response = await api.get("/playrooms");
+    const query = new URLSearchParams();
+
+    if (params.page) query.append("page", params.page);
+    if (params.limit) query.append("limit", params.limit);
+    if (params.grad && params.grad !== "svi") query.append("grad", params.grad);
+    if (params.minRating && params.minRating !== "sve") {
+      query.append("minRating", params.minRating);
+    }
+    if (params.sortBy) query.append("sortBy", params.sortBy);
+
+    const response = await api.get(`/playrooms?${query.toString()}`);
 
     return {
       success: true,
       data: Array.isArray(response.data?.data) ? response.data.data : [],
       count: response.data?.count || 0,
+      total: response.data?.total || 0,
+      page: response.data?.page || 1,
+      pages: response.data?.pages || 1,
     };
   } catch (error) {
     console.error("Greška pri dohvatanju igraonica:", error);

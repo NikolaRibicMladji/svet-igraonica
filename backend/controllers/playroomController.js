@@ -94,6 +94,9 @@ exports.createPlayroom = async (req, res, next) => {
 exports.getAllPlayrooms = async (req, res, next) => {
   try {
     const { grad, minRating, sortBy } = req.query;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.max(parseInt(req.query.limit, 10) || 12, 1);
+    const skip = (page - 1) * limit;
 
     const query = {
       verifikovan: true,
@@ -111,11 +114,17 @@ exports.getAllPlayrooms = async (req, res, next) => {
     let sort = { createdAt: -1 };
     if (sortBy === "rating") sort = { rating: -1 };
 
-    const playrooms = await Playroom.find(query).select("-__v").sort(sort);
+    const [playrooms, total] = await Promise.all([
+      Playroom.find(query).select("-__v").sort(sort).skip(skip).limit(limit),
+      Playroom.countDocuments(query),
+    ]);
 
     res.status(200).json({
       success: true,
       count: playrooms.length,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
       data: playrooms,
     });
   } catch (error) {

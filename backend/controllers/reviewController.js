@@ -2,25 +2,31 @@ const Review = require("../models/Review");
 const Playroom = require("../models/Playroom");
 const Booking = require("../models/Booking");
 const BOOKING_STATUS = require("../constants/bookingStatus");
+const mongoose = require("mongoose");
 
 const recalculatePlayroomRating = async (playroomId) => {
   const result = await Review.aggregate([
     { $match: { playroomId: new mongoose.Types.ObjectId(playroomId) } },
-    { $group: { _id: null, avg: { $avg: "$rating" }, count: { $sum: 1 } } },
+    {
+      $group: {
+        _id: null,
+        avg: { $avg: "$rating" },
+        count: { $sum: 1 },
+      },
+    },
   ]);
 
-  if (!playroom) return;
+  const avgRating =
+    result.length > 0 ? Number((result[0].avg || 0).toFixed(1)) : 0;
 
-  if (allReviews.length > 0) {
-    const totalRating = allReviews.reduce((sum, r) => sum + r.rating, 0);
-    playroom.rating = Number((totalRating / allReviews.length).toFixed(1));
-    playroom.reviewCount = allReviews.length;
-  } else {
-    playroom.rating = 0;
-    playroom.reviewCount = 0;
-  }
+  const reviewCount = result.length > 0 ? result[0].count || 0 : 0;
 
-  await playroom.save();
+  await Playroom.findByIdAndUpdate(playroomId, {
+    $set: {
+      rating: avgRating,
+      reviewCount,
+    },
+  });
 };
 
 // @desc    Dodaj recenziju za igraonicu

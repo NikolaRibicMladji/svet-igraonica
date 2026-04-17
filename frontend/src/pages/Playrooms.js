@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import PlayroomFilters from "../components/PlayroomFilters";
@@ -8,34 +14,33 @@ import { normalizeText } from "../utils/normalizeText";
 
 const Playrooms = () => {
   const [playrooms, setPlayrooms] = useState([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [filters, setFilters] = useState({
     grad: "svi",
-    minCena: "",
-    maxCena: "",
     minRating: "sve",
     sortBy: "newest",
   });
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const observer = useRef(null);
 
   const loadPlayrooms = useCallback(async () => {
     setLoading(true);
     setError("");
 
     const queryParams = new URLSearchParams();
+    queryParams.append("page", page);
+    queryParams.append("limit", 12);
 
     if (filters.grad && filters.grad !== "svi") {
       queryParams.append("grad", normalizeText(filters.grad));
-    }
-
-    if (filters.minCena !== "" && filters.minCena !== null) {
-      queryParams.append("minCena", String(filters.minCena));
-    }
-
-    if (filters.maxCena !== "" && filters.maxCena !== null) {
-      queryParams.append("maxCena", String(filters.maxCena));
     }
 
     if (filters.minRating && filters.minRating !== "sve") {
@@ -54,16 +59,44 @@ const Playrooms = () => {
       const response = await api.get(url);
 
       if (response.data?.success) {
-        setPlayrooms(
-          Array.isArray(response.data.data) ? response.data.data : [],
-        );
+        const incoming = Array.isArray(response.data.data)
+          ? response.data.data
+          : [];
+
+        setPlayrooms((prev) => {
+          if (page === 1) return incoming;
+
+          const existingIds = new Set(prev.map((item) => item._id));
+          const merged = [...prev];
+
+          incoming.forEach((item) => {
+            if (!existingIds.has(item._id)) {
+              merged.push(item);
+            }
+          });
+
+          return merged;
+        });
+
+        const totalValue = response.data.total || 0;
+        const pagesValue = response.data.pages || 1;
+
+        setTotal(totalValue);
+        setTotalPages(pagesValue);
+        setHasMore(page < pagesValue);
       } else {
         setPlayrooms([]);
+        setTotal(0);
+        setTotalPages(1);
+        setHasMore(false);
         setError("Greška pri učitavanju igraonica.");
       }
     } catch (err) {
       console.error("Greška pri komunikaciji sa serverom:", err);
       setPlayrooms([]);
+      setTotal(0);
+      setTotalPages(1);
+      setHasMore(false);
       setError(
         err?.response?.data?.message ||
           err?.message ||
@@ -72,21 +105,51 @@ const Playrooms = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, page]);
+
+  useEffect(() => {
+    return () => {
+      if (observer.current) observer.current.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages || 1);
+    }
+  }, [totalPages]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [searchTerm]);
 
   useEffect(() => {
     loadPlayrooms();
   }, [loadPlayrooms]);
+
+  useEffect(() => {
+    if (!loading) {
+      setLoadingMore(false);
+    }
+  }, [loading]);
 
   const handleFilterChange = useCallback((newFilters) => {
     setFilters((prev) => ({
       ...prev,
       ...newFilters,
     }));
+
+    setPlayrooms([]);
+    setPage(1);
+    setHasMore(true);
   }, []);
 
   const filteredPlayrooms = useMemo(() => {
-    const term = normalizeText(searchTerm);
+    const term = normalizeText(debouncedSearch);
 
     if (!term) return playrooms;
 
@@ -96,18 +159,32 @@ const Playrooms = () => {
 
       return naziv.includes(term) || grad.includes(term);
     });
-  }, [playrooms, searchTerm]);
+  }, [playrooms, debouncedSearch]);
 
   const handleViewDetails = (id) => {
     navigate(`/playrooms/${id}`);
   };
+  const lastPlayroomRef = useCallback(
+    (node) => {
+      if (loading || loadingMore) return;
 
-  if (loading) {
-    return <div className="container loading">Učitavanje igraonica...</div>;
-  }
+      if (observer.current) observer.current.disconnect();
+
+      observer.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore) {
+          setLoadingMore(true);
+          setPage((prev) => prev + 1);
+        }
+      });
+
+      if (node) observer.current.observe(node);
+    },
+    [loading, loadingMore, hasMore],
+  );
 
   return (
     <div className="container playrooms-page">
+      {loading && <div className="loading-overlay">Učitavanje...</div>}
       <h1>Sve igraonice</h1>
       <p>Pronađite savršeno mesto za igru vašeg deteta</p>
 
@@ -121,14 +198,19 @@ const Playrooms = () => {
           type="text"
           placeholder="🔍 Pretraži po nazivu igraonice ili gradu..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setPlayrooms([]);
+            setPage(1);
+            setHasMore(true);
+          }}
           className="search-input"
         />
       </div>
 
       {error && <div className="error-message">{error}</div>}
 
-      {filteredPlayrooms.length === 0 ? (
+      {playrooms.length === 0 && !loading ? (
         <div className="empty-state">
           <h3>Nema pronađenih igraonica</h3>
           <p>Pokušajte sa drugim terminom za pretragu ili promenite filtere.</p>
@@ -136,11 +218,12 @@ const Playrooms = () => {
       ) : (
         <>
           <div className="results-count">
-            Pronađeno <strong>{filteredPlayrooms.length}</strong> igraonica
+            Prikazano <strong>{playrooms.length}</strong> od{" "}
+            <strong>{total}</strong> igraonica
           </div>
 
           <div className="playrooms-grid">
-            {filteredPlayrooms.map((playroom) => {
+            {playrooms.map((playroom, index) => {
               const imageUrl = playroom.profilnaSlika?.url || "";
 
               const ratingValue = Number(playroom.rating || 0);
@@ -150,7 +233,11 @@ const Playrooms = () => {
               );
 
               return (
-                <div key={playroom._id} className="playroom-card">
+                <div
+                  key={playroom._id}
+                  className="playroom-card"
+                  ref={index === playrooms.length - 1 ? lastPlayroomRef : null}
+                >
                   <div className="playroom-image">
                     {imageUrl ? (
                       <img src={imageUrl} alt={playroom.naziv} />
@@ -269,6 +356,13 @@ const Playrooms = () => {
               );
             })}
           </div>
+          {loadingMore && (
+            <div className="loading-more">Učitavanje još igraonica...</div>
+          )}
+
+          {!hasMore && playrooms.length > 0 && (
+            <div className="no-more-results">Nema više igraonica.</div>
+          )}
         </>
       )}
     </div>

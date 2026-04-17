@@ -614,11 +614,7 @@ const reserveCustomInterval = async ({
       throw new ErrorResponse("Nevalidan ID igraonice", 400);
     }
 
-    const bookingDate = new Date(datum);
-    if (isNaN(bookingDate.getTime())) {
-      throw new ErrorResponse("Datum nije validan", 400);
-    }
-    bookingDate.setHours(0, 0, 0, 0);
+    const bookingDate = parseValidDate(datum);
 
     const playroom = await Playroom.findById(playroomId).session(session);
 
