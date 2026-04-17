@@ -93,7 +93,7 @@ exports.createPlayroom = async (req, res, next) => {
 // @access  Public
 exports.getAllPlayrooms = async (req, res, next) => {
   try {
-    const { grad, minRating, sortBy } = req.query;
+    const { grad, minRating, sortBy, search } = req.query;
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.max(parseInt(req.query.limit, 10) || 12, 1);
     const skip = (page - 1) * limit;
@@ -106,13 +106,27 @@ exports.getAllPlayrooms = async (req, res, next) => {
     if (grad && grad !== "svi") {
       query.gradNormalized = normalizeText(grad);
     }
+    if (search && search.trim()) {
+      const normalizedSearch = normalizeText(search.trim());
+
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { nazivNormalized: { $regex: normalizedSearch, $options: "i" } },
+          { gradNormalized: { $regex: normalizedSearch, $options: "i" } },
+        ],
+      });
+    }
 
     if (minRating && minRating !== "sve") {
       query.rating = { $gte: parseInt(minRating, 10) };
     }
 
     let sort = { createdAt: -1 };
-    if (sortBy === "rating") sort = { rating: -1 };
+
+    if (sortBy === "rating") {
+      sort = { rating: -1, createdAt: -1 };
+    }
 
     const [playrooms, total] = await Promise.all([
       Playroom.find(query).select("-__v").sort(sort).skip(skip).limit(limit),

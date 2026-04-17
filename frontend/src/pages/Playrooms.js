@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import PlayroomFilters from "../components/PlayroomFilters";
@@ -32,7 +26,7 @@ const Playrooms = () => {
   const observer = useRef(null);
 
   const loadPlayrooms = useCallback(async () => {
-    setLoading(true);
+    if (page === 1) setLoading(true);
     setError("");
 
     const queryParams = new URLSearchParams();
@@ -49,6 +43,9 @@ const Playrooms = () => {
 
     if (filters.sortBy) {
       queryParams.append("sortBy", filters.sortBy);
+    }
+    if (debouncedSearch && debouncedSearch.trim()) {
+      queryParams.append("search", debouncedSearch.trim());
     }
 
     try {
@@ -105,7 +102,7 @@ const Playrooms = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters, page]);
+  }, [filters, page, debouncedSearch]);
 
   useEffect(() => {
     return () => {
@@ -148,19 +145,6 @@ const Playrooms = () => {
     setHasMore(true);
   }, []);
 
-  const filteredPlayrooms = useMemo(() => {
-    const term = normalizeText(debouncedSearch);
-
-    if (!term) return playrooms;
-
-    return playrooms.filter((playroom) => {
-      const naziv = normalizeText(playroom.naziv);
-      const grad = normalizeText(playroom.grad);
-
-      return naziv.includes(term) || grad.includes(term);
-    });
-  }, [playrooms, debouncedSearch]);
-
   const handleViewDetails = (id) => {
     navigate(`/playrooms/${id}`);
   };
@@ -171,7 +155,7 @@ const Playrooms = () => {
       if (observer.current) observer.current.disconnect();
 
       observer.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingMore) {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
           setLoadingMore(true);
           setPage((prev) => prev + 1);
         }
@@ -199,10 +183,14 @@ const Playrooms = () => {
           placeholder="🔍 Pretraži po nazivu igraonice ili gradu..."
           value={searchTerm}
           onChange={(e) => {
-            setSearchTerm(e.target.value);
+            const value = e.target.value;
+
+            setSearchTerm(value);
+            setDebouncedSearch(value);
             setPlayrooms([]);
             setPage(1);
             setHasMore(true);
+            setLoading(true);
           }}
           className="search-input"
         />
