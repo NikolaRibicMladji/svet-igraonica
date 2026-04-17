@@ -910,13 +910,15 @@ const cancelBookingById = async ({ bookingId, currentUser }) => {
     booking.status = BOOKING_STATUS.OTKAZANO;
     await booking.save({ session });
 
-    const unlockedSlot = await unlockSlot(
-      booking.timeSlotId?._id || booking.timeSlotId,
-      session,
-    );
+    if (booking.timeSlotId) {
+      const unlockedSlot = await unlockSlot(
+        booking.timeSlotId?._id || booking.timeSlotId,
+        session,
+      );
 
-    if (!unlockedSlot) {
-      throw new ErrorResponse("Slot za ovu rezervaciju nije pronađen", 404);
+      if (!unlockedSlot) {
+        throw new ErrorResponse("Slot za ovu rezervaciju nije pronađen", 404);
+      }
     }
 
     await session.commitTransaction();
