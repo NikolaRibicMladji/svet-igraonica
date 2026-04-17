@@ -4,8 +4,10 @@ const Booking = require("../models/Booking");
 const BOOKING_STATUS = require("../constants/bookingStatus");
 
 const recalculatePlayroomRating = async (playroomId) => {
-  const allReviews = await Review.find({ playroomId });
-  const playroom = await Playroom.findById(playroomId);
+  const result = await Review.aggregate([
+    { $match: { playroomId: new mongoose.Types.ObjectId(playroomId) } },
+    { $group: { _id: null, avg: { $avg: "$rating" }, count: { $sum: 1 } } },
+  ]);
 
   if (!playroom) return;
 

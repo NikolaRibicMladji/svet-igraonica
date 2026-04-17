@@ -151,13 +151,9 @@ const generateEmailHtml = (
               <div style="font-size:18px;font-weight:700;color:#101828;">
                 ${imeZaPrikaz},
               </div>
-              <div style="margin-top:8px;font-size:14px;color:#475467;line-height:1.6;">
-                ${
-                  isOwner
-                    ? "Stigla je nova rezervacija za vašu igraonicu. U nastavku su svi detalji rezervacije."
-                    : "Vaša rezervacija je uspešno evidentirana. U nastavku su svi detalji rezervacije."
-                }
-              </div>
+<div style="margin-top:8px;font-size:14px;color:#475467;line-height:1.6;">
+  U nastavku su svi detalji rezervacije.
+</div>
             </div>
 
             <div style="padding:16px 20px 28px 20px;">
@@ -250,7 +246,7 @@ const generateEmailHtml = (
                   Stavke iz cenovnika
                 </div>
                 <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-                  ${renderList(booking?.izabraneCene || selectedOstaleCene || [])}
+                 ${renderList(booking?.izabraneCene || [])}
                 </table>
               </div>
 
@@ -266,7 +262,7 @@ const generateEmailHtml = (
                   Dodatne usluge
                 </div>
                 <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-                  ${renderList(booking?.izabraneUsluge || selectedUsluge || [])}
+                 ${renderList(booking?.izabraneUsluge || [])}
                 </table>
               </div>
 
@@ -324,8 +320,6 @@ exports.sendBookingConfirmation = async (
   roditelj,
   playroom,
   timeSlot,
-  selectedOstaleCene,
-  selectedUsluge,
 ) => {
   return sendMail({
     from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
@@ -338,8 +332,6 @@ exports.sendBookingConfirmation = async (
       roditelj,
       playroom,
       timeSlot,
-      selectedOstaleCene,
-      selectedUsluge,
       false,
     ),
   });
@@ -354,8 +346,6 @@ exports.sendBookingConfirmationToOwner = async (
   playroom,
   timeSlot,
   vlasnik,
-  selectedOstaleCene,
-  selectedUsluge,
 ) => {
   return sendMail({
     from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
@@ -368,22 +358,32 @@ exports.sendBookingConfirmationToOwner = async (
       roditelj,
       playroom,
       timeSlot,
-      selectedOstaleCene,
-      selectedUsluge,
       true,
     ),
   });
 };
-
 // ==============================
 // ❌ OTKAZIVANJE
 // ==============================
-exports.sendBookingCancellation = async (user, playroom, timeSlot) => {
+exports.sendBookingCancellation = async (
+  booking,
+  roditelj,
+  playroom,
+  timeSlot,
+) => {
   return sendMail({
     from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
-    to: user.email,
-    subject: `❌ Otkazivanje - ${playroom.naziv}`,
-    html: `<p>Rezervacija otkazana (${playroom.naziv})</p>`,
+    to: roditelj.email,
+    subject: `❌ Otkazivanje rezervacije - ${playroom.naziv}`,
+    html: generateEmailHtml(
+      "Rezervacija otkazana",
+      "Vaša rezervacija je uspešno otkazana.",
+      booking,
+      roditelj,
+      playroom,
+      timeSlot,
+      false,
+    ),
   });
 };
 
@@ -397,8 +397,16 @@ exports.sendCancellationToOwner = async (
   return sendMail({
     from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
     to: vlasnik.email,
-    subject: `❌ Otkazano - ${playroom.naziv}`,
-    html: `<p>Rezervacija otkazana</p>`,
+    subject: `❌ Otkazana rezervacija - ${playroom.naziv}`,
+    html: generateEmailHtml(
+      "Rezervacija otkazana",
+      "Jedna rezervacija je otkazana.",
+      booking,
+      roditelj,
+      playroom,
+      timeSlot,
+      true,
+    ),
   });
 };
 

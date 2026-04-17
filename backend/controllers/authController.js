@@ -64,17 +64,23 @@ exports.login = async (req, res, next) => {
 // @desc    Logout
 // @route   POST /api/auth/logout
 // @access  Private/Public
-exports.logout = (req, res) => {
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
-  });
+exports.logout = async (req, res, next) => {
+  try {
+    await authService.logoutUser(req.cookies.refreshToken);
 
-  res.status(200).json({
-    success: true,
-    message: "Uspešno ste se odjavili",
-  });
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Uspešno ste se odjavili",
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 // @desc    Refresh token
@@ -82,9 +88,11 @@ exports.logout = (req, res) => {
 // @access  Public
 exports.refreshToken = async (req, res, next) => {
   try {
-    const { accessToken } = await authService.refreshUserToken(
+    const { accessToken, refreshToken } = await authService.refreshUserToken(
       req.cookies.refreshToken,
     );
+
+    res.cookie("refreshToken", refreshToken, authService.cookieOptions);
 
     res.status(200).json({
       success: true,

@@ -53,6 +53,7 @@ const BookingSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+
     brojRoditelja: {
       type: Number,
       default: 0,
@@ -88,21 +89,29 @@ const BookingSchema = new mongoose.Schema(
     },
 
     izabraniPaket: {
-      naziv: {
-        type: String,
-        default: "",
-        trim: true,
+      type: {
+        naziv: {
+          type: String,
+          default: "",
+          trim: true,
+        },
+        cena: {
+          type: Number,
+          default: 0,
+          min: 0,
+        },
+        tip: {
+          type: String,
+          enum: ["fiksno", "po_osobi", "po_satu"],
+          default: "fiksno",
+        },
+        opis: {
+          type: String,
+          default: "",
+          trim: true,
+        },
       },
-      cena: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      opis: {
-        type: String,
-        default: "",
-        trim: true,
-      },
+      default: null,
     },
 
     izabraneUsluge: {
@@ -179,10 +188,26 @@ const BookingSchema = new mongoose.Schema(
   },
 );
 
+// Sprečava duple aktivne rezervacije za isti slot.
+// Otkazana rezervacija ne blokira novi booking.
+BookingSchema.index(
+  { timeSlotId: 1, status: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      timeSlotId: { $type: "objectId" },
+      status: { $ne: BOOKING_STATUS.OTKAZANO },
+    },
+  },
+);
+
 // Brži query za owner dashboard
 BookingSchema.index({ playroomId: 1, datum: 1 });
 
 // Brži query za korisnik istoriju
 BookingSchema.index({ roditeljId: 1, createdAt: -1 });
+
+// Brži query za aktivne rezervacije po danu
+BookingSchema.index({ playroomId: 1, datum: 1, status: 1 });
 
 module.exports = mongoose.model("Booking", BookingSchema);

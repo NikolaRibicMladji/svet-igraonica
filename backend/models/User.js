@@ -33,7 +33,7 @@ const UserSchema = new mongoose.Schema(
       type: String,
       required: [true, "Lozinka je obavezna"],
       minlength: 6,
-      select: false, // 🔒 nikad se ne vraća automatski
+      select: false,
     },
 
     ime: {
@@ -64,14 +64,27 @@ const UserSchema = new mongoose.Schema(
       index: true,
     },
 
+    deca: {
+      type: [deteSchema],
+      default: [],
+    },
+
+    refreshTokenHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
     passwordResetToken: {
       type: String,
       default: undefined,
+      select: false,
     },
 
     passwordResetExpires: {
       type: Date,
       default: undefined,
+      select: false,
     },
   },
   {
@@ -79,13 +92,19 @@ const UserSchema = new mongoose.Schema(
   },
 );
 
-// ⚡ brzi lookup za login
+// Brzi lookup za login
 UserSchema.index({ email: 1 });
 
-// 🔒 uklanja sensitive podatke kad se šalje JSON
+// Brži lookup za role-based upite
+UserSchema.index({ role: 1 });
+
+// Uklanja sensitive podatke kad se šalje JSON
 UserSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
+  delete obj.refreshTokenHash;
+  delete obj.passwordResetToken;
+  delete obj.passwordResetExpires;
   delete obj.__v;
   return obj;
 };

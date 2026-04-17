@@ -33,6 +33,12 @@ exports.createTimeSlot = async (req, res, next) => {
     }
 
     const slotDate = new Date(datum);
+    if (isNaN(slotDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Datum nije validan",
+      });
+    }
     slotDate.setHours(0, 0, 0, 0);
 
     try {
@@ -89,10 +95,10 @@ exports.getTimeSlotsByPlayroom = async (req, res, next) => {
       });
     }
 
-    const startDate = new Date(datum);
+    const startDate = parseValidDate(datum);
     startDate.setHours(0, 0, 0, 0);
 
-    const endDate = new Date(datum);
+    const endDate = new Date(startDate);
     endDate.setHours(23, 59, 59, 999);
 
     const timeSlots = await TimeSlot.find({
@@ -356,20 +362,13 @@ exports.getAvailableTimeSlots = async (req, res, next) => {
       });
     }
 
-    const [year, month, day] = datum.split("-").map(Number);
-
-    const targetDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const targetDate = bookingService.parseValidDate(datum);
 
     const workingHours = bookingService.getWorkingHoursForDate(
       playroom,
       targetDate,
     );
-    console.log("AVAILABLE DEBUG", {
-      datumIzQuery: datum,
-      targetDate: targetDate.toString(),
-      radnoVreme: playroom.radnoVreme,
-      workingHours,
-    });
+
     if (!workingHours) {
       return res.status(200).json({
         success: true,
@@ -455,9 +454,7 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
       });
     }
 
-    const [year, month, day] = datum.split("-").map(Number);
-
-    const targetDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const targetDate = bookingService.parseValidDate(datum);
 
     const workingHours = bookingService.getWorkingHoursForDate(
       playroom,
@@ -477,11 +474,15 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
       });
     }
 
+    const startDate = bookingService.parseValidDate(datum);
+    const endDate = new Date(startDate);
+    endDate.setHours(23, 59, 59, 999);
+
     const bookings = await Booking.find({
       playroomId,
       datum: {
-        $gte: new Date(new Date(datum).setHours(0, 0, 0, 0)),
-        $lte: new Date(new Date(datum).setHours(23, 59, 59, 999)),
+        $gte: startDate,
+        $lte: endDate,
       },
       status: { $ne: BOOKING_STATUS.OTKAZANO },
     })
@@ -586,63 +587,15 @@ exports.manualBookTimeSlot = async (req, res, next) => {
       });
     }
 
-    const slotEnd = new Date(
-      new Date(timeSlot.datum).getFullYear(),
-      new Date(timeSlot.datum).getMonth(),
-      new Date(timeSlot.datum).getDate(),
-      ...String(timeSlot.vremeDo || "00:00")
-        .split(":")
-        .map((v) => parseInt(v, 10)),
-    );
-
-    if (slotEnd <= new Date()) {
-      await session.abortTransaction();
-      return res.status(400).json({
-        success: false,
-        message: "Ne možeš ručno zauzeti prošli termin",
-      });
-    }
-
-    const lockedSlot = await TimeSlot.findOneAndUpdate(
-      {
-        _id: timeSlot._id,
-        zauzeto: false,
-        aktivno: true,
-        vanRadnogVremena: false,
-      },
-      {
-        $set: {
-          zauzeto: true,
-        },
-      },
-      {
-        new: true,
-        session,
-      },
-    );
-
-    if (!lockedSlot) {
-      await session.abortTransaction();
-      return res.status(400).json({
-        success: false,
-        message: "Termin je već zauzet, neaktivan ili ne postoji",
-      });
-    }
-
-    await TimeSlot.findByIdAndUpdate(
-      lockedSlot._id,
-      { $set: { zauzeto: false } },
-      { session },
-    );
-
     const booking = await bookingService.reserveSlot({
-      slotId: lockedSlot._id,
+      slotId: timeSlot._id,
       user: null,
       payload: {
         cenaIds: Array.isArray(cenaIds) ? cenaIds : [],
         paketId: null,
         usluge: [],
         brojDece: 1,
+        brojRoditelja: 0,
         imeRoditelja: imeRoditelja || "",
         prezimeRoditelja: prezimeRoditelja || "",
         emailRoditelja: emailRoditelja || "",
@@ -653,6 +606,17 @@ exports.manualBookTimeSlot = async (req, res, next) => {
     });
 
     await session.commitTransaction();
+
+    setImmediate(async () => {
+      try {
+        await bookingService.handleBookingEmails(booking._id);
+      } catch (emailError) {
+        console.error(
+          "Greška pri slanju emaila nakon ručne rezervacije:",
+          emailError.message,
+        );
+      }
+    });
 
     return res.status(200).json({
       success: true,

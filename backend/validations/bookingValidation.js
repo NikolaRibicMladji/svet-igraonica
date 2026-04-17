@@ -17,7 +17,12 @@ const isQuarterHour = (value) => {
 const createBookingSchema = z.object({
   body: z.object({
     playroomId: objectId,
-    datum: z.string().min(1, "Datum je obavezan"),
+    datum: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
+      .refine((val) => !isNaN(new Date(val).getTime()), {
+        message: "Datum nije validan",
+      }),
     vremeOd: z
       .string()
       .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
@@ -57,7 +62,12 @@ const createGuestBookingSchema = z
     body: z.object({
       playroomId: objectId,
 
-      datum: z.string().min(1, "Datum je obavezan"),
+      datum: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
+        .refine((val) => !isNaN(new Date(val).getTime()), {
+          message: "Datum nije validan",
+        }),
       vremeOd: z
         .string()
         .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")

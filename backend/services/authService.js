@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 const generateAccessToken = require("../utils/generateToken");
 const ROLES = require("../constants/roles");
 
@@ -24,15 +25,23 @@ const hashPassword = async (password) => {
   return bcrypt.hash(password, salt);
 };
 
+const hashToken = (token) => {
+  return crypto.createHash("sha256").update(token).digest("hex");
+};
+
 const generateRefreshToken = (user) => {
   return jwt.sign({ id: user._id }, process.env.REFRESH_TOKEN_SECRET, {
     expiresIn: "7d",
   });
 };
 
-const generateAuthResponse = (user) => {
+const generateAuthResponse = async (user, session = null) => {
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
+  const refreshTokenHash = hashToken(refreshToken);
+
+  user.refreshTokenHash = refreshTokenHash;
+  await user.save(session ? { session } : {});
 
   return { accessToken, refreshToken };
 };
@@ -49,9 +58,13 @@ const createParentUser = async ({
 }) => {
   const normalizedEmail = normalizeEmail(email);
 
-  const userExists = await User.findOne({ email: normalizedEmail }).session(
-    session,
-  );
+  const existingQuery = User.findOne({ email: normalizedEmail });
+  if (session) {
+    existingQuery.session(session);
+  }
+
+  const userExists = await existingQuery;
+
   if (userExists) {
     throw createError("Korisnik sa ovom email adresom već postoji", 400);
   }
@@ -73,9 +86,7 @@ const createParentUser = async ({
     session ? { session } : {},
   );
 
-  const user = createdUsers[0];
-
-  return user;
+  return createdUsers[0];
 };
 
 exports.registerUser = async (data) => {
@@ -93,7 +104,7 @@ exports.registerUser = async (data) => {
     deca,
   });
 
-  const tokens = generateAuthResponse(user);
+  const tokens = await generateAuthResponse(user);
 
   return { user, ...tokens };
 };
@@ -102,7 +113,7 @@ exports.loginUser = async (email, password) => {
   const normalizedEmail = normalizeEmail(email);
 
   const user = await User.findOne({ email: normalizedEmail }).select(
-    "+password",
+    "+password +refreshTokenHash",
   );
 
   if (!user) {
@@ -115,7 +126,7 @@ exports.loginUser = async (email, password) => {
     throw createError("Pogrešan email ili lozinka", 401);
   }
 
-  const tokens = generateAuthResponse(user);
+  const tokens = await generateAuthResponse(user);
 
   return { user, ...tokens };
 };
@@ -137,15 +148,49 @@ exports.refreshUserToken = async (refreshToken) => {
     throw createError("Refresh token nije validan", 401);
   }
 
-  const user = await User.findById(decoded.id);
+  const user = await User.findById(decoded.id).select("+refreshTokenHash");
 
   if (!user) {
     throw createError("Korisnik ne postoji", 401);
   }
 
-  const accessToken = generateAccessToken(user);
+  if (!user.refreshTokenHash) {
+    throw createError("Sesija više nije aktivna", 401);
+  }
 
-  return { accessToken };
+  const incomingHash = hashToken(refreshToken);
+
+  if (incomingHash !== user.refreshTokenHash) {
+    throw createError("Refresh token nije validan", 401);
+  }
+
+  const accessToken = generateAccessToken(user);
+  const newRefreshToken = generateRefreshToken(user);
+
+  user.refreshTokenHash = hashToken(newRefreshToken);
+  await user.save();
+
+  return {
+    accessToken,
+    refreshToken: newRefreshToken,
+  };
+};
+
+exports.logoutUser = async (refreshToken) => {
+  if (!refreshToken) return;
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+
+    const user = await User.findById(decoded.id).select("+refreshTokenHash");
+
+    if (!user) return;
+
+    user.refreshTokenHash = null;
+    await user.save();
+  } catch (error) {
+    // Ne pucamo logout čak i ako je token nevalidan ili istekao
+  }
 };
 
 exports.registerGuestParent = async (data, session = null) => {
@@ -153,9 +198,13 @@ exports.registerGuestParent = async (data, session = null) => {
 
   const normalizedEmail = normalizeEmail(email);
 
-  const userExists = await User.findOne({ email: normalizedEmail }).session(
-    session,
-  );
+  const existingQuery = User.findOne({ email: normalizedEmail });
+  if (session) {
+    existingQuery.session(session);
+  }
+
+  const userExists = await existingQuery;
+
   if (userExists) {
     throw createError(
       "Korisnik sa ovom email adresom već postoji. Prijavite se da biste završili rezervaciju.",
@@ -174,7 +223,10 @@ exports.registerGuestParent = async (data, session = null) => {
     session,
   });
 
-  const { accessToken, refreshToken } = generateAuthResponse(user);
+  const { accessToken, refreshToken } = await generateAuthResponse(
+    user,
+    session,
+  );
 
   return {
     user,
