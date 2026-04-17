@@ -69,12 +69,6 @@ const UserSchema = new mongoose.Schema(
       default: [],
     },
 
-    refreshTokenHash: {
-      type: String,
-      default: null,
-      select: false,
-    },
-
     passwordResetToken: {
       type: String,
       default: undefined,
@@ -102,7 +96,7 @@ UserSchema.index({ role: 1 });
 UserSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
-  delete obj.refreshTokenHash;
+
   delete obj.passwordResetToken;
   delete obj.passwordResetExpires;
   delete obj.__v;

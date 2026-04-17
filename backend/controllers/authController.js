@@ -4,6 +4,15 @@ const User = require("../models/User");
 const { sendMail } = require("../utils/emailService");
 const authService = require("../services/authService");
 
+const getRequestMetadata = (req) => ({
+  userAgent: req.get("user-agent") || "",
+  ipAddress:
+    req.ip ||
+    req.headers["x-forwarded-for"] ||
+    req.connection?.remoteAddress ||
+    "",
+});
+
 // @desc    Registracija korisnika
 // @route   POST /api/auth/register
 // @access  Public
@@ -11,6 +20,7 @@ exports.register = async (req, res, next) => {
   try {
     const { user, accessToken, refreshToken } = await authService.registerUser(
       req.body,
+      getRequestMetadata(req),
     );
 
     res.cookie("refreshToken", refreshToken, authService.cookieOptions);
@@ -40,6 +50,7 @@ exports.login = async (req, res, next) => {
     const { user, accessToken, refreshToken } = await authService.loginUser(
       req.body.email,
       req.body.password,
+      getRequestMetadata(req),
     );
 
     res.cookie("refreshToken", refreshToken, authService.cookieOptions);
@@ -90,6 +101,7 @@ exports.refreshToken = async (req, res, next) => {
   try {
     const { accessToken, refreshToken } = await authService.refreshUserToken(
       req.cookies.refreshToken,
+      getRequestMetadata(req),
     );
 
     res.cookie("refreshToken", refreshToken, authService.cookieOptions);

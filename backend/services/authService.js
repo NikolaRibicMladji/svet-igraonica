@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const generateAccessToken = require("../utils/generateToken");
 const ROLES = require("../constants/roles");
+const RefreshSession = require("../models/RefreshSession");
 
 const REFRESH_TOKEN_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -28,20 +29,59 @@ const hashPassword = async (password) => {
 const hashToken = (token) => {
   return crypto.createHash("sha256").update(token).digest("hex");
 };
-
-const generateRefreshToken = (user) => {
-  return jwt.sign({ id: user._id }, process.env.REFRESH_TOKEN_SECRET, {
-    expiresIn: "7d",
-  });
+const getRefreshTokenExpiryDate = () => {
+  return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 };
 
-const generateAuthResponse = async (user, session = null) => {
+const generateRefreshToken = (user, sessionId) => {
+  return jwt.sign(
+    {
+      id: user._id,
+      sid: sessionId,
+    },
+    process.env.REFRESH_TOKEN_SECRET,
+    {
+      expiresIn: "7d",
+    },
+  );
+};
+
+const generateAuthResponse = async (user, session = null, metadata = {}) => {
+  const refreshSession = await RefreshSession.create(
+    [
+      {
+        userId: user._id,
+        tokenHash: "PENDING",
+        expiresAt: getRefreshTokenExpiryDate(),
+        userAgent: metadata.userAgent || "",
+        ipAddress: metadata.ipAddress || "",
+      },
+    ],
+    session ? { session } : {},
+  ).then((docs) => docs[0]);
+
   const accessToken = generateAccessToken(user);
-  const refreshToken = generateRefreshToken(user);
+  const refreshToken = generateRefreshToken(
+    user,
+    refreshSession._id.toString(),
+  );
   const refreshTokenHash = hashToken(refreshToken);
 
-  user.refreshTokenHash = refreshTokenHash;
-  await user.save(session ? { session } : {});
+  refreshSession.tokenHash = refreshTokenHash;
+  await refreshSession.save(session ? { session } : {});
+
+  // 🔥 cleanup starih sesija
+  await RefreshSession.updateMany(
+    {
+      userId: user._id,
+      revokedAt: null,
+      _id: { $ne: refreshSession._id },
+      createdAt: { $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+    },
+    {
+      $set: { revokedAt: new Date() },
+    },
+  );
 
   return { accessToken, refreshToken };
 };
@@ -89,7 +129,7 @@ const createParentUser = async ({
   return createdUsers[0];
 };
 
-exports.registerUser = async (data) => {
+exports.registerUser = async (data, metadata = {}) => {
   const { ime, prezime, email, password, telefon, role, deca } = data;
 
   const userRole = role === ROLES.VLASNIK ? ROLES.VLASNIK : ROLES.RODITELJ;
@@ -104,16 +144,16 @@ exports.registerUser = async (data) => {
     deca,
   });
 
-  const tokens = await generateAuthResponse(user);
+  const tokens = await generateAuthResponse(user, null, metadata);
 
   return { user, ...tokens };
 };
 
-exports.loginUser = async (email, password) => {
+exports.loginUser = async (email, password, metadata = {}) => {
   const normalizedEmail = normalizeEmail(email);
 
   const user = await User.findOne({ email: normalizedEmail }).select(
-    "+password +refreshTokenHash",
+    "+password",
   );
 
   if (!user) {
@@ -126,12 +166,12 @@ exports.loginUser = async (email, password) => {
     throw createError("Pogrešan email ili lozinka", 401);
   }
 
-  const tokens = await generateAuthResponse(user);
+  const tokens = await generateAuthResponse(user, null, metadata);
 
   return { user, ...tokens };
 };
 
-exports.refreshUserToken = async (refreshToken) => {
+exports.refreshUserToken = async (refreshToken, metadata = {}) => {
   if (!refreshToken) {
     throw createError("Niste autorizovani", 401);
   }
@@ -148,27 +188,78 @@ exports.refreshUserToken = async (refreshToken) => {
     throw createError("Refresh token nije validan", 401);
   }
 
-  const user = await User.findById(decoded.id).select("+refreshTokenHash");
+  if (!decoded?.sid) {
+    throw createError("Refresh token nema validnu sesiju", 401);
+  }
+
+  const user = await User.findById(decoded.id);
 
   if (!user) {
     throw createError("Korisnik ne postoji", 401);
   }
 
-  if (!user.refreshTokenHash) {
+  const sessionDoc = await RefreshSession.findById(decoded.sid);
+
+  if (!sessionDoc) {
+    throw createError("Sesija nije pronađena", 401);
+  }
+
+  if (String(sessionDoc.userId) !== String(user._id)) {
+    throw createError("Sesija ne pripada korisniku", 401);
+  }
+
+  if (sessionDoc.revokedAt) {
     throw createError("Sesija više nije aktivna", 401);
+  }
+
+  if (sessionDoc.expiresAt <= new Date()) {
+    throw createError("Refresh token je istekao", 401);
   }
 
   const incomingHash = hashToken(refreshToken);
 
-  if (incomingHash !== user.refreshTokenHash) {
-    throw createError("Refresh token nije validan", 401);
+  if (incomingHash !== sessionDoc.tokenHash) {
+    await RefreshSession.updateMany(
+      { userId: user._id, revokedAt: null },
+      { $set: { revokedAt: new Date() } },
+    );
+
+    throw createError("Sesija kompromitovana. Prijavite se ponovo.", 401);
   }
 
-  const accessToken = generateAccessToken(user);
-  const newRefreshToken = generateRefreshToken(user);
+  const newSession = await RefreshSession.create([
+    {
+      userId: user._id,
+      tokenHash: "PENDING",
+      expiresAt: getRefreshTokenExpiryDate(),
+      userAgent: metadata.userAgent || sessionDoc.userAgent || "",
+      ipAddress: metadata.ipAddress || sessionDoc.ipAddress || "",
+    },
+  ]).then((docs) => docs[0]);
 
-  user.refreshTokenHash = hashToken(newRefreshToken);
-  await user.save();
+  const accessToken = generateAccessToken(user);
+  const newRefreshToken = generateRefreshToken(user, newSession._id.toString());
+  const newRefreshTokenHash = hashToken(newRefreshToken);
+
+  newSession.tokenHash = newRefreshTokenHash;
+  await newSession.save();
+
+  // 🔥 cleanup starih sesija (npr starijih od 30 dana)
+  await RefreshSession.updateMany(
+    {
+      userId: user._id,
+      revokedAt: null,
+      _id: { $ne: newSession._id },
+      createdAt: { $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+    },
+    {
+      $set: { revokedAt: new Date() },
+    },
+  );
+
+  sessionDoc.revokedAt = new Date();
+  sessionDoc.replacedByTokenHash = newRefreshTokenHash;
+  await sessionDoc.save();
 
   return {
     accessToken,
@@ -182,12 +273,11 @@ exports.logoutUser = async (refreshToken) => {
   try {
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
 
-    const user = await User.findById(decoded.id).select("+refreshTokenHash");
+    if (!decoded?.sid) return;
 
-    if (!user) return;
-
-    user.refreshTokenHash = null;
-    await user.save();
+    await RefreshSession.findByIdAndUpdate(decoded.sid, {
+      $set: { revokedAt: new Date() },
+    });
   } catch (error) {
     // Ne pucamo logout čak i ako je token nevalidan ili istekao
   }
@@ -226,6 +316,7 @@ exports.registerGuestParent = async (data, session = null) => {
   const { accessToken, refreshToken } = await generateAuthResponse(
     user,
     session,
+    {},
   );
 
   return {
