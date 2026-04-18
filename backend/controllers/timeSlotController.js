@@ -6,6 +6,7 @@ const timeSlotService = require("../services/timeSlotService");
 const mongoose = require("mongoose");
 const TimeSlot = require("../models/TimeSlot");
 const bookingService = require("../services/bookingService");
+const { enqueueBookingEmail } = require("../services/emailQueueService");
 
 // @desc    Kreiraj novi termin (samo vlasnik igraonice)
 // @route   POST /api/timeslots
@@ -607,16 +608,7 @@ exports.manualBookTimeSlot = async (req, res, next) => {
 
     await session.commitTransaction();
 
-    setImmediate(async () => {
-      try {
-        await bookingService.handleBookingEmails(booking._id);
-      } catch (emailError) {
-        console.error(
-          "Greška pri slanju emaila nakon ručne rezervacije:",
-          emailError.message,
-        );
-      }
-    });
+    await enqueueBookingEmail(booking._id);
 
     return res.status(200).json({
       success: true,
@@ -694,6 +686,8 @@ exports.manualBookInterval = async (req, res, next) => {
         napomena: napomena || "",
       },
     });
+
+    await enqueueBookingEmail(booking._id);
 
     return res.status(201).json({
       success: true,

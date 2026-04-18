@@ -1,5 +1,5 @@
 const Booking = require("../models/Booking");
-
+const { enqueueBookingEmail } = require("../services/emailQueueService");
 const Playroom = require("../models/Playroom");
 const bookingService = require("../services/bookingService");
 const User = require("../models/User");
@@ -37,16 +37,7 @@ exports.createBooking = async (req, res, next) => {
       },
     });
 
-    setImmediate(async () => {
-      try {
-        await bookingService.handleBookingEmails(booking._id);
-      } catch (emailError) {
-        console.error(
-          "Greška pri slanju emaila nakon rezervacije:",
-          emailError.message,
-        );
-      }
-    });
+    await enqueueBookingEmail(booking._id);
 
     return res.status(201).json({
       success: true,
@@ -125,16 +116,7 @@ exports.createGuestBooking = async (req, res, next) => {
 
     res.cookie("refreshToken", refreshToken, authService.cookieOptions);
 
-    setImmediate(async () => {
-      try {
-        await bookingService.handleBookingEmails(createdBooking._id);
-      } catch (emailError) {
-        console.error(
-          "Greška pri slanju emaila nakon guest rezervacije:",
-          emailError.message,
-        );
-      }
-    });
+    await enqueueBookingEmail(createdBooking._id);
 
     return res.status(201).json({
       success: true,

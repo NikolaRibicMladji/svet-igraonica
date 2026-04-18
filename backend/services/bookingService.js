@@ -4,6 +4,11 @@ const BOOKING_STATUS = require("../constants/bookingStatus");
 const ErrorResponse = require("../utils/errorResponse");
 const mongoose = require("mongoose");
 const Playroom = require("../models/Playroom");
+const {
+  enqueueBookingEmail,
+  enqueueBookingCancellationEmail,
+  enqueueBookingConfirmationEmail,
+} = require("./emailQueueService");
 
 const buildDateTime = (date, time) => {
   const [hour, minute] = String(time || "00:00")
@@ -988,17 +993,75 @@ const handleBookingEmails = async (bookingId) => {
   }
 };
 
+const sendCancellationEmailById = async (bookingId) => {
+  const booking = await Booking.findById(bookingId)
+    .populate({
+      path: "playroomId",
+      select: "naziv adresa grad vlasnikId",
+      populate: {
+        path: "vlasnikId",
+        select: "ime prezime email",
+      },
+    })
+    .populate("roditeljId", "ime prezime email telefon")
+    .populate("timeSlotId");
+
+  if (!booking) return;
+
+  await sendCancellationEmail(booking);
+
+  if (booking.playroomId?.vlasnikId?.email) {
+    const { sendCancellationToOwner } = require("../utils/emailService");
+
+    await sendCancellationToOwner(
+      booking,
+      booking.roditeljId,
+      booking.playroomId,
+      {
+        datum: booking.datum,
+        vremeOd: booking.vremeOd,
+        vremeDo: booking.vremeDo,
+      },
+      booking.playroomId.vlasnikId,
+    );
+  }
+};
+
+const sendConfirmationEmailById = async (bookingId) => {
+  const booking = await Booking.findById(bookingId)
+    .populate({
+      path: "playroomId",
+      select: "naziv adresa grad vlasnikId",
+      populate: {
+        path: "vlasnikId",
+        select: "ime prezime email",
+      },
+    })
+    .populate("roditeljId", "ime prezime email telefon")
+    .populate("timeSlotId");
+
+  if (!booking) return;
+
+  await sendConfirmationEmail(booking);
+
+  if (booking.playroomId?.vlasnikId?.email) {
+    await sendBookingConfirmationToOwner(
+      booking,
+      booking.roditeljId,
+      booking.playroomId,
+      {
+        datum: booking.datum,
+        vremeOd: booking.vremeOd,
+        vremeDo: booking.vremeDo,
+      },
+      booking.playroomId.vlasnikId,
+    );
+  }
+};
+
 const createBookingWithEmails = async (data) => {
   const booking = await reserveSlot(data);
-
-  setImmediate(async () => {
-    try {
-      await handleBookingEmails(booking._id);
-    } catch (error) {
-      console.error("Greška pri slanju booking emailova:", error.message);
-    }
-  });
-
+  await enqueueBookingEmail(booking._id);
   return booking;
 };
 
@@ -1104,30 +1167,7 @@ const cancelBookingById = async ({ bookingId, currentUser }) => {
       time: new Date().toISOString(),
     });
 
-    setImmediate(async () => {
-      try {
-        await sendCancellationEmail(booking);
-
-        if (booking.playroomId?.vlasnikId?.email) {
-          await require("../utils/emailService").sendCancellationToOwner(
-            booking,
-            booking.roditeljId,
-            booking.playroomId,
-            {
-              datum: booking.datum,
-              vremeOd: booking.vremeOd,
-              vremeDo: booking.vremeDo,
-            },
-            booking.playroomId.vlasnikId,
-          );
-        }
-      } catch (error) {
-        console.error(
-          "Greška pri slanju emaila nakon otkazivanja rezervacije:",
-          error.message,
-        );
-      }
-    });
+    await enqueueBookingCancellationEmail(booking._id);
 
     return booking;
   } catch (error) {
@@ -1182,30 +1222,7 @@ const confirmBookingById = async ({ bookingId, currentUser }) => {
     time: new Date().toISOString(),
   });
 
-  setImmediate(async () => {
-    try {
-      await sendConfirmationEmail(booking);
-
-      if (booking.playroomId?.vlasnikId?.email) {
-        await sendBookingConfirmationToOwner(
-          booking,
-          booking.roditeljId,
-          booking.playroomId,
-          {
-            datum: booking.datum,
-            vremeOd: booking.vremeOd,
-            vremeDo: booking.vremeDo,
-          },
-          booking.playroomId.vlasnikId,
-        );
-      }
-    } catch (error) {
-      console.error(
-        "Greška pri slanju emaila nakon potvrde rezervacije:",
-        error.message,
-      );
-    }
-  });
+  await enqueueBookingConfirmationEmail(booking._id);
 
   return booking;
 };
@@ -1302,6 +1319,8 @@ module.exports = {
   handleBookingEmails,
   sendCancellationEmail,
   sendConfirmationEmail,
+  sendCancellationEmailById,
+  sendConfirmationEmailById,
   lockSlot,
   unlockSlot,
   cancelBookingById,
