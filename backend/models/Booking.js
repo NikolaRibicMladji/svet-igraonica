@@ -200,6 +200,16 @@ BookingSchema.index(
     },
   },
 );
+// Sprečava duple aktivne rezervacije za isti vremenski interval (custom booking)
+BookingSchema.index(
+  { playroomId: 1, datum: 1, vremeOd: 1, vremeDo: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: { $ne: BOOKING_STATUS.OTKAZANO },
+    },
+  },
+);
 
 // Brži query za owner dashboard
 BookingSchema.index({ playroomId: 1, datum: 1 });

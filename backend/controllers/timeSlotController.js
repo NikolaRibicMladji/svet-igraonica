@@ -7,6 +7,7 @@ const mongoose = require("mongoose");
 const TimeSlot = require("../models/TimeSlot");
 const bookingService = require("../services/bookingService");
 const { enqueueBookingEmail } = require("../services/emailQueueService");
+const ErrorResponse = require("../utils/errorResponse");
 
 // @desc    Kreiraj novi termin (samo vlasnik igraonice)
 // @route   POST /api/timeslots
@@ -17,28 +18,22 @@ exports.createTimeSlot = async (req, res, next) => {
 
     const playroom = await Playroom.findById(playroomId);
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate pravo da dodajete termine za ovu igraonicu",
-      });
+      throw new ErrorResponse(
+        "Nemate pravo da dodajete termine za ovu igraonicu",
+        403,
+      );
     }
 
     const slotDate = new Date(datum);
     if (isNaN(slotDate.getTime())) {
-      return res.status(400).json({
-        success: false,
-        message: "Datum nije validan",
-      });
+      throw new ErrorResponse("Datum nije validan", 400);
     }
     slotDate.setHours(0, 0, 0, 0);
 
@@ -60,10 +55,7 @@ exports.createTimeSlot = async (req, res, next) => {
       });
     } catch (err) {
       if (err.code === 11000) {
-        return res.status(400).json({
-          success: false,
-          message: "Termin već postoji",
-        });
+        throw new ErrorResponse("Termin već postoji", 400);
       }
 
       throw err;
@@ -82,21 +74,15 @@ exports.getTimeSlotsByPlayroom = async (req, res, next) => {
     const { datum } = req.query;
 
     if (!datum) {
-      return res.status(400).json({
-        success: false,
-        message: "Datum je obavezan",
-      });
+      throw new ErrorResponse("Datum je obavezan", 400);
     }
 
     const playroom = await Playroom.findById(playroomId);
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
-    const startDate = parseValidDate(datum);
+    const startDate = bookingService.parseValidDate(datum);
     startDate.setHours(0, 0, 0, 0);
 
     const endDate = new Date(startDate);
@@ -164,10 +150,7 @@ exports.getTimeSlotById = async (req, res, next) => {
     const timeSlot = await TimeSlot.findById(req.params.id);
 
     if (!timeSlot) {
-      return res.status(404).json({
-        success: false,
-        message: "Termin nije pronađen",
-      });
+      throw new ErrorResponse("Termin nije pronađen", 404);
     }
 
     res.status(200).json({
@@ -187,10 +170,7 @@ exports.updateTimeSlot = async (req, res, next) => {
     let timeSlot = await TimeSlot.findById(req.params.id);
 
     if (!timeSlot) {
-      return res.status(404).json({
-        success: false,
-        message: "Termin nije pronađen",
-      });
+      throw new ErrorResponse("Termin nije pronađen", 404);
     }
 
     const playroom = await Playroom.findById(timeSlot.playroomId);
@@ -199,10 +179,7 @@ exports.updateTimeSlot = async (req, res, next) => {
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate pravo da menjate ovaj termin",
-      });
+      throw new ErrorResponse("Nemate pravo da menjate ovaj termin", 403);
     }
 
     const { cena, aktivno } = req.body;
@@ -222,10 +199,10 @@ exports.updateTimeSlot = async (req, res, next) => {
       );
 
       if (!updated) {
-        return res.status(400).json({
-          success: false,
-          message: "Ne možeš menjati cenu termina koji ima rezervaciju",
-        });
+        throw new ErrorResponse(
+          "Ne možeš menjati cenu termina koji ima rezervaciju",
+          400,
+        );
       }
 
       timeSlot = updated;
@@ -244,11 +221,11 @@ exports.updateTimeSlot = async (req, res, next) => {
             .map((v) => parseInt(v, 10)),
         );
 
-        if (slotEnd <= getNowInAppTimezone()) {
-          return res.status(400).json({
-            success: false,
-            message: "Prošli termin ne može biti ponovo aktiviran",
-          });
+        if (slotEnd <= new Date()) {
+          throw new ErrorResponse(
+            "Prošli termin ne može biti ponovo aktiviran",
+            400,
+          );
         }
 
         timeSlot.aktivno = true;
@@ -273,10 +250,7 @@ exports.deleteTimeSlot = async (req, res, next) => {
     const timeSlot = await TimeSlot.findById(req.params.id);
 
     if (!timeSlot) {
-      return res.status(404).json({
-        success: false,
-        message: "Termin nije pronađen",
-      });
+      throw new ErrorResponse("Termin nije pronađen", 404);
     }
 
     const playroom = await Playroom.findById(timeSlot.playroomId);
@@ -285,10 +259,7 @@ exports.deleteTimeSlot = async (req, res, next) => {
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate pravo da obrišete ovaj termin",
-      });
+      throw new ErrorResponse("Nemate pravo da obrišete ovaj termin", 403);
     }
 
     await timeSlotService.deleteSlotIfAllowed(timeSlot);
@@ -311,20 +282,17 @@ exports.generateSlotsForPlayroom = async (req, res, next) => {
 
     const playroom = await Playroom.findById(playroomId);
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate pravo da generišete termine za ovu igraonicu",
-      });
+      throw new ErrorResponse(
+        "Nemate pravo da generišete termine za ovu igraonicu",
+        403,
+      );
     }
 
     const result = await generateTimeSlotsForPlayroom(playroomId);
@@ -348,19 +316,13 @@ exports.getAvailableTimeSlots = async (req, res, next) => {
     const { datum } = req.query;
 
     if (!datum) {
-      return res.status(400).json({
-        success: false,
-        message: "Datum je obavezan",
-      });
+      throw new ErrorResponse("Datum je obavezan", 400);
     }
 
     const playroom = await Playroom.findById(playroomId);
 
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
     const targetDate = bookingService.parseValidDate(datum);
@@ -431,28 +393,22 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
     const { datum } = req.query;
 
     if (!datum) {
-      return res.status(400).json({
-        success: false,
-        message: "Datum je obavezan",
-      });
+      throw new ErrorResponse("Datum je obavezan", 400);
     }
 
     const playroom = await Playroom.findById(playroomId);
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate pravo da vidite termine za ovu igraonicu",
-      });
+      throw new ErrorResponse(
+        "Nemate pravo da vidite termine za ovu igraonicu",
+        403,
+      );
     }
 
     const targetDate = bookingService.parseValidDate(datum);
@@ -558,11 +514,7 @@ exports.manualBookTimeSlot = async (req, res, next) => {
     const timeSlot = await TimeSlot.findById(id).session(session);
 
     if (!timeSlot) {
-      await session.abortTransaction();
-      return res.status(404).json({
-        success: false,
-        message: "Termin nije pronađen",
-      });
+      throw new ErrorResponse("Termin nije pronađen", 404);
     }
 
     const playroom = await Playroom.findById(timeSlot.playroomId).session(
@@ -570,22 +522,14 @@ exports.manualBookTimeSlot = async (req, res, next) => {
     );
 
     if (!playroom) {
-      await session.abortTransaction();
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      await session.abortTransaction();
-      return res.status(403).json({
-        success: false,
-        message: "Nemate pravo da zauzmete ovaj termin",
-      });
+      throw new ErrorResponse("Nemate pravo da zauzmete ovaj termin", 403);
     }
 
     const booking = await bookingService.reserveSlot({
@@ -608,7 +552,14 @@ exports.manualBookTimeSlot = async (req, res, next) => {
 
     await session.commitTransaction();
 
-    await enqueueBookingEmail(booking._id);
+    try {
+      await enqueueBookingEmail(booking._id);
+    } catch (emailError) {
+      console.error(
+        "Greška pri enqueue booking email-a (manualBookTimeSlot):",
+        emailError.message,
+      );
+    }
 
     return res.status(200).json({
       success: true,
@@ -616,7 +567,9 @@ exports.manualBookTimeSlot = async (req, res, next) => {
       message: `Termin je uspešno zauzet. Ukupno: ${booking.ukupnaCena} RSD`,
     });
   } catch (error) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     next(error);
   } finally {
     session.endSession();
@@ -624,7 +577,11 @@ exports.manualBookTimeSlot = async (req, res, next) => {
 };
 
 exports.manualBookInterval = async (req, res, next) => {
+  const session = await mongoose.startSession();
+
   try {
+    session.startTransaction();
+
     const {
       playroomId,
       datum,
@@ -637,23 +594,20 @@ exports.manualBookInterval = async (req, res, next) => {
       napomena,
     } = req.body;
 
-    const playroom = await Playroom.findById(playroomId);
+    const playroom = await Playroom.findById(playroomId).session(session);
 
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate pravo da ručno rezervišete za ovu igraonicu",
-      });
+      throw new ErrorResponse(
+        "Nemate pravo da ručno rezervišete za ovu igraonicu",
+        403,
+      );
     }
 
     const defaultCena =
@@ -662,10 +616,10 @@ exports.manualBookInterval = async (req, res, next) => {
         : null;
 
     if (!defaultCena?._id) {
-      return res.status(400).json({
-        success: false,
-        message: "Igraonica nema nijednu cenu za obračun rezervacije",
-      });
+      throw new ErrorResponse(
+        "Igraonica nema nijednu cenu za obračun rezervacije",
+        400,
+      );
     }
 
     const booking = await bookingService.reserveCustomInterval({
@@ -685,9 +639,19 @@ exports.manualBookInterval = async (req, res, next) => {
         telefonRoditelja: telefonRoditelja || "",
         napomena: napomena || "",
       },
+      session,
     });
 
-    await enqueueBookingEmail(booking._id);
+    await session.commitTransaction();
+
+    try {
+      await enqueueBookingEmail(booking._id);
+    } catch (emailError) {
+      console.error(
+        "Greška pri enqueue booking email-a (manualBookInterval):",
+        emailError.message,
+      );
+    }
 
     return res.status(201).json({
       success: true,
@@ -695,6 +659,11 @@ exports.manualBookInterval = async (req, res, next) => {
       message: "Termin je uspešno ručno zauzet.",
     });
   } catch (error) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     next(error);
+  } finally {
+    session.endSession();
   }
 };

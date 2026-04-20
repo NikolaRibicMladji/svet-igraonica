@@ -29,10 +29,7 @@ exports.uploadPlayroomImage = async (req, res, next) => {
     }
 
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: "Molimo odaberite sliku",
-      });
+      throw new ErrorResponse("Molimo odaberite sliku", 400);
     }
 
     const result = await uploadFileToCloudinary({

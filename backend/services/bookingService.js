@@ -102,7 +102,9 @@ const getActiveBookingsForDate = async ({
     playroomId,
     datum: { $gte: startDate, $lte: endDate },
     status: { $ne: BOOKING_STATUS.OTKAZANO },
-  }).sort({ vremeOd: 1 });
+  })
+    .select("_id vremeOd vremeDo")
+    .sort({ vremeOd: 1 });
 
   if (session) {
     query = query.session(session);
@@ -141,6 +143,54 @@ const findOverlappingActiveBooking = async ({
   }
 
   return query;
+};
+
+const findOverlappingBookingWithPreparation = async ({
+  playroomId,
+  datum,
+  vremeOd,
+  vremeDo,
+  preparationMinutes = 0,
+  excludeBookingId = null,
+  session = null,
+}) => {
+  const startDate = startOfDayInAppTimezone(datum);
+  const endDate = endOfDayInAppTimezone(datum);
+
+  let query = Booking.find({
+    playroomId,
+    datum: { $gte: startDate, $lte: endDate },
+    status: { $ne: BOOKING_STATUS.OTKAZANO },
+  })
+    .select("_id vremeOd vremeDo")
+    .sort({ vremeOd: 1 });
+
+  if (session) {
+    query = query.session(session);
+  }
+
+  const bookings = await query;
+
+  const targetStart = timeToMinutes(vremeOd);
+  const targetEnd = timeToMinutes(vremeDo);
+
+  return (
+    bookings.find((existing) => {
+      if (
+        excludeBookingId &&
+        String(existing._id) === String(excludeBookingId)
+      ) {
+        return false;
+      }
+
+      return isOverlapping(
+        targetStart,
+        targetEnd,
+        timeToMinutes(existing.vremeOd),
+        timeToMinutes(existing.vremeDo) + preparationMinutes,
+      );
+    }) || null
+  );
 };
 
 const ensureVirtualSlotForInterval = async ({
@@ -322,25 +372,16 @@ const reserveSlot = async ({
 
     const preparationMinutes = getPreparationMinutes(playroom);
 
-    const existingBookings = await getActiveBookingsForDate({
+    const overlapBooking = await findOverlappingBookingWithPreparation({
       playroomId: slot.playroomId,
       datum: slot.datum,
+      vremeOd: slot.vremeOd,
+      vremeDo: slot.vremeDo,
+      preparationMinutes,
       session,
     });
 
-    const slotStartMinutes = timeToMinutes(slot.vremeOd);
-    const slotEndMinutes = timeToMinutes(slot.vremeDo);
-
-    const hasOverlap = existingBookings.some((existing) =>
-      isOverlapping(
-        slotStartMinutes,
-        slotEndMinutes,
-        timeToMinutes(existing.vremeOd),
-        timeToMinutes(existing.vremeDo) + preparationMinutes,
-      ),
-    );
-
-    if (hasOverlap) {
+    if (overlapBooking) {
       await TimeSlot.findByIdAndUpdate(
         slot._id,
         { $set: { zauzeto: false } },
@@ -434,13 +475,16 @@ const reserveSlot = async ({
     const uniqueUslugeIds = Array.isArray(payload.usluge)
       ? [...new Set(payload.usluge.map((id) => String(id)))]
       : [];
+
+    const dodatneUslugeMap = new Map(
+      Array.isArray(playroom.dodatneUsluge)
+        ? playroom.dodatneUsluge.map((u) => [String(u._id), u])
+        : [],
+    );
+
     if (uniqueUslugeIds.length > 0) {
       for (const uslugaId of uniqueUslugeIds) {
-        const usluga = Array.isArray(playroom.dodatneUsluge)
-          ? playroom.dodatneUsluge.find(
-              (u) => String(u._id) === String(uslugaId),
-            )
-          : null;
+        const usluga = dodatneUslugeMap.get(String(uslugaId)) || null;
 
         if (!usluga) {
           await TimeSlot.findByIdAndUpdate(
@@ -653,22 +697,16 @@ const reserveCustomInterval = async ({
 
     const preparationMinutes = getPreparationMinutes(playroom);
 
-    const existingBookings = await getActiveBookingsForDate({
+    const overlapBooking = await findOverlappingBookingWithPreparation({
       playroomId,
       datum: bookingDate,
+      vremeOd,
+      vremeDo,
+      preparationMinutes,
       session,
     });
 
-    const hasOverlap = existingBookings.some((existing) =>
-      isOverlapping(
-        startMinutes,
-        endMinutes,
-        timeToMinutes(existing.vremeOd),
-        timeToMinutes(existing.vremeDo) + preparationMinutes,
-      ),
-    );
-
-    if (hasOverlap) {
+    if (overlapBooking) {
       throw new ErrorResponse(
         "Izabrani termin se preklapa sa postojećom rezervacijom",
         409,
@@ -795,10 +833,14 @@ const reserveCustomInterval = async ({
       ? [...new Set(payload.usluge.map((id) => String(id)))]
       : [];
 
+    const dodatneUslugeMap = new Map(
+      Array.isArray(playroom.dodatneUsluge)
+        ? playroom.dodatneUsluge.map((u) => [String(u._id), u])
+        : [],
+    );
+
     for (const uslugaId of uniqueUslugeIds) {
-      const usluga = Array.isArray(playroom.dodatneUsluge)
-        ? playroom.dodatneUsluge.find((u) => String(u._id) === String(uslugaId))
-        : null;
+      const usluga = dodatneUslugeMap.get(String(uslugaId)) || null;
 
       if (!usluga) {
         await TimeSlot.findByIdAndUpdate(
@@ -1315,6 +1357,7 @@ module.exports = {
   reserveCustomInterval,
   buildDaySegments,
   getActiveBookingsForDate,
+  findOverlappingBookingWithPreparation,
   getWorkingHoursForDate,
   timeToMinutes,
   minutesToTime,

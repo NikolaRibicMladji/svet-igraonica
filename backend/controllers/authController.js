@@ -130,10 +130,7 @@ exports.forgotPassword = async (req, res, next) => {
     const { email } = req.body;
 
     if (!email || !email.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Email adresa je obavezna.",
-      });
+      throw new ErrorResponse("Email adresa je obavezna.", 400);
     }
 
     const normalizedEmail = email.trim().toLowerCase();
