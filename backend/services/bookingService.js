@@ -9,23 +9,18 @@ const {
   enqueueBookingCancellationEmail,
   enqueueBookingConfirmationEmail,
 } = require("./emailQueueService");
+const {
+  APP_TIMEZONE,
+  getNowInAppTimezone,
+  startOfDayInAppTimezone,
+  endOfDayInAppTimezone,
+  buildDateTimeInAppTimezone,
+  parseDateOnlyInAppTimezone,
+} = require("../utils/dateTime");
+const { formatInTimeZone } = require("date-fns-tz");
 
 const buildDateTime = (date, time) => {
-  const [hour, minute] = String(time || "00:00")
-    .split(":")
-    .map((v) => parseInt(v, 10));
-
-  const d = new Date(date);
-
-  return new Date(
-    d.getFullYear(),
-    d.getMonth(),
-    d.getDate(),
-    hour || 0,
-    minute || 0,
-    0,
-    0,
-  );
+  return buildDateTimeInAppTimezone(date, time);
 };
 
 const timeToMinutes = (time) => {
@@ -53,19 +48,19 @@ const isOverlapping = (startA, endA, startB, endB) => {
 };
 
 const getDayKeyFromDate = (date) => {
-  const day = new Date(date).getDay();
+  const isoDay = formatInTimeZone(date, APP_TIMEZONE, "i");
 
   const map = {
-    0: "nedelja",
     1: "ponedeljak",
     2: "utorak",
     3: "sreda",
     4: "cetvrtak",
     5: "petak",
     6: "subota",
+    7: "nedelja",
   };
 
-  return map[day];
+  return map[isoDay];
 };
 
 const getWorkingHoursForDate = (playroom, date) => {
@@ -88,14 +83,11 @@ const getWorkingHoursForDate = (playroom, date) => {
 };
 
 const parseValidDate = (dateString) => {
-  const date = new Date(dateString);
-
-  if (isNaN(date.getTime())) {
+  try {
+    return parseDateOnlyInAppTimezone(dateString);
+  } catch {
     throw new ErrorResponse("Datum nije validan", 400);
   }
-
-  date.setHours(0, 0, 0, 0);
-  return date;
 };
 
 const getActiveBookingsForDate = async ({
@@ -103,11 +95,8 @@ const getActiveBookingsForDate = async ({
   datum,
   session = null,
 }) => {
-  const startDate = parseValidDate(datum);
-  startDate.setHours(0, 0, 0, 0);
-
-  const endDate = new Date(startDate);
-  endDate.setHours(23, 59, 59, 999);
+  const startDate = startOfDayInAppTimezone(datum);
+  const endDate = endOfDayInAppTimezone(datum);
 
   let query = Booking.find({
     playroomId,
@@ -130,11 +119,8 @@ const findOverlappingActiveBooking = async ({
   excludeBookingId = null,
   session = null,
 }) => {
-  const startDate = parseValidDate(datum);
-  startDate.setHours(0, 0, 0, 0);
-
-  const endDate = new Date(startDate);
-  endDate.setHours(23, 59, 59, 999);
+  const startDate = startOfDayInAppTimezone(datum);
+  const endDate = endOfDayInAppTimezone(datum);
 
   const queryObj = {
     playroomId,

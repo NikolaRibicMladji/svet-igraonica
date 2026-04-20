@@ -1,11 +1,33 @@
 const multer = require("multer");
 const path = require("path");
+const fs = require("fs");
 
-// Čuvanje u memoriji (za Cloudinary)
-const storage = multer.memoryStorage();
+const uploadDir = path.join(__dirname, "../uploads/tmp");
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    try {
+      const ext = path.extname(file.originalname || "").toLowerCase();
+      const safeBaseName = path
+        .basename(file.originalname || "file", ext)
+        .replace(/[^a-zA-Z0-9-_]/g, "_");
+
+      cb(null, `${Date.now()}-${safeBaseName}${ext}`);
+    } catch (err) {
+      cb(new Error("Greška pri kreiranju naziva fajla"));
+    }
+  },
+});
 
 const IMAGE_MAX_SIZE = 10 * 1024 * 1024; // 10MB
-const VIDEO_MAX_SIZE = 50 * 1024 * 1024; // 50MB
+const VIDEO_MAX_SIZE = 25 * 1024 * 1024; // 25MB za sigurniji production start
 
 const allowedImageExtensions = new Set([
   ".jpg",

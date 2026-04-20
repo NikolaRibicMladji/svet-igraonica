@@ -1,5 +1,8 @@
 const cloudinary = require("../config/cloudinary");
-const streamifier = require("streamifier");
+const {
+  uploadFileToCloudinary,
+  safeRemoveFile,
+} = require("../utils/cloudinaryUpload");
 
 exports.uploadVideo = async (req, res, next) => {
   try {
@@ -10,25 +13,18 @@ exports.uploadVideo = async (req, res, next) => {
       });
     }
 
-    const result = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder: "svet-igraonica/videos",
-          resource_type: "video",
-          transformation: [
-            { width: 1280, height: 720, crop: "limit" },
-            { quality: "auto:good" },
-            { fetch_format: "auto" },
-          ],
-        },
-        (error, uploadResult) => {
-          if (error) return reject(error);
-          resolve(uploadResult);
-        },
-      );
-
-      streamifier.createReadStream(req.file.buffer).pipe(stream);
+    const result = await uploadFileToCloudinary({
+      filePath: req.file.path,
+      folder: "svet-igraonica/videos",
+      resourceType: "video",
+      transformation: [
+        { width: 1280, height: 720, crop: "limit" },
+        { quality: "auto:good" },
+        { fetch_format: "auto" },
+      ],
     });
+
+    await safeRemoveFile(req.file.path);
 
     res.status(200).json({
       success: true,
@@ -48,6 +44,9 @@ exports.uploadVideo = async (req, res, next) => {
       message: "Video je uspešno uploadovan",
     });
   } catch (error) {
+    if (req.file?.path) {
+      await safeRemoveFile(req.file.path);
+    }
     next(error);
   }
 };

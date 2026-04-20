@@ -1,6 +1,12 @@
 const cron = require("node-cron");
 const Booking = require("../models/Booking");
 const BOOKING_STATUS = require("../constants/bookingStatus");
+const TimeSlot = require("../models/TimeSlot");
+const {
+  APP_TIMEZONE,
+  getNowInAppTimezone,
+  buildDateTimeInAppTimezone,
+} = require("../utils/dateTime");
 
 // Funkcija za završavanje termina koji su prošli
 const completeExpiredBookings = async () => {
@@ -12,7 +18,7 @@ const completeExpiredBookings = async () => {
 
     const bookings = await Booking.find({
       status: BOOKING_STATUS.POTVRDJENO,
-    }).select("_id datum vremeDo status");
+    }).select("_id datum vremeDo status timeSlotId");
 
     let completedCount = 0;
     let skippedCount = 0;
@@ -46,20 +52,14 @@ const completeExpiredBookings = async () => {
         continue;
       }
 
-      const endTime = new Date(
-        new Date(booking.datum).getFullYear(),
-        new Date(booking.datum).getMonth(),
-        new Date(booking.datum).getDate(),
-        hour,
-        minute,
-        0,
-        0,
+      const endTime = buildDateTimeInAppTimezone(
+        booking.datum,
+        booking.vremeDo,
       );
 
       if (endTime <= now) {
         booking.status = BOOKING_STATUS.ZAVRSENO;
         await booking.save();
-        const TimeSlot = require("../models/TimeSlot");
 
         await TimeSlot.findOneAndUpdate(
           {
@@ -93,12 +93,22 @@ const completeExpiredBookings = async () => {
 // Pokreni odmah pri startu
 completeExpiredBookings();
 
-// Zakazivanje: svakih 30 minuta
-cron.schedule("*/10 * * * *", () => {
-  console.log("⏰ Cron job: Provera termina za završavanje...");
-  completeExpiredBookings();
-});
+// Zakazivanje: svakih 10 minuta
+cron.schedule(
+  "*/10 * * * *",
+  () => {
+    console.log(
+      `⏰ Cron job: Provera termina za završavanje... [${APP_TIMEZONE}]`,
+    );
+    completeExpiredBookings();
+  },
+  {
+    timezone: APP_TIMEZONE,
+  },
+);
 
-console.log("📅 Cron job za završavanje termina aktivan (svakih 10 minuta)");
+console.log(
+  `📅 Cron job za završavanje termina aktivan (svakih 10 minuta) | timezone: ${APP_TIMEZONE}`,
+);
 
 module.exports = { completeExpiredBookings };

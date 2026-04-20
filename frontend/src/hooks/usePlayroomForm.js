@@ -251,7 +251,7 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
 
     if (oversizedFiles.length > 0) {
       setError(
-        `Ovi video fajlovi prelaze 50 MB: ${oversizedFiles.join(", ")}.`,
+        `Ovi video fajlovi prelaze 25 MB: ${oversizedFiles.join(", ")}.`,
       );
     } else if (files.length > remainingSlots) {
       setError(`Možete dodati još samo ${remainingSlots} video snimka.`);
@@ -484,7 +484,7 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
       const file = files[0];
 
       if (file.size > IMAGE_MAX_SIZE) {
-        setError("Profilna slika ne sme biti veća od 10 MB.");
+        setError("Profilna slika ne sme biti veća od 8 MB.");
         e.target.value = "";
         return;
       }
@@ -523,7 +523,7 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
     try {
       for (const file of filesToUpload) {
         if (file.size > IMAGE_MAX_SIZE) {
-          setError(`Slika "${file.name}" je veća od 10 MB.`);
+          setError(`Slika "${file.name}" je veća od 8 MB.`);
           continue;
         }
 

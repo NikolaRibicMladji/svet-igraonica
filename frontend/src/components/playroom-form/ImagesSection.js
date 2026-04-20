@@ -14,7 +14,7 @@ const ImagesSection = ({
 
       <div className="form-group">
         <label>Profilna slika</label>
-        <small className="upload-hint">Maks. 10 MB po slici</small>
+        <small className="upload-hint">Maks. 8 MB po slici</small>
         <input
           type="file"
           accept="image/*"
@@ -33,7 +33,7 @@ const ImagesSection = ({
 
       <div className="form-group">
         <label>Ostale slike (maks. 10)</label>
-        <small className="upload-hint">Maks. 10 MB po slici</small>
+        <small className="upload-hint">Maks. 8 MB po slici</small>
         <input
           type="file"
           accept="image/*"

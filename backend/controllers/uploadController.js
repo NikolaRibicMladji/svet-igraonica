@@ -1,6 +1,9 @@
 const cloudinary = require("../config/cloudinary");
 const Playroom = require("../models/Playroom");
-const streamifier = require("streamifier");
+const {
+  uploadFileToCloudinary,
+  safeRemoveFile,
+} = require("../utils/cloudinaryUpload");
 
 // Upload slike za igraonicu
 exports.uploadPlayroomImage = async (req, res, next) => {
@@ -32,25 +35,18 @@ exports.uploadPlayroomImage = async (req, res, next) => {
       });
     }
 
-    const result = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder: "svet-igraonica",
-          resource_type: "image",
-          transformation: [
-            { width: 1600, height: 1200, crop: "limit" },
-            { quality: "auto" },
-            { fetch_format: "auto" },
-          ],
-        },
-        (error, uploadResult) => {
-          if (error) return reject(error);
-          resolve(uploadResult);
-        },
-      );
-
-      streamifier.createReadStream(req.file.buffer).pipe(stream);
+    const result = await uploadFileToCloudinary({
+      filePath: req.file.path,
+      folder: "svet-igraonica",
+      resourceType: "image",
+      transformation: [
+        { width: 1600, height: 1200, crop: "limit" },
+        { quality: "auto" },
+        { fetch_format: "auto" },
+      ],
     });
+
+    await safeRemoveFile(req.file.path);
 
     playroom.slike.push({
       url: result.secure_url,
@@ -83,6 +79,9 @@ exports.uploadPlayroomImage = async (req, res, next) => {
       message: "Slika je uspešno dodata",
     });
   } catch (error) {
+    if (req.file?.path) {
+      await safeRemoveFile(req.file.path);
+    }
     next(error);
   }
 };

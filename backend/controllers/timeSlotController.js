@@ -244,7 +244,7 @@ exports.updateTimeSlot = async (req, res, next) => {
             .map((v) => parseInt(v, 10)),
         );
 
-        if (slotEnd <= new Date()) {
+        if (slotEnd <= getNowInAppTimezone()) {
           return res.status(400).json({
             success: false,
             message: "Prošli termin ne može biti ponovo aktiviran",
