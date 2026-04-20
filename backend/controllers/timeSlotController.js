@@ -8,6 +8,7 @@ const TimeSlot = require("../models/TimeSlot");
 const bookingService = require("../services/bookingService");
 const { enqueueBookingEmail } = require("../services/emailQueueService");
 const ErrorResponse = require("../utils/errorResponse");
+const { getNowInAppTimezone } = require("../utils/dateTime");
 
 // @desc    Kreiraj novi termin (samo vlasnik igraonice)
 // @route   POST /api/timeslots
@@ -88,14 +89,16 @@ exports.getTimeSlotsByPlayroom = async (req, res, next) => {
     const endDate = new Date(startDate);
     endDate.setHours(23, 59, 59, 999);
 
+    const now = getNowInAppTimezone();
+
     const timeSlots = await TimeSlot.find({
       playroomId,
       datum: { $gte: startDate, $lte: endDate },
       aktivno: true,
       vanRadnogVremena: false,
-    }).sort({ vremeOd: 1 });
-
-    const now = new Date();
+    })
+      .sort({ vremeOd: 1 })
+      .lean();
 
     const filteredSlots = timeSlots.filter((slot) => {
       const slotEnd = new Date(
@@ -130,7 +133,8 @@ exports.getMyTimeSlots = async (req, res, next) => {
 
     const timeSlots = await TimeSlot.find({ playroomId: { $in: playroomIds } })
       .populate("playroomId", "naziv")
-      .sort({ datum: -1, vremeOd: 1 });
+      .sort({ datum: -1, vremeOd: 1 })
+      .lean();
 
     res.status(200).json({
       success: true,
@@ -147,7 +151,7 @@ exports.getMyTimeSlots = async (req, res, next) => {
 // @access  Public
 exports.getTimeSlotById = async (req, res, next) => {
   try {
-    const timeSlot = await TimeSlot.findById(req.params.id);
+    const timeSlot = await TimeSlot.findById(req.params.id).lean();
 
     if (!timeSlot) {
       throw new ErrorResponse("Termin nije pronađen", 404);
@@ -431,7 +435,7 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
       });
     }
 
-    const startDate = bookingService.parseValidDate(datum);
+    const startDate = targetDate;
     const endDate = new Date(startDate);
     endDate.setHours(23, 59, 59, 999);
 
@@ -447,7 +451,8 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
         "_id roditeljId imeRoditelja prezimeRoditelja emailRoditelja telefonRoditelja napomena status createdAt ukupnaCena vremeOd vremeDo",
       )
       .populate("roditeljId", "ime prezime email telefon")
-      .sort({ vremeOd: 1 });
+      .sort({ vremeOd: 1 })
+      .lean();
 
     const segments = bookingService.buildDaySegments({
       workingHours,
