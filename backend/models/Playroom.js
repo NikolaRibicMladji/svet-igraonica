@@ -241,7 +241,6 @@ const PlayroomSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      unique: true,
       index: true,
     },
 
@@ -346,16 +345,6 @@ const PlayroomSchema = new mongoose.Schema(
   },
 );
 
-PlayroomSchema.index({ grad: 1, status: 1, verifikovan: 1 });
-
-PlayroomSchema.index({ rating: -1, reviewCount: -1 });
-
-PlayroomSchema.index({ vlasnikId: 1, createdAt: -1 });
-
-PlayroomSchema.index({ verifikovan: 1, status: 1, grad: 1 });
-
-PlayroomSchema.index({ status: 1, verifikovan: 1, rating: -1 });
-
 PlayroomSchema.pre("save", function (next) {
   if (this.isModified("grad")) {
     this.gradNormalized = normalizeText(this.grad);
@@ -367,5 +356,23 @@ PlayroomSchema.pre("save", function (next) {
 
   next();
 });
+
+// listing + filter po gradu
+PlayroomSchema.index({ verifikovan: 1, status: 1, gradNormalized: 1 });
+
+// listing + sortiranje
+PlayroomSchema.index({ verifikovan: 1, status: 1, rating: -1, createdAt: -1 });
+
+// owner
+PlayroomSchema.index({ vlasnikId: 1, createdAt: -1 });
+
+// search
+PlayroomSchema.index({ nazivNormalized: 1 });
+PlayroomSchema.index({ gradNormalized: 1 });
+
+PlayroomSchema.index(
+  { nazivNormalized: 1, gradNormalized: 1 },
+  { unique: true },
+);
 
 module.exports = mongoose.model("Playroom", PlayroomSchema);

@@ -220,4 +220,6 @@ BookingSchema.index({ roditeljId: 1, createdAt: -1 });
 // Brži query za aktivne rezervacije po danu
 BookingSchema.index({ playroomId: 1, datum: 1, status: 1 });
 
+BookingSchema.index({ status: 1, datum: 1, vremeDo: 1 });
+
 module.exports = mongoose.model("Booking", BookingSchema);

@@ -54,6 +54,7 @@ exports.createPlayroom = async (req, res, next) => {
 
     const postoji = await Playroom.findOne({
       nazivNormalized: normalizeText(req.body.naziv?.trim()),
+      gradNormalized: normalizeText(req.body.grad?.trim()),
     });
 
     if (postoji) {
@@ -112,8 +113,8 @@ exports.getAllPlayrooms = async (req, res, next) => {
       query.$and = query.$and || [];
       query.$and.push({
         $or: [
-          { nazivNormalized: { $regex: normalizedSearch, $options: "i" } },
-          { gradNormalized: { $regex: normalizedSearch, $options: "i" } },
+          { nazivNormalized: { $regex: `^${normalizedSearch}` } },
+          { gradNormalized: { $regex: `^${normalizedSearch}` } },
         ],
       });
     }
@@ -294,6 +295,7 @@ exports.updatePlayroom = async (req, res, next) => {
       const existingPlayroom = await Playroom.findOne({
         _id: { $ne: playroom._id },
         nazivNormalized: updateData.nazivNormalized,
+        gradNormalized: updateData.gradNormalized || playroom.gradNormalized,
       });
 
       if (existingPlayroom) {
