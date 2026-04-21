@@ -1,11 +1,22 @@
 const IORedis = require("ioredis");
 
-const redis = new IORedis(process.env.REDIS_URL);
+let redis = null;
 
-redis.on("connect", () => {
-  console.log("✅ Redis povezan");
-});
+if (process.env.REDIS_URL) {
+  redis = new IORedis(process.env.REDIS_URL, {
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+  });
 
-redis.on("error", (err) => {
-  console.error("❌ Redis greška:", err);
-});
+  redis.on("connect", () => {
+    console.log("✅ Redis povezan");
+  });
+
+  redis.on("error", (err) => {
+    console.error("❌ Redis greška:", err.message);
+  });
+} else {
+  console.log("⚠️ Redis nije uključen (lokalni rad)");
+}
+
+module.exports = redis;
