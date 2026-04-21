@@ -11,29 +11,50 @@ const mongoose = require("mongoose");
 // @access  Private
 exports.createBooking = async (req, res, next) => {
   try {
+    const {
+      playroomId,
+      datum,
+      vremeOd,
+      vremeDo,
+      cenaIds,
+      paketId,
+      usluge,
+      brojDece,
+      brojRoditelja,
+      imeRoditelja,
+      prezimeRoditelja,
+      emailRoditelja,
+      telefonRoditelja,
+      napomena,
+    } = req.validated.body;
+
     console.log("🟢 CREATE BOOKING:", {
       requestId: req.requestId,
       user: req.user?.id || null,
-      slotId: req.body.slotId,
+      playroomId,
+      datum,
+      vremeOd,
+      vremeDo,
       time: new Date().toISOString(),
     });
+
     const booking = await bookingService.reserveCustomInterval({
-      playroomId: req.body.playroomId,
-      datum: req.body.datum,
-      vremeOd: req.body.vremeOd,
-      vremeDo: req.body.vremeDo,
+      playroomId,
+      datum,
+      vremeOd,
+      vremeDo,
       user: req.user || null,
       payload: {
-        cenaIds: Array.isArray(req.body.cenaIds) ? req.body.cenaIds : [],
-        paketId: req.body.paketId || null,
-        usluge: Array.isArray(req.body.usluge) ? req.body.usluge : [],
-        brojDece: Number(req.body.brojDece) || 0,
-        brojRoditelja: Number(req.body.brojRoditelja) || 0,
-        imeRoditelja: req.body.imeRoditelja || req.body.ime || "",
-        prezimeRoditelja: req.body.prezimeRoditelja || req.body.prezime || "",
-        emailRoditelja: req.body.emailRoditelja || req.body.email || "",
-        telefonRoditelja: req.body.telefonRoditelja || req.body.telefon || "",
-        napomena: req.body.napomena || "",
+        cenaIds,
+        paketId,
+        usluge,
+        brojDece,
+        brojRoditelja,
+        imeRoditelja,
+        prezimeRoditelja,
+        emailRoditelja,
+        telefonRoditelja,
+        napomena,
       },
     });
 
@@ -63,13 +84,18 @@ exports.createGuestBooking = async (req, res, next) => {
       datum,
       vremeOd,
       vremeDo,
+      cenaIds,
+      paketId,
+      usluge,
+      brojDece,
+      brojRoditelja,
       ime,
       prezime,
       email,
       telefon,
       password,
       napomena,
-    } = req.body;
+    } = req.validated.body;
     console.log("🟡 GUEST BOOKING:", {
       requestId: req.requestId,
       email,
@@ -92,22 +118,22 @@ exports.createGuestBooking = async (req, res, next) => {
     const refreshToken = authResult.refreshToken;
 
     const createdBooking = await bookingService.reserveCustomInterval({
-      playroomId: req.body.playroomId,
-      datum: req.body.datum,
-      vremeOd: req.body.vremeOd,
-      vremeDo: req.body.vremeDo,
+      playroomId,
+      datum,
+      vremeOd,
+      vremeDo,
       user: createdUser,
       payload: {
-        cenaIds: Array.isArray(req.body.cenaIds) ? req.body.cenaIds : [],
-        paketId: req.body.paketId || null,
-        usluge: Array.isArray(req.body.usluge) ? req.body.usluge : [],
-        brojDece: Number(req.body.brojDece) || 0,
-        brojRoditelja: Number(req.body.brojRoditelja) || 0,
+        cenaIds,
+        paketId,
+        usluge,
+        brojDece,
+        brojRoditelja,
         imeRoditelja: createdUser.ime,
         prezimeRoditelja: createdUser.prezime,
         emailRoditelja: createdUser.email,
         telefonRoditelja: createdUser.telefon,
-        napomena: napomena || "",
+        napomena,
       },
       session,
     });
@@ -189,14 +215,16 @@ exports.getOwnerBookings = async (req, res, next) => {
 // @access  Private (roditelj ili vlasnik ili admin)
 exports.cancelBooking = async (req, res, next) => {
   try {
+    const { id } = req.validated.params;
+
     console.log("🔴 CANCEL BOOKING:", {
       requestId: req.requestId,
-      bookingId: req.params.id,
+      bookingId: id,
       user: req.user?.id || null,
       time: new Date().toISOString(),
     });
     await bookingService.cancelBookingById({
-      bookingId: req.params.id,
+      bookingId: id,
       currentUser: req.user,
     });
 
@@ -214,7 +242,9 @@ exports.cancelBooking = async (req, res, next) => {
 // @access  Private (roditelj ili vlasnik ili admin)
 exports.getBookingById = async (req, res, next) => {
   try {
-    const booking = await Booking.findById(req.params.id)
+    const { id } = req.validated.params;
+
+    const booking = await Booking.findById(id)
       .populate("roditeljId", "ime prezime email telefon")
       .populate(
         "playroomId",

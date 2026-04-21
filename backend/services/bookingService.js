@@ -404,10 +404,8 @@ const reserveSlot = async ({
       throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
-    const brojDece = payload.brojDece ? Number(payload.brojDece) : 0;
-    const brojRoditelja = payload.brojRoditelja
-      ? Number(payload.brojRoditelja)
-      : 0;
+    const brojDece = Number(payload.brojDece) || 0;
+    const brojRoditelja = Number(payload.brojRoditelja) || 0;
     const trajanjeSati = (() => {
       const start = buildDateTime(slot.datum, slot.vremeOd);
       const end = buildDateTime(slot.datum, slot.vremeDo);
@@ -764,10 +762,8 @@ const reserveCustomInterval = async ({
       );
     }
 
-    const brojDece = payload.brojDece ? Number(payload.brojDece) : 0;
-    const brojRoditelja = payload.brojRoditelja
-      ? Number(payload.brojRoditelja)
-      : 0;
+    const brojDece = Number(payload.brojDece) || 0;
+    const brojRoditelja = Number(payload.brojRoditelja) || 0;
     const trajanjeSati = (endMinutes - startMinutes) / 60;
 
     const selectedCenaIds = payload.cenaIds.map((id) => String(id));

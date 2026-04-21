@@ -15,7 +15,7 @@ const { getNowInAppTimezone } = require("../utils/dateTime");
 // @access  Private (vlasnik)
 exports.createTimeSlot = async (req, res, next) => {
   try {
-    const { playroomId, datum, vremeOd, vremeDo, cena } = req.body;
+    const { playroomId, datum, vremeOd, vremeDo, cena } = req.validated.body;
 
     const playroom = await Playroom.findById(playroomId);
     if (!playroom) {
@@ -33,9 +33,6 @@ exports.createTimeSlot = async (req, res, next) => {
     }
 
     const slotDate = new Date(datum);
-    if (isNaN(slotDate.getTime())) {
-      throw new ErrorResponse("Datum nije validan", 400);
-    }
     slotDate.setHours(0, 0, 0, 0);
 
     try {
@@ -44,7 +41,7 @@ exports.createTimeSlot = async (req, res, next) => {
         datum: slotDate,
         vremeOd,
         vremeDo,
-        cena: Number(cena) || 0,
+        cena,
         zauzeto: false,
         aktivno: true,
         vanRadnogVremena: false,
@@ -71,12 +68,8 @@ exports.createTimeSlot = async (req, res, next) => {
 // @access  Public
 exports.getTimeSlotsByPlayroom = async (req, res, next) => {
   try {
-    const { playroomId } = req.params;
-    const { datum } = req.query;
-
-    if (!datum) {
-      throw new ErrorResponse("Datum je obavezan", 400);
-    }
+    const { playroomId } = req.validated.params;
+    const { datum } = req.validated.query;
 
     const playroom = await Playroom.findById(playroomId);
     if (!playroom) {
@@ -151,7 +144,8 @@ exports.getMyTimeSlots = async (req, res, next) => {
 // @access  Public
 exports.getTimeSlotById = async (req, res, next) => {
   try {
-    const timeSlot = await TimeSlot.findById(req.params.id).lean();
+    const { id } = req.validated.params;
+    const timeSlot = await TimeSlot.findById(id).lean();
 
     if (!timeSlot) {
       throw new ErrorResponse("Termin nije pronađen", 404);
@@ -171,7 +165,10 @@ exports.getTimeSlotById = async (req, res, next) => {
 // @access  Private (vlasnik ili admin)
 exports.updateTimeSlot = async (req, res, next) => {
   try {
-    let timeSlot = await TimeSlot.findById(req.params.id);
+    const { id } = req.validated.params;
+    const { cena, aktivno } = req.validated.body;
+
+    let timeSlot = await TimeSlot.findById(id);
 
     if (!timeSlot) {
       throw new ErrorResponse("Termin nije pronađen", 404);
@@ -186,10 +183,10 @@ exports.updateTimeSlot = async (req, res, next) => {
       throw new ErrorResponse("Nemate pravo da menjate ovaj termin", 403);
     }
 
-    const { cena, aktivno } = req.body;
-
     if (cena !== undefined) {
-      const parsedCena = Number(cena);
+      $set: {
+        cena;
+      }
 
       const updated = await TimeSlot.findOneAndUpdate(
         {
@@ -251,7 +248,8 @@ exports.updateTimeSlot = async (req, res, next) => {
 // @access  Private (vlasnik ili admin)
 exports.deleteTimeSlot = async (req, res, next) => {
   try {
-    const timeSlot = await TimeSlot.findById(req.params.id);
+    const { id } = req.validated.params;
+    const timeSlot = await TimeSlot.findById(id);
 
     if (!timeSlot) {
       throw new ErrorResponse("Termin nije pronađen", 404);
@@ -282,7 +280,7 @@ exports.deleteTimeSlot = async (req, res, next) => {
 // @access  Private (vlasnik)
 exports.generateSlotsForPlayroom = async (req, res, next) => {
   try {
-    const { playroomId } = req.params;
+    const { playroomId } = req.validated.params;
 
     const playroom = await Playroom.findById(playroomId);
     if (!playroom) {
@@ -316,12 +314,8 @@ exports.generateSlotsForPlayroom = async (req, res, next) => {
 // @access  Public
 exports.getAvailableTimeSlots = async (req, res, next) => {
   try {
-    const { playroomId } = req.params;
-    const { datum } = req.query;
-
-    if (!datum) {
-      throw new ErrorResponse("Datum je obavezan", 400);
-    }
+    const { playroomId } = req.validated.params;
+    const { datum } = req.validated.query;
 
     const playroom = await Playroom.findById(playroomId);
 
@@ -393,12 +387,8 @@ exports.getAvailableTimeSlots = async (req, res, next) => {
 // @access  Private (vlasnik)
 exports.getAllTimeSlotsForOwner = async (req, res, next) => {
   try {
-    const { playroomId } = req.params;
-    const { datum } = req.query;
-
-    if (!datum) {
-      throw new ErrorResponse("Datum je obavezan", 400);
-    }
+    const { playroomId } = req.validated.params;
+    const { datum } = req.validated.query;
 
     const playroom = await Playroom.findById(playroomId);
     if (!playroom) {
@@ -506,15 +496,19 @@ exports.manualBookTimeSlot = async (req, res, next) => {
   try {
     session.startTransaction();
 
-    const { id } = req.params;
+    const { id } = req.validated.params;
     const {
       cenaIds,
+      paketId,
+      usluge,
+      brojDece,
+      brojRoditelja,
       imeRoditelja,
       prezimeRoditelja,
       emailRoditelja,
       telefonRoditelja,
       napomena,
-    } = req.body;
+    } = req.validated.body;
 
     const timeSlot = await TimeSlot.findById(id).session(session);
 
@@ -541,16 +535,16 @@ exports.manualBookTimeSlot = async (req, res, next) => {
       slotId: timeSlot._id,
       user: null,
       payload: {
-        cenaIds: Array.isArray(cenaIds) ? cenaIds : [],
-        paketId: null,
-        usluge: [],
-        brojDece: 1,
-        brojRoditelja: 0,
-        imeRoditelja: imeRoditelja || "",
-        prezimeRoditelja: prezimeRoditelja || "",
-        emailRoditelja: emailRoditelja || "",
-        telefonRoditelja: telefonRoditelja || "",
-        napomena: napomena || "",
+        cenaIds,
+        paketId,
+        usluge,
+        brojDece,
+        brojRoditelja,
+        imeRoditelja,
+        prezimeRoditelja,
+        emailRoditelja,
+        telefonRoditelja,
+        napomena,
       },
       session,
     });
@@ -592,12 +586,17 @@ exports.manualBookInterval = async (req, res, next) => {
       datum,
       vremeOd,
       vremeDo,
+      cenaIds,
+      paketId,
+      usluge,
+      brojDece,
+      brojRoditelja,
       imeRoditelja,
       prezimeRoditelja,
       emailRoditelja,
       telefonRoditelja,
       napomena,
-    } = req.body;
+    } = req.validated.body;
 
     const playroom = await Playroom.findById(playroomId).session(session);
 
@@ -615,18 +614,6 @@ exports.manualBookInterval = async (req, res, next) => {
       );
     }
 
-    const defaultCena =
-      Array.isArray(playroom.cene) && playroom.cene.length > 0
-        ? playroom.cene[0]
-        : null;
-
-    if (!defaultCena?._id) {
-      throw new ErrorResponse(
-        "Igraonica nema nijednu cenu za obračun rezervacije",
-        400,
-      );
-    }
-
     const booking = await bookingService.reserveCustomInterval({
       playroomId,
       datum,
@@ -634,15 +621,16 @@ exports.manualBookInterval = async (req, res, next) => {
       vremeDo,
       user: null,
       payload: {
-        cenaIds: [String(defaultCena._id)],
-        paketId: null,
-        usluge: [],
-        brojDece: 1,
-        imeRoditelja: imeRoditelja || "",
-        prezimeRoditelja: prezimeRoditelja || "",
-        emailRoditelja: emailRoditelja || "",
-        telefonRoditelja: telefonRoditelja || "",
-        napomena: napomena || "",
+        cenaIds,
+        paketId,
+        usluge,
+        brojDece,
+        brojRoditelja,
+        imeRoditelja,
+        prezimeRoditelja,
+        emailRoditelja,
+        telefonRoditelja,
+        napomena,
       },
       session,
     });

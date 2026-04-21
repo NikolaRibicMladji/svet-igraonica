@@ -33,10 +33,10 @@ const createBookingSchema = z.object({
       .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
       .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
     cenaIds: z.array(objectId).min(1, "Izaberi bar jednu stavku"),
-    paketId: objectId.optional().nullable(),
-    usluge: z.array(objectId).optional(),
-    brojDece: z.coerce.number().min(0).optional(),
-    brojRoditelja: z.coerce.number().min(0).optional(),
+    paketId: objectId.nullable().optional().default(null),
+    usluge: z.array(objectId).optional().default([]),
+    brojDece: z.coerce.number().min(0).optional().default(0),
+    brojRoditelja: z.coerce.number().min(0).optional().default(0),
     imeRoditelja: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
     prezimeRoditelja: z
       .string()
@@ -51,7 +51,8 @@ const createBookingSchema = z.object({
     napomena: z
       .string()
       .max(500, "Napomena može imati najviše 500 karaktera")
-      .optional(),
+      .optional()
+      .default(""),
   }),
   params: z.object({}).optional(),
   query: z.object({}).optional(),
@@ -78,10 +79,10 @@ const createGuestBookingSchema = z
         .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
         .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
       cenaIds: z.array(objectId).min(1, "Izaberi bar jednu stavku"),
-      paketId: objectId.optional().nullable(),
-      usluge: z.array(objectId).optional(),
-      brojDece: z.coerce.number().min(0).optional(),
-      brojRoditelja: z.coerce.number().min(0).optional(),
+      paketId: objectId.nullable().optional().default(null),
+      usluge: z.array(objectId).optional().default([]),
+      brojDece: z.coerce.number().min(0).optional().default(0),
+      brojRoditelja: z.coerce.number().min(0).optional().default(0),
       ime: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
       prezime: z.string().min(2, "Prezime mora imati bar 2 karaktera").trim(),
       email: z.string().email("Neispravan email").toLowerCase().trim(),
@@ -97,7 +98,8 @@ const createGuestBookingSchema = z
       napomena: z
         .string()
         .max(500, "Napomena može imati najviše 500 karaktera")
-        .optional(),
+        .optional()
+        .default(""),
     }),
     params: z.object({}).optional(),
     query: z.object({}).optional(),
@@ -123,15 +125,15 @@ const manualBookingSchema = z.object({
       .string()
       .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
       .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
-
     vremeDo: z
       .string()
       .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
       .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
-
     cenaIds: z.array(objectId).min(1, "Izaberi bar jednu stavku"),
-    brojDece: z.coerce.number().min(0).optional(),
-    brojRoditelja: z.coerce.number().min(0).optional(),
+    paketId: objectId.nullable().optional().default(null),
+    usluge: z.array(objectId).optional().default([]),
+    brojDece: z.coerce.number().min(0).optional().default(0),
+    brojRoditelja: z.coerce.number().min(0).optional().default(0),
     imeRoditelja: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
     prezimeRoditelja: z
       .string()
@@ -146,8 +148,11 @@ const manualBookingSchema = z.object({
     napomena: z
       .string()
       .max(500, "Napomena može imati najviše 500 karaktera")
-      .optional(),
+      .optional()
+      .default(""),
   }),
+  params: z.object({}).optional(),
+  query: z.object({}).optional(),
 });
 
 module.exports = {

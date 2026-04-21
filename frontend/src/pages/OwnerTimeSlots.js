@@ -156,8 +156,10 @@ const OwnerTimeSlots = () => {
         vremeDo: bookingData.vremeDo,
 
         cenaIds: bookingData.cenaIds,
-        brojDece: Number(bookingData.brojDece) || 0,
-        brojRoditelja: Number(bookingData.brojRoditelja) || 0,
+        paketId: bookingData.paketId,
+        usluge: bookingData.usluge,
+        brojDece: Number(bookingData.brojDece),
+        brojRoditelja: Number(bookingData.brojRoditelja),
         imeRoditelja: bookingData.imeRoditelja,
         prezimeRoditelja: bookingData.prezimeRoditelja,
         emailRoditelja: bookingData.emailRoditelja,

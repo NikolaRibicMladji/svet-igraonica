@@ -26,6 +26,7 @@ const {
   manualBookTimeSlotSchema,
   playroomDateQuerySchema,
   timeSlotIdParamSchema,
+  playroomIdParamSchema,
 } = require("../validations/timeSlotValidation");
 
 const { manualBookingSchema } = require("../validations/bookingValidation");
@@ -66,6 +67,7 @@ router.get("/my", authorize(ROLES.VLASNIK, ROLES.ADMIN), getMyTimeSlots);
 router.post(
   "/generate/:playroomId",
   authorize(ROLES.VLASNIK, ROLES.ADMIN),
+  validate(playroomIdParamSchema),
   generateSlotsForPlayroom,
 );
 router.put(

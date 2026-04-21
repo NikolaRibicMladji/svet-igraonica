@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import "../styles/ManualBookingModal.css";
 
 const formatDate = (datum) => {
@@ -21,6 +21,11 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
   const [vremeOd, setVremeOd] = useState("");
   const [vremeDo, setVremeDo] = useState("");
   const [selectedCenaIds, setSelectedCenaIds] = useState([]);
+  const [selectedPaketId, setSelectedPaketId] = useState("");
+  const [selectedUslugeIds, setSelectedUslugeIds] = useState([]);
+  const [brojDece, setBrojDece] = useState(0);
+  const [brojRoditelja, setBrojRoditelja] = useState(0);
+  const brojDeceRef = useRef(null);
 
   useEffect(() => {
     if (!slot) return;
@@ -29,6 +34,10 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
     setError("");
     setLoading(false);
     setSelectedCenaIds([]);
+    setSelectedPaketId("");
+    setSelectedUslugeIds([]);
+    setBrojDece(0);
+    setBrojRoditelja(0);
   }, [slot]);
 
   useEffect(() => {
@@ -48,10 +57,18 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
   }, [loading, onClose]);
 
   const playroomCene = slot?.playroom?.cene || [];
+  const playroomPaketi = slot?.playroom?.paketi || [];
+  const playroomUsluge = slot?.playroom?.dodatneUsluge || [];
 
   const toggleCena = (id) => {
     setSelectedCenaIds((prev) =>
       prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
+    );
+  };
+
+  const toggleUsluga = (id) => {
+    setSelectedUslugeIds((prev) =>
+      prev.includes(id) ? prev.filter((u) => u !== id) : [...prev, id],
     );
   };
 
@@ -112,21 +129,40 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
     return diff / 60;
   };
 
-  const ukupno = playroomCene
-    .filter((cena) => selectedCenaIds.includes(cena._id))
-    .reduce((sum, cena) => {
-      const cenaVrednost = Number(cena.cena) || 0;
+  const calculateItemPrice = (item) => {
+    const cenaVrednost = Number(item?.cena) || 0;
 
-      if (cena.tip === "po_satu") {
-        return sum + cenaVrednost * getSlotDurationInHours();
-      }
+    if (item?.tip === "po_satu") {
+      return cenaVrednost * getSlotDurationInHours();
+    }
 
-      if (cena.tip === "po_osobi") {
-        return sum + cenaVrednost;
-      }
+    if (item?.tip === "po_osobi") {
+      return cenaVrednost * (Number(brojDece) || 0);
+    }
 
-      return sum + cenaVrednost;
-    }, 0);
+    return cenaVrednost;
+  };
+
+  const izabraniPaket =
+    playroomPaketi.find((paket) => paket._id === selectedPaketId) || null;
+
+  const izabraneUsluge = playroomUsluge.filter((usluga) =>
+    selectedUslugeIds.includes(usluga._id),
+  );
+
+  const hasPerPersonSelection =
+    playroomCene
+      .filter((cena) => selectedCenaIds.includes(cena._id))
+      .some((item) => item?.tip === "po_osobi") ||
+    (izabraniPaket && izabraniPaket.tip === "po_osobi") ||
+    izabraneUsluge.some((item) => item?.tip === "po_osobi");
+
+  const ukupno =
+    playroomCene
+      .filter((cena) => selectedCenaIds.includes(cena._id))
+      .reduce((sum, cena) => sum + calculateItemPrice(cena), 0) +
+    (izabraniPaket ? calculateItemPrice(izabraniPaket) : 0) +
+    izabraneUsluge.reduce((sum, usluga) => sum + calculateItemPrice(usluga), 0);
 
   const getSlotDurationLabel = () => {
     if (!vremeOd || !vremeDo) return "";
@@ -164,6 +200,20 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
       if (!ime || !prezime || !email || !telefon) {
         setError("Sva polja su obavezna.");
         setLoading(false);
+        return;
+      }
+
+      if (hasPerPersonSelection && Number(brojDece) < 1) {
+        setError(
+          "Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po osobi.",
+        );
+
+        setLoading(false);
+
+        setTimeout(() => {
+          brojDeceRef.current?.focus();
+        }, 0);
+
         return;
       }
 
@@ -206,9 +256,11 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
         datum: slot.datum,
         vremeOd,
         vremeDo,
-
-        cenaIds: selectedCenaIds, // 🔥 KLJUČNO
-
+        cenaIds: selectedCenaIds,
+        paketId: selectedPaketId || null,
+        usluge: selectedUslugeIds,
+        brojDece,
+        brojRoditelja,
         imeRoditelja: ime.trim(),
         prezimeRoditelja: prezime.trim(),
         emailRoditelja: email.trim(),
@@ -276,6 +328,67 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
                 )}
               </div>
             </div>
+            <div className="form-group">
+              <label>📦 Paket (opciono)</label>
+
+              {playroomPaketi.length === 0 ? (
+                <div className="empty-state">Nema definisanih paketa.</div>
+              ) : (
+                <div className="extras-list">
+                  <label className="extra-item-checkbox">
+                    <input
+                      type="radio"
+                      name="manualPaket"
+                      checked={selectedPaketId === ""}
+                      onChange={() => setSelectedPaketId("")}
+                    />
+                    <span>Bez paketa</span>
+                  </label>
+
+                  {playroomPaketi.map((paket) => (
+                    <label key={paket._id} className="extra-item-checkbox">
+                      <input
+                        type="radio"
+                        name="manualPaket"
+                        checked={selectedPaketId === paket._id}
+                        onChange={() => setSelectedPaketId(paket._id)}
+                      />
+                      <span>
+                        <strong>{paket.naziv}</strong> - {paket.cena} RSD
+                        {paket.preporuka ? ` (${paket.preporuka})` : ""}
+                        {paket.tip ? ` [${paket.tip}]` : ""}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="form-group">
+              <label>🛎️ Dodatne usluge (opciono)</label>
+
+              {playroomUsluge.length === 0 ? (
+                <div className="empty-state">
+                  Nema definisanih dodatnih usluga.
+                </div>
+              ) : (
+                <div className="extras-list">
+                  {playroomUsluge.map((usluga) => (
+                    <label key={usluga._id} className="extra-item-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selectedUslugeIds.includes(usluga._id)}
+                        onChange={() => toggleUsluga(usluga._id)}
+                      />
+                      <span>
+                        <strong>{usluga.naziv}</strong> - {usluga.cena} RSD
+                        {usluga.preporuka ? ` (${usluga.preporuka})` : ""}
+                        {usluga.tip ? ` [${usluga.tip}]` : ""}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
             <p>
               <strong>Datum:</strong> {formatDate(slot.datum)}
             </p>
@@ -290,6 +403,23 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
               rezervacija
             </p>
           </div>
+          {selectedPaketId && (
+            <p>
+              <strong>Paket:</strong>{" "}
+              {playroomPaketi.find((paket) => paket._id === selectedPaketId)
+                ?.naziv || "-"}
+            </p>
+          )}
+
+          {selectedUslugeIds.length > 0 && (
+            <p>
+              <strong>Dodatne usluge:</strong>{" "}
+              {playroomUsluge
+                .filter((usluga) => selectedUslugeIds.includes(usluga._id))
+                .map((usluga) => usluga.naziv)
+                .join(", ")}
+            </p>
+          )}
 
           {error && <div className="error-message">{error}</div>}
 
@@ -329,6 +459,51 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
               type="text"
               value={telefon}
               onChange={(e) => setTelefon(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+          <div className="form-group">
+            <label>
+              👶 Broj dece{" "}
+              {hasPerPersonSelection
+                ? "(obavezno - izabrano je plaćanje po osobi)"
+                : "(opciono)"}
+            </label>
+            <input
+              ref={brojDeceRef}
+              type="number"
+              min="0"
+              value={brojDece}
+              onChange={(e) => {
+                const value = Math.max(0, Number(e.target.value));
+                setBrojDece(value);
+              }}
+              disabled={loading}
+              className={
+                hasPerPersonSelection && Number(brojDece) < 1
+                  ? "input-error"
+                  : ""
+              }
+            />
+
+            {hasPerPersonSelection && Number(brojDece) === 0 && (
+              <div className="warning-message">
+                ⚠️ Izabrana je stavka koja se naplaćuje po osobi — unesite broj
+                dece.
+              </div>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label>👨‍👩‍👧 Broj roditelja (opciono)</label>
+            <input
+              type="number"
+              min="0"
+              value={brojRoditelja}
+              onChange={(e) => {
+                const value = Math.max(0, Number(e.target.value));
+                setBrojRoditelja(value);
+              }}
               disabled={loading}
             />
           </div>

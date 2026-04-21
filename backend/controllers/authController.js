@@ -19,7 +19,7 @@ const getRequestMetadata = (req) => ({
 exports.register = async (req, res, next) => {
   try {
     const { user, accessToken, refreshToken } = await authService.registerUser(
-      req.body,
+      req.validated.body,
       getRequestMetadata(req),
     );
 
@@ -47,9 +47,11 @@ exports.register = async (req, res, next) => {
 // @access  Public
 exports.login = async (req, res, next) => {
   try {
+    const { email, password } = req.validated.body;
+
     const { user, accessToken, refreshToken } = await authService.loginUser(
-      req.body.email,
-      req.body.password,
+      email,
+      password,
       getRequestMetadata(req),
     );
 
@@ -127,13 +129,9 @@ exports.getMe = async (req, res) => {
 
 exports.forgotPassword = async (req, res, next) => {
   try {
-    const { email } = req.body;
+    const { email } = req.validated.body;
 
-    if (!email || !email.trim()) {
-      throw new ErrorResponse("Email adresa je obavezna.", 400);
-    }
-
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = email;
     const user = await User.findOne({ email: normalizedEmail });
 
     // Ne otkrivamo da li korisnik postoji
@@ -190,29 +188,8 @@ exports.forgotPassword = async (req, res, next) => {
 
 exports.resetPassword = async (req, res, next) => {
   try {
-    const { token } = req.params;
-    const { password, confirmPassword } = req.body;
-
-    if (!password || password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: "Lozinka mora imati najmanje 6 karaktera.",
-      });
-    }
-
-    if (!confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "Potvrda lozinke je obavezna.",
-      });
-    }
-
-    if (password !== confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "Lozinke se ne podudaraju.",
-      });
-    }
+    const { token } = req.validated.params;
+    const { password } = req.validated.body;
 
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 

@@ -198,6 +198,20 @@
   margin-bottom: 16px;
   font-size: 0.9rem;
 }
+.input-error {
+  border: 2px solid #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+
+.warning-message {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #b45309;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
 
 .extra-item-checkbox input:checked + span {
   font-weight: 600;
