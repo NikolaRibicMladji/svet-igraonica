@@ -17,6 +17,12 @@ if (process.env.REDIS_URL) {
   });
 } else {
   console.log("⚠️ Redis nije uključen (lokalni rad)");
+
+  // 👉 OVO JE KLJUČNO
+  redis = {
+    // fake konekcija da BullMQ ne padne na localhost
+    status: "disabled",
+  };
 }
 
 module.exports = redis;
