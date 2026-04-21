@@ -4,11 +4,7 @@ const BOOKING_STATUS = require("../constants/bookingStatus");
 const ErrorResponse = require("../utils/errorResponse");
 const mongoose = require("mongoose");
 const Playroom = require("../models/Playroom");
-const {
-  enqueueBookingEmail,
-  enqueueBookingCancellationEmail,
-  enqueueBookingConfirmationEmail,
-} = require("./emailQueueService");
+
 const {
   APP_TIMEZONE,
   getNowInAppTimezone,
@@ -1085,7 +1081,7 @@ const sendConfirmationEmailById = async (bookingId) => {
 
 const createBookingWithEmails = async (data) => {
   const booking = await reserveSlot(data);
-  await enqueueBookingEmail(booking._id);
+
   return booking;
 };
 
@@ -1191,8 +1187,6 @@ const cancelBookingById = async ({ bookingId, currentUser }) => {
       time: new Date().toISOString(),
     });
 
-    await enqueueBookingCancellationEmail(booking._id);
-
     return booking;
   } catch (error) {
     await session.abortTransaction();
@@ -1245,8 +1239,6 @@ const confirmBookingById = async ({ bookingId, currentUser }) => {
     user: currentUser?.id || null,
     time: new Date().toISOString(),
   });
-
-  await enqueueBookingConfirmationEmail(booking._id);
 
   return booking;
 };

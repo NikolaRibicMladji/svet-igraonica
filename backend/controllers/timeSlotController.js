@@ -6,7 +6,7 @@ const timeSlotService = require("../services/timeSlotService");
 const mongoose = require("mongoose");
 const TimeSlot = require("../models/TimeSlot");
 const bookingService = require("../services/bookingService");
-const { enqueueBookingEmail } = require("../services/emailQueueService");
+
 const ErrorResponse = require("../utils/errorResponse");
 const { getNowInAppTimezone } = require("../utils/dateTime");
 

@@ -1,5 +1,5 @@
 const Booking = require("../models/Booking");
-const { enqueueBookingEmail } = require("../services/emailQueueService");
+
 const Playroom = require("../models/Playroom");
 const bookingService = require("../services/bookingService");
 const User = require("../models/User");
@@ -57,8 +57,6 @@ exports.createBooking = async (req, res, next) => {
         napomena,
       },
     });
-
-    await enqueueBookingEmail(booking._id);
 
     return res.status(201).json({
       success: true,
@@ -141,8 +139,6 @@ exports.createGuestBooking = async (req, res, next) => {
     await session.commitTransaction();
 
     res.cookie("refreshToken", refreshToken, authService.cookieOptions);
-
-    await enqueueBookingEmail(createdBooking._id);
 
     return res.status(201).json({
       success: true,
