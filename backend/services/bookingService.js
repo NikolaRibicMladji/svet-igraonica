@@ -86,6 +86,11 @@ const parseValidDate = (dateString) => {
   }
 };
 
+const getBlockingStatuses = () => [
+  BOOKING_STATUS.POTVRDJENO,
+  BOOKING_STATUS.CEKANJE,
+];
+
 const getActiveBookingsForDate = async ({
   playroomId,
   datum,
@@ -97,7 +102,7 @@ const getActiveBookingsForDate = async ({
   let query = Booking.find({
     playroomId,
     datum: { $gte: startDate, $lte: endDate },
-    status: { $ne: BOOKING_STATUS.OTKAZANO },
+    status: { $in: getBlockingStatuses() },
   })
     .select("_id vremeOd vremeDo")
     .sort({ vremeOd: 1 });
@@ -123,7 +128,7 @@ const findOverlappingActiveBooking = async ({
   const queryObj = {
     playroomId,
     datum: { $gte: startDate, $lte: endDate },
-    status: { $ne: BOOKING_STATUS.OTKAZANO },
+    status: { $in: getBlockingStatuses() },
     vremeOd: { $lt: vremeDo },
     vremeDo: { $gt: vremeOd },
   };
@@ -156,7 +161,7 @@ const findOverlappingBookingWithPreparation = async ({
   let query = Booking.find({
     playroomId,
     datum: { $gte: startDate, $lte: endDate },
-    status: { $ne: BOOKING_STATUS.OTKAZANO },
+    status: { $in: getBlockingStatuses() },
   })
     .select("_id vremeOd vremeDo")
     .sort({ vremeOd: 1 });
@@ -645,6 +650,10 @@ const reserveCustomInterval = async ({
 
     const bookingDate = parseValidDate(datum);
 
+    if (!vremeOd || !vremeDo) {
+      throw new ErrorResponse("Vreme od/do je obavezno", 400);
+    }
+
     const playroom = await Playroom.findById(playroomId).session(session);
 
     if (!playroom) {
@@ -1033,9 +1042,16 @@ const sendCancellationEmailById = async (bookingId) => {
   if (booking.playroomId?.vlasnikId?.email) {
     const { sendCancellationToOwner } = require("../utils/emailService");
 
+    const userForEmail = booking.roditeljId || {
+      ime: booking.imeRoditelja,
+      prezime: booking.prezimeRoditelja,
+      email: booking.emailRoditelja,
+      telefon: booking.telefonRoditelja,
+    };
+
     await sendCancellationToOwner(
       booking,
-      booking.roditeljId,
+      userForEmail,
       booking.playroomId,
       {
         datum: booking.datum,
@@ -1065,9 +1081,15 @@ const sendConfirmationEmailById = async (bookingId) => {
   await sendConfirmationEmail(booking);
 
   if (booking.playroomId?.vlasnikId?.email) {
+    const userForEmail = booking.roditeljId || {
+      ime: booking.imeRoditelja,
+      prezime: booking.prezimeRoditelja,
+      email: booking.emailRoditelja,
+      telefon: booking.telefonRoditelja,
+    };
     await sendBookingConfirmationToOwner(
       booking,
-      booking.roditeljId,
+      userForEmail,
       booking.playroomId,
       {
         datum: booking.datum,
@@ -1108,7 +1130,7 @@ const getBookingWithRelations = async (bookingId, session = null) => {
 const canUserManageBooking = (booking, user) => {
   if (!booking || !user) return false;
 
-  const isAdmin = user.role === "admin";
+  const isAdmin = user?.role === "admin";
 
   const isOwnerOfBooking =
     booking.roditeljId &&
@@ -1128,8 +1150,11 @@ const canUserManageBooking = (booking, user) => {
 };
 
 const canConfirmPastBooking = (booking) => {
-  const bookingEnd = buildDateTime(booking.datum, booking.vremeDo);
+  if (!booking?.datum || !booking?.vremeDo) {
+    return false;
+  }
 
+  const bookingEnd = buildDateTime(booking.datum, booking.vremeDo);
   return bookingEnd > new Date();
 };
 
@@ -1292,6 +1317,10 @@ const sendConfirmationEmail = async (booking) => {
 };
 
 const lockSlot = async (slotId) => {
+  if (!slotId || !mongoose.Types.ObjectId.isValid(slotId)) {
+    throw new ErrorResponse("Nevalidan slot ID za zaključavanje", 400);
+  }
+
   return TimeSlot.findOneAndUpdate(
     {
       _id: slotId,
@@ -1351,4 +1380,5 @@ module.exports = {
   minutesToTime,
   buildDateTime,
   parseValidDate,
+  getBlockingStatuses,
 };

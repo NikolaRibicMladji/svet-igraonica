@@ -187,7 +187,9 @@ exports.getMyBookings = async (req, res, next) => {
 // @access  Private (vlasnik)
 exports.getOwnerBookings = async (req, res, next) => {
   try {
-    const playrooms = await Playroom.find({ vlasnikId: req.user.id });
+    const playrooms = await Playroom.find({ vlasnikId: req.user.id }).select(
+      "_id",
+    );
     const playroomIds = playrooms.map((p) => p._id);
 
     const bookings = await Booking.find({ playroomId: { $in: playroomIds } })
@@ -205,7 +207,6 @@ exports.getOwnerBookings = async (req, res, next) => {
     next(error);
   }
 };
-
 // @desc    Otkaži rezervaciju
 // @route   PUT /api/bookings/:id/cancel
 // @access  Private (roditelj ili vlasnik ili admin)

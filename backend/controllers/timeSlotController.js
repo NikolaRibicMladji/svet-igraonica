@@ -6,7 +6,7 @@ const timeSlotService = require("../services/timeSlotService");
 const mongoose = require("mongoose");
 const TimeSlot = require("../models/TimeSlot");
 const bookingService = require("../services/bookingService");
-
+const { getBlockingStatuses } = require("../services/bookingService");
 const ErrorResponse = require("../utils/errorResponse");
 const { getNowInAppTimezone } = require("../utils/dateTime");
 
@@ -92,19 +92,25 @@ exports.getTimeSlotsByPlayroom = async (req, res, next) => {
     })
       .sort({ vremeOd: 1 })
       .lean();
+    const isToday =
+      startDate.getFullYear() === now.getFullYear() &&
+      startDate.getMonth() === now.getMonth() &&
+      startDate.getDate() === now.getDate();
 
-    const filteredSlots = timeSlots.filter((slot) => {
-      const slotEnd = new Date(
-        new Date(slot.datum).getFullYear(),
-        new Date(slot.datum).getMonth(),
-        new Date(slot.datum).getDate(),
-        ...String(slot.vremeDo || "00:00")
-          .split(":")
-          .map((v) => parseInt(v, 10)),
-      );
+    const filteredSlots = isToday
+      ? timeSlots.filter((slot) => {
+          const slotEnd = new Date(
+            new Date(slot.datum).getFullYear(),
+            new Date(slot.datum).getMonth(),
+            new Date(slot.datum).getDate(),
+            ...String(slot.vremeDo || "00:00")
+              .split(":")
+              .map((v) => parseInt(v, 10)),
+          );
 
-      return slotEnd > now;
-    });
+          return slotEnd > now;
+        })
+      : timeSlots;
 
     res.status(200).json({
       success: true,
@@ -184,8 +190,13 @@ exports.updateTimeSlot = async (req, res, next) => {
     }
 
     if (cena !== undefined) {
-      $set: {
-        cena;
+      const parsedCena = Number(cena);
+
+      if (!Number.isFinite(parsedCena) || parsedCena < 0) {
+        throw new ErrorResponse(
+          "Cena mora biti broj veći ili jednak nuli",
+          400,
+        );
       }
 
       const updated = await TimeSlot.findOneAndUpdate(
@@ -435,7 +446,7 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
         $gte: startDate,
         $lte: endDate,
       },
-      status: { $ne: BOOKING_STATUS.OTKAZANO },
+      status: { $in: getBlockingStatuses() },
     })
       .select(
         "_id roditeljId imeRoditelja prezimeRoditelja emailRoditelja telefonRoditelja napomena status createdAt ukupnaCena vremeOd vremeDo",
@@ -551,15 +562,6 @@ exports.manualBookTimeSlot = async (req, res, next) => {
 
     await session.commitTransaction();
 
-    try {
-      await enqueueBookingEmail(booking._id);
-    } catch (emailError) {
-      console.error(
-        "Greška pri enqueue booking email-a (manualBookTimeSlot):",
-        emailError.message,
-      );
-    }
-
     return res.status(200).json({
       success: true,
       data: booking,
@@ -636,15 +638,6 @@ exports.manualBookInterval = async (req, res, next) => {
     });
 
     await session.commitTransaction();
-
-    try {
-      await enqueueBookingEmail(booking._id);
-    } catch (emailError) {
-      console.error(
-        "Greška pri enqueue booking email-a (manualBookInterval):",
-        emailError.message,
-      );
-    }
 
     return res.status(201).json({
       success: true,
