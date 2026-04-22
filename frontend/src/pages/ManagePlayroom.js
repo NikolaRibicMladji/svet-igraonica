@@ -193,7 +193,10 @@ const ManagePlayroom = () => {
                   : "Neograničeno"}
               </p>
             </div>
-
+            <div className="detail-item full-width">
+              <label>📝 Opis</label>
+              <p className="description-text">{playroom.opis}</p>
+            </div>
             <div className="detail-item full-width">
               <label>🖼️ Profilna slika</label>
               <div className="profile-image">
@@ -413,11 +416,6 @@ const ManagePlayroom = () => {
                   ),
                 )}
               </div>
-            </div>
-
-            <div className="detail-item full-width">
-              <label>📝 Opis</label>
-              <p className="description-text">{playroom.opis}</p>
             </div>
           </div>
         </div>

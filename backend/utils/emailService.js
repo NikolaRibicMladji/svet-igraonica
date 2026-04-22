@@ -51,6 +51,120 @@ const generateEmailHtml = (
     const amount = Number(value) || 0;
     return `${amount} RSD`;
   };
+  const getDurationHours = () => {
+    if (!booking?.vremeOd || !booking?.vremeDo) return 1;
+
+    const [h1, m1] = booking.vremeOd.split(":").map(Number);
+    const [h2, m2] = booking.vremeDo.split(":").map(Number);
+
+    const start = h1 * 60 + m1;
+    const end = h2 * 60 + m2;
+    const diff = end - start;
+
+    if (!Number.isFinite(diff) || diff <= 0) return 1;
+
+    return diff / 60;
+  };
+
+  const getItemCalculationText = (item) => {
+    if (!item) return "0 RSD";
+
+    const cena = Number(item.cena) || 0;
+    const tip = item.tip || "fiksno";
+    const brojDece = Number(booking?.brojDece) || 0;
+    const sati = getDurationHours();
+
+    if (tip === "po_satu" || tip === "poSatu") {
+      return `${cena} RSD × ${sati}h = ${cena * sati} RSD`;
+    }
+
+    if (tip === "po_osobi" || tip === "poOsobi") {
+      return `${cena} RSD × ${brojDece} = ${cena * brojDece} RSD`;
+    }
+
+    return `${cena} RSD`;
+  };
+
+  const renderStackedList = (items = []) => {
+    if (!Array.isArray(items) || items.length === 0) {
+      return `
+      <div style="font-size:14px;color:#667085;line-height:1.5;">
+        Nema izabranih stavki
+      </div>
+    `;
+    }
+
+    return items
+      .map(
+        (item, index) => `
+        <div style="${
+          index < items.length - 1
+            ? "padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid #eaecf0;"
+            : ""
+        }">
+          <div style="font-size:14px;font-weight:700;color:#101828;line-height:1.5;word-break:break-word;">
+            ${safeValue(item.naziv, "Stavka")}
+          </div>
+
+          ${
+            item?.opis
+              ? `<div style="margin-top:4px;font-size:13px;color:#667085;line-height:1.6;word-break:break-word;">
+                   ${item.opis}
+                 </div>`
+              : ""
+          }
+
+          <div style="margin-top:6px;font-size:14px;color:#101828;line-height:1.6;word-break:break-word;">
+            ${getItemCalculationText(item)}
+          </div>
+        </div>
+      `,
+      )
+      .join("");
+  };
+
+  const getItemCalculationHtml = (item) => {
+    if (!item) {
+      return `
+      <div style="font-size:14px;font-weight:700;color:#101828;line-height:1.4;">
+        0 RSD
+      </div>
+    `;
+    }
+
+    const cena = Number(item.cena) || 0;
+    const tip = item.tip || "fiksno";
+    const brojDece = Number(booking?.brojDece) || 0;
+    const sati = getDurationHours();
+
+    if (tip === "po_satu") {
+      return `
+      <div style="font-size:14px;font-weight:700;color:#101828;line-height:1.4;word-break:break-word;">
+        ${cena} RSD
+      </div>
+      <div style="margin-top:4px;font-size:13px;color:#667085;line-height:1.5;word-break:break-word;">
+        × ${sati}h = ${cena * sati} RSD
+      </div>
+    `;
+    }
+
+    if (tip === "po_osobi") {
+      return `
+      <div style="font-size:14px;font-weight:700;color:#101828;line-height:1.4;word-break:break-word;">
+        ${cena} RSD
+      </div>
+      <div style="margin-top:4px;font-size:13px;color:#667085;line-height:1.5;word-break:break-word;">
+        × ${brojDece} = ${cena * brojDece} RSD
+      </div>
+    `;
+    }
+
+    return `
+    <div style="font-size:14px;font-weight:700;color:#101828;line-height:1.4;word-break:break-word;">
+      ${cena} RSD
+    </div>
+  `;
+  };
 
   const renderList = (items = []) => {
     if (!Array.isArray(items) || items.length === 0) {
@@ -67,7 +181,7 @@ const generateEmailHtml = (
       .map(
         (item) => `
           <tr>
-            <td style="padding:10px 0;border-bottom:1px solid #eaecf0;vertical-align:top;">
+            <td style="padding:10px 0;border-bottom:1px solid #eaecf0;vertical-align:top;width:58%;word-break:break-word;">
               <div style="font-size:14px;font-weight:600;color:#101828;line-height:1.4;">
                 ${safeValue(item.naziv, "Stavka")}
               </div>
@@ -79,9 +193,9 @@ const generateEmailHtml = (
                   : ""
               }
             </td>
-            <td style="padding:10px 0;border-bottom:1px solid #eaecf0;text-align:right;vertical-align:top;font-size:14px;font-weight:700;color:#101828;white-space:nowrap;">
-              ${formatCurrency(item.cena)}
-            </td>
+           <td style="padding:10px 0;border-bottom:1px solid #eaecf0;text-align:right;vertical-align:top;width:42%;max-width:220px;">
+  ${getItemCalculationHtml(item)}
+</td>
           </tr>
         `,
       )
@@ -90,26 +204,24 @@ const generateEmailHtml = (
 
   const renderPaket = booking?.izabraniPaket
     ? `
-      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-        <tr>
-          <td style="padding:10px 0;border-bottom:1px solid #eaecf0;vertical-align:top;">
-            <div style="font-size:14px;font-weight:600;color:#101828;line-height:1.4;">
-              ${safeValue(booking.izabraniPaket.naziv, "Paket")}
-            </div>
-            ${
-              booking?.izabraniPaket?.opis
-                ? `<div style="margin-top:4px;font-size:13px;color:#667085;line-height:1.5;">
-                     ${booking.izabraniPaket.opis}
-                   </div>`
-                : ""
-            }
-          </td>
-          <td style="padding:10px 0;border-bottom:1px solid #eaecf0;text-align:right;vertical-align:top;font-size:14px;font-weight:700;color:#101828;white-space:nowrap;">
-            ${formatCurrency(booking.izabraniPaket.cena)}
-          </td>
-        </tr>
-      </table>
-    `
+    <div>
+      <div style="font-size:14px;font-weight:700;color:#101828;line-height:1.5;word-break:break-word;">
+        ${safeValue(booking.izabraniPaket.naziv, "Paket")}
+      </div>
+
+      ${
+        booking?.izabraniPaket?.opis
+          ? `<div style="margin-top:4px;font-size:13px;color:#667085;line-height:1.6;word-break:break-word;">
+               ${booking.izabraniPaket.opis}
+             </div>`
+          : ""
+      }
+
+      <div style="margin-top:6px;font-size:14px;color:#101828;line-height:1.6;word-break:break-word;">
+        ${getItemCalculationText(booking.izabraniPaket)}
+      </div>
+    </div>
+  `
     : `<div style="font-size:14px;color:#667085;line-height:1.5;">Nema izabranog paketa</div>`;
 
   const besplatne =
@@ -241,14 +353,12 @@ const generateEmailHtml = (
                 </table>
               </div>
 
-              <div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px 8px 16px;margin-bottom:18px;background:#ffffff;">
-                <div style="font-size:15px;font-weight:800;color:#101828;margin-bottom:14px;">
-                  Stavke iz cenovnika
-                </div>
-                <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-                 ${renderList(booking?.izabraneCene || [])}
-                </table>
-              </div>
+             <div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px 18px 16px;margin-bottom:18px;background:#ffffff;">
+  <div style="font-size:15px;font-weight:800;color:#101828;margin-bottom:14px;">
+    Stavke iz cenovnika
+  </div>
+  ${renderStackedList(booking?.izabraneCene || [])}
+</div>
 
               <div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px 18px 16px;margin-bottom:18px;background:#ffffff;">
                 <div style="font-size:15px;font-weight:800;color:#101828;margin-bottom:14px;">
@@ -257,14 +367,12 @@ const generateEmailHtml = (
                 ${renderPaket}
               </div>
 
-              <div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px 8px 16px;margin-bottom:18px;background:#ffffff;">
-                <div style="font-size:15px;font-weight:800;color:#101828;margin-bottom:14px;">
-                  Dodatne usluge
-                </div>
-                <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-                 ${renderList(booking?.izabraneUsluge || [])}
-                </table>
-              </div>
+           <div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px 18px 16px;margin-bottom:18px;background:#ffffff;">
+  <div style="font-size:15px;font-weight:800;color:#101828;margin-bottom:14px;">
+    Dodatne usluge
+  </div>
+  ${renderStackedList(booking?.izabraneUsluge || [])}
+</div>
 
               <div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px 18px 16px;margin-bottom:18px;background:#ffffff;">
                 <div style="font-size:15px;font-weight:800;color:#101828;margin-bottom:14px;">

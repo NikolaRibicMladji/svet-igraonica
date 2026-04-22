@@ -12,6 +12,7 @@ const MyBookings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cancellingId, setCancellingId] = useState("");
+  const [bookingToCancel, setBookingToCancel] = useState(null);
 
   useEffect(() => {
     loadBookings();
@@ -34,6 +35,43 @@ const MyBookings = () => {
     if (sati > 0 && minuti > 0) return `${sati}h ${minuti}min`;
     if (sati > 0) return `${sati}h`;
     return `${minuti}min`;
+  };
+
+  const getDurationHours = (od, doVreme) => {
+    if (!od || !doVreme) return 1;
+
+    const [h1, m1] = od.split(":").map(Number);
+    const [h2, m2] = doVreme.split(":").map(Number);
+
+    const start = h1 * 60 + m1;
+    const end = h2 * 60 + m2;
+
+    const diff = end - start;
+
+    if (!Number.isFinite(diff) || diff <= 0) return 1;
+
+    return diff / 60;
+  };
+
+  const getItemCalculationText = (item, booking) => {
+    if (!item) return "";
+
+    const cena = Number(item.cena) || 0;
+    const tip = item.tip || "fiksno";
+    const brojDece = Number(booking?.brojDece) || 0;
+    const sati = getDurationHours(booking?.vremeOd, booking?.vremeDo);
+
+    if (tip === "po_satu") {
+      const total = cena * sati;
+      return `${cena} RSD × ${sati}h = ${total} RSD`;
+    }
+
+    if (tip === "po_osobi") {
+      const total = cena * brojDece;
+      return `${cena} RSD × ${brojDece} = ${total} RSD`;
+    }
+
+    return `${cena} RSD`;
   };
 
   const loadBookings = async () => {
@@ -65,17 +103,23 @@ const MyBookings = () => {
     }
   };
 
-  const handleCancel = async (id) => {
+  const openCancelModal = (booking) => {
     if (cancellingId) return;
+    setBookingToCancel(booking);
+  };
+
+  const handleCancel = async () => {
+    if (cancellingId || !bookingToCancel?._id) return;
 
     setError("");
-    setCancellingId(id);
+    setCancellingId(bookingToCancel._id);
 
     try {
-      const result = await cancelBooking(id);
+      const result = await cancelBooking(bookingToCancel._id);
 
       if (result?.success) {
         toast.success(result.message || "Rezervacija je uspešno otkazana.");
+        setBookingToCancel(null);
         await loadBookings();
       } else {
         toast.error(result?.error || "Greška pri otkazivanju rezervacije.");
@@ -90,7 +134,6 @@ const MyBookings = () => {
       setCancellingId("");
     }
   };
-
   const handleWriteReview = (playroomId) => {
     if (!playroomId) return;
     navigate(`/playrooms/${playroomId}#reviews-section`);
@@ -221,7 +264,8 @@ const MyBookings = () => {
                         </p>
                         {booking.izabraneCene.map((item, idx) => (
                           <p key={`cena-${idx}`}>
-                            • {item.naziv} ({item.tip}) - {item.cena} RSD
+                            • {item.naziv} ({item.tip || "fiksno"}) -{" "}
+                            {getItemCalculationText(item, booking)}
                             {item.opis && <span> - {item.opis}</span>}
                           </p>
                         ))}
@@ -233,7 +277,7 @@ const MyBookings = () => {
                       <p>
                         <strong>Paket:</strong> {booking.izabraniPaket.naziv} (
                         {booking.izabraniPaket.tip || "fiksno"}) -{" "}
-                        {booking.izabraniPaket.cena} RSD
+                        {getItemCalculationText(booking.izabraniPaket, booking)}
                       </p>
 
                       {booking.izabraniPaket.opis && (
@@ -250,7 +294,8 @@ const MyBookings = () => {
                         </p>
                         {booking.izabraneUsluge.map((item, idx) => (
                           <p key={`usluga-${idx}`}>
-                            • {item.naziv} ({item.tip}) - {item.cena} RSD
+                            • {item.naziv} ({item.tip || "fiksno"}) -{" "}
+                            {getItemCalculationText(item, booking)}
                             {item.opis && <span> - {item.opis}</span>}
                           </p>
                         ))}
@@ -275,7 +320,7 @@ const MyBookings = () => {
                   <button
                     type="button"
                     className="btn-cancel"
-                    onClick={() => handleCancel(booking._id)}
+                    onClick={() => openCancelModal(booking)}
                     disabled={
                       cancellingId === booking._id ||
                       booking.status === "otkazano" ||
@@ -290,6 +335,75 @@ const MyBookings = () => {
               </div>
             );
           })}
+        </div>
+      )}
+      {bookingToCancel && (
+        <div
+          className="cancel-modal-overlay"
+          onClick={() => {
+            if (!cancellingId) setBookingToCancel(null);
+          }}
+        >
+          <div className="cancel-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="cancel-modal-header">
+              <h3>Otkaži rezervaciju</h3>
+              <button
+                type="button"
+                className="cancel-modal-close"
+                onClick={() => {
+                  if (!cancellingId) setBookingToCancel(null);
+                }}
+                disabled={Boolean(cancellingId)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="cancel-modal-body">
+              <p>Da li ste sigurni da želite da otkažete ovu rezervaciju?</p>
+
+              <div className="cancel-booking-summary">
+                <p>
+                  <strong>Igraonica:</strong>{" "}
+                  {typeof bookingToCancel.playroomId === "object"
+                    ? bookingToCancel.playroomId?.naziv || "Igraonica"
+                    : "Igraonica"}
+                </p>
+                <p>
+                  <strong>Datum:</strong>{" "}
+                  {bookingToCancel.datum
+                    ? new Date(bookingToCancel.datum).toLocaleDateString(
+                        "sr-RS",
+                      )
+                    : "-"}
+                </p>
+                <p>
+                  <strong>Vreme:</strong> {bookingToCancel.vremeOd || "-"} -{" "}
+                  {bookingToCancel.vremeDo || "-"}
+                </p>
+              </div>
+            </div>
+
+            <div className="cancel-modal-footer">
+              <button
+                type="button"
+                className="cancel-modal-secondary"
+                onClick={() => setBookingToCancel(null)}
+                disabled={Boolean(cancellingId)}
+              >
+                Ne, odustani
+              </button>
+
+              <button
+                type="button"
+                className="cancel-modal-danger"
+                onClick={handleCancel}
+                disabled={Boolean(cancellingId)}
+              >
+                {cancellingId ? "Otkazujem..." : "Da, otkaži rezervaciju"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -120,6 +120,133 @@
   box-shadow: 0 2px 8px rgba(46, 125, 50, 0.25);
   background-color: #c8e6c9;
 }
+.cancel-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 2000;
+}
+
+.cancel-modal {
+  width: 100%;
+  max-width: 520px;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.22);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  animation: cancelModalPop 0.18s ease;
+}
+
+@keyframes cancelModalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.cancel-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.cancel-modal-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #0f172a;
+}
+
+.cancel-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.cancel-modal-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancel-modal-body {
+  padding: 20px;
+  color: #475569;
+}
+
+.cancel-modal-body p {
+  margin: 0 0 12px;
+  line-height: 1.6;
+}
+
+.cancel-booking-summary {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.cancel-booking-summary p {
+  margin: 6px 0;
+}
+
+.cancel-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 18px 20px 20px;
+  border-top: 1px solid #eef2f7;
+}
+
+.cancel-modal-secondary,
+.cancel-modal-danger {
+  border: none;
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.cancel-modal-secondary {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.cancel-modal-secondary:hover:not(:disabled) {
+  background: #cbd5e1;
+}
+
+.cancel-modal-danger {
+  background: #ef4444;
+  color: #fff;
+}
+
+.cancel-modal-danger:hover:not(:disabled) {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.cancel-modal-secondary:disabled,
+.cancel-modal-danger:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
 
 @media (max-width: 480px) {
   .my-bookings-page {
@@ -136,6 +263,19 @@
   }
 
   .btn-cancel {
+    width: 100%;
+  }
+  .cancel-modal {
+    max-width: 100%;
+    border-radius: 16px;
+  }
+
+  .cancel-modal-footer {
+    flex-direction: column;
+  }
+
+  .cancel-modal-secondary,
+  .cancel-modal-danger {
     width: 100%;
   }
 }

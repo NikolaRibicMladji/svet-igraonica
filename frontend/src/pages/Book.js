@@ -19,6 +19,12 @@ const getLocalDate = () => {
   return `${year}-${month}-${day}`;
 };
 
+const formatDateForBackend = (date) => {
+  if (!date) return "";
+
+  return new Date(date).toISOString().split("T")[0];
+};
+
 const Book = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -227,7 +233,10 @@ const Book = () => {
     setSelectedEndTime("");
 
     try {
-      const result = await getAvailableTimeSlots(id, selectedDate);
+      const result = await getAvailableTimeSlots(
+        id,
+        formatDateForBackend(selectedDate),
+      );
 
       if (result?.success) {
         setAvailability(result.data || null);
@@ -756,7 +765,7 @@ const Book = () => {
     try {
       const bookingPayload = {
         playroomId: id,
-        datum: selectedDate,
+        datum: formatDateForBackend(selectedDate),
         vremeOd: selectedStartTime,
         vremeDo: selectedEndTime,
         cenaIds: selectedCenaIds,
@@ -825,21 +834,6 @@ const Book = () => {
   const handleKorisnikChange = (e) => {
     const { name, value } = e.target;
     setKorisnikPodaci((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-
-    const parsedDate = new Date(dateString);
-
-    if (Number.isNaN(parsedDate.getTime())) return "";
-
-    return parsedDate.toLocaleDateString("sr-RS", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
   };
 
   const getPricingLabel = (item) => {

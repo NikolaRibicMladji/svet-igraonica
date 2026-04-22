@@ -149,6 +149,43 @@ const OwnerDashboard = () => {
       ? booking.playroomId?._id
       : booking.playroomId;
 
+  const getDurationHours = (od, doVreme) => {
+    if (!od || !doVreme) return 1;
+
+    const [h1, m1] = od.split(":").map(Number);
+    const [h2, m2] = doVreme.split(":").map(Number);
+
+    const start = h1 * 60 + m1;
+    const end = h2 * 60 + m2;
+
+    const diff = end - start;
+
+    if (!Number.isFinite(diff) || diff <= 0) return 1;
+
+    return diff / 60;
+  };
+
+  const getItemCalculationText = (item, booking) => {
+    if (!item) return "";
+
+    const cena = Number(item.cena) || 0;
+    const tip = item.tip || "fiksno";
+    const brojDece = Number(booking?.brojDece) || 0;
+    const sati = getDurationHours(booking?.vremeOd, booking?.vremeDo);
+
+    if (tip === "po_satu" || tip === "poSatu") {
+      const total = cena * sati;
+      return `${cena} RSD × ${sati}h = ${total} RSD`;
+    }
+
+    if (tip === "po_osobi" || tip === "poOsobi") {
+      const total = cena * brojDece;
+      return `${cena} RSD × ${brojDece} = ${total} RSD`;
+    }
+
+    return `${cena} RSD`;
+  };
+
   const filteredBookings = useMemo(() => {
     if (!selectedPlayroomId) return bookings;
 
@@ -319,7 +356,53 @@ const OwnerDashboard = () => {
                 <p>👶 Broj dece: {booking.brojDece ?? 0}</p>
                 <p>👨‍👩‍👧 Broj roditelja: {booking.brojRoditelja ?? 0}</p>
                 <p>💰 Ukupna cena: {booking.ukupnaCena ?? 0} RSD</p>
+                {Array.isArray(booking.izabraneCene) &&
+                  booking.izabraneCene.length > 0 && (
+                    <div className="booking-selected-items">
+                      <p>
+                        <strong>Izabrane stavke:</strong>
+                      </p>
+                      {booking.izabraneCene.map((item, idx) => (
+                        <p key={`pending-cena-${idx}`}>
+                          • {item.naziv} ({item.tip || "fiksno"}) -{" "}
+                          {getItemCalculationText(item, booking)}
+                          {item.opis && <span> - {item.opis}</span>}
+                        </p>
+                      ))}
+                    </div>
+                  )}
 
+                {booking.izabraniPaket?.naziv && (
+                  <div className="booking-selected-items">
+                    <p>
+                      <strong>Paket:</strong> {booking.izabraniPaket.naziv} (
+                      {booking.izabraniPaket.tip || "fiksno"}) -{" "}
+                      {getItemCalculationText(booking.izabraniPaket, booking)}
+                    </p>
+
+                    {booking.izabraniPaket.opis && (
+                      <p>- {booking.izabraniPaket.opis}</p>
+                    )}
+                  </div>
+                )}
+
+                {Array.isArray(booking.izabraneUsluge) &&
+                  booking.izabraneUsluge.length > 0 && (
+                    <div className="booking-selected-items">
+                      <p>
+                        <strong>Dodatne usluge:</strong>
+                      </p>
+                      {booking.izabraneUsluge.map((item, idx) => (
+                        <p key={`pending-usluga-${idx}`}>
+                          • {item.naziv} ({item.tip || "fiksno"}) -{" "}
+                          {getItemCalculationText(item, booking)}
+                          {item.opis && <span> - {item.opis}</span>}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+
+                {booking.napomena && <p>📝 Napomena: {booking.napomena}</p>}
                 <button
                   className="btn-confirm-booking"
                   onClick={() => handleConfirm(booking._id)}
@@ -387,6 +470,56 @@ const OwnerDashboard = () => {
                     <p>👶 Broj dece: {booking.brojDece ?? 0}</p>
                     <p>👨‍👩‍👧 Broj roditelja: {booking.brojRoditelja ?? 0}</p>
                     <p>💰 Ukupna cena: {booking.ukupnaCena ?? 0} RSD</p>
+                    {Array.isArray(booking.izabraneCene) &&
+                      booking.izabraneCene.length > 0 && (
+                        <div className="booking-selected-items">
+                          <p>
+                            <strong>Izabrane stavke:</strong>
+                          </p>
+                          {booking.izabraneCene.map((item, idx) => (
+                            <p key={`confirmed-cena-${idx}`}>
+                              • {item.naziv} ({item.tip || "fiksno"}) -{" "}
+                              {getItemCalculationText(item, booking)}
+                              {item.opis && <span> - {item.opis}</span>}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+
+                    {booking.izabraniPaket?.naziv && (
+                      <div className="booking-selected-items">
+                        <p>
+                          <strong>Paket:</strong> {booking.izabraniPaket.naziv}{" "}
+                          ({booking.izabraniPaket.tip || "fiksno"}) -{" "}
+                          {getItemCalculationText(
+                            booking.izabraniPaket,
+                            booking,
+                          )}
+                        </p>
+
+                        {booking.izabraniPaket.opis && (
+                          <p>- {booking.izabraniPaket.opis}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {Array.isArray(booking.izabraneUsluge) &&
+                      booking.izabraneUsluge.length > 0 && (
+                        <div className="booking-selected-items">
+                          <p>
+                            <strong>Dodatne usluge:</strong>
+                          </p>
+                          {booking.izabraneUsluge.map((item, idx) => (
+                            <p key={`confirmed-usluga-${idx}`}>
+                              • {item.naziv} ({item.tip || "fiksno"}) -{" "}
+                              {getItemCalculationText(item, booking)}
+                              {item.opis && <span> - {item.opis}</span>}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+
+                    {booking.napomena && <p>📝 Napomena: {booking.napomena}</p>}
                   </div>
                 ))}
               </div>

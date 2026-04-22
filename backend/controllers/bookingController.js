@@ -58,6 +58,8 @@ exports.createBooking = async (req, res, next) => {
       },
     });
 
+    await bookingService.handleBookingEmails(booking._id);
+
     return res.status(201).json({
       success: true,
       data: booking,
@@ -137,6 +139,7 @@ exports.createGuestBooking = async (req, res, next) => {
     });
 
     await session.commitTransaction();
+    await bookingService.handleBookingEmails(createdBooking._id);
 
     res.cookie("refreshToken", refreshToken, authService.cookieOptions);
 
@@ -220,10 +223,12 @@ exports.cancelBooking = async (req, res, next) => {
       user: req.user?.id || null,
       time: new Date().toISOString(),
     });
-    await bookingService.cancelBookingById({
+    const canceledBooking = await bookingService.cancelBookingById({
       bookingId: id,
       currentUser: req.user,
     });
+
+    await bookingService.sendCancellationEmailById(canceledBooking._id);
 
     return res.status(200).json({
       success: true,
