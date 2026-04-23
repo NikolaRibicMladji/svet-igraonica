@@ -19,6 +19,9 @@ const OwnerDashboard = () => {
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [confirmingId, setConfirmingId] = useState("");
   const [showConfirmedModal, setShowConfirmedModal] = useState(false);
+  const [showAllBookingsModal, setShowAllBookingsModal] = useState(false);
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
+  const [expandedOwnerBookingId, setExpandedOwnerBookingId] = useState(null);
 
   useEffect(() => {
     if (!authLoading) {
@@ -48,6 +51,12 @@ const OwnerDashboard = () => {
 
     return () => clearInterval(interval);
   }, [authLoading, selectedPlayroomId]);
+
+  const toggleOwnerBookingDetails = (bookingId) => {
+    setExpandedOwnerBookingId((prev) =>
+      prev === bookingId ? null : bookingId,
+    );
+  };
 
   const fetchMyPlayrooms = async () => {
     try {
@@ -194,15 +203,173 @@ const OwnerDashboard = () => {
     });
   }, [bookings, selectedPlayroomId]);
 
+  const now = new Date();
+
+  const allOwnerBookings = useMemo(() => filteredBookings, [filteredBookings]);
+
   const pendingBookings = useMemo(
     () => filteredBookings.filter((b) => b.status === "cekanje"),
     [filteredBookings],
   );
 
-  const confirmedBookings = useMemo(
-    () => filteredBookings.filter((b) => b.status === "potvrdjeno"),
-    [filteredBookings],
+  const upcomingConfirmedBookings = useMemo(
+    () =>
+      filteredBookings.filter((b) => {
+        if (b.status !== "potvrdjeno") return false;
+        if (!b.datum || !b.vremeDo) return false;
+
+        const bookingEnd = new Date(`${b.datum.slice(0, 10)}T${b.vremeDo}:00`);
+        return bookingEnd > now;
+      }),
+    [filteredBookings, now],
   );
+
+  const completedBookings = useMemo(
+    () =>
+      filteredBookings.filter((b) => {
+        if (b.status === "zavrseno") return true;
+
+        if (!b.datum || !b.vremeDo) return false;
+
+        const bookingEnd = new Date(`${b.datum.slice(0, 10)}T${b.vremeDo}:00`);
+        return bookingEnd <= now;
+      }),
+    [filteredBookings, now],
+  );
+
+  const renderOwnerBookingsAccordion = (items = []) => {
+    if (!items.length) {
+      return (
+        <div className="empty-state modal-empty">
+          <p>Nema rezervacija.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="owner-bookings-accordion-list">
+        {items.map((booking) => {
+          const isExpanded = expandedOwnerBookingId === booking._id;
+
+          const statusText =
+            booking.status === "potvrdjeno"
+              ? "Potvrđeno"
+              : booking.status === "otkazano"
+                ? "Otkazano"
+                : booking.status === "zavrseno"
+                  ? "Završeno"
+                  : booking.status === "cekanje"
+                    ? "Čeka potvrdu"
+                    : booking.status;
+
+          const statusClass =
+            booking.status === "potvrdjeno"
+              ? "status-confirmed"
+              : booking.status === "otkazano"
+                ? "status-cancelled"
+                : booking.status === "zavrseno"
+                  ? "status-completed"
+                  : "status-pending";
+
+          return (
+            <div key={booking._id} className="owner-booking-card">
+              <div
+                className="owner-booking-header clickable-header"
+                onClick={() => toggleOwnerBookingDetails(booking._id)}
+              >
+                <div>
+                  <h3>
+                    {booking.imeRoditelja} {booking.prezimeRoditelja}
+                  </h3>
+                  <p className="booking-short-info">
+                    📅{" "}
+                    {booking.datum
+                      ? new Date(booking.datum).toLocaleDateString("sr-RS")
+                      : "-"}{" "}
+                    | ⏰ {booking.vremeOd || "-"} - {booking.vremeDo || "-"}
+                  </p>
+                </div>
+
+                <div className="booking-header-right">
+                  <span className={`status-badge ${statusClass}`}>
+                    {statusText}
+                  </span>
+                  <span className={`arrow ${isExpanded ? "open" : ""}`}>▼</span>
+                </div>
+              </div>
+
+              {isExpanded && (
+                <div className="owner-booking-details">
+                  <p>📧 {booking.emailRoditelja || "-"}</p>
+                  <p>📞 {booking.telefonRoditelja || booking.telefon || "-"}</p>
+                  <p>
+                    📅{" "}
+                    {booking.datum
+                      ? new Date(booking.datum).toLocaleDateString("sr-RS")
+                      : "-"}
+                  </p>
+                  <p>
+                    ⏰ {booking.vremeOd || "-"} - {booking.vremeDo || "-"}
+                  </p>
+                  <p>👶 Broj dece: {booking.brojDece ?? 0}</p>
+                  <p>👨‍👩‍👧 Broj roditelja: {booking.brojRoditelja ?? 0}</p>
+                  <p>💰 Ukupna cena: {booking.ukupnaCena ?? 0} RSD</p>
+
+                  {Array.isArray(booking.izabraneCene) &&
+                    booking.izabraneCene.length > 0 && (
+                      <div className="booking-selected-items">
+                        <p>
+                          <strong>Izabrane stavke:</strong>
+                        </p>
+                        {booking.izabraneCene.map((item, idx) => (
+                          <p key={`owner-cena-${idx}`}>
+                            • {item.naziv} ({item.tip || "fiksno"}) -{" "}
+                            {getItemCalculationText(item, booking)}
+                            {item.opis && <span> - {item.opis}</span>}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                  {booking.izabraniPaket?.naziv && (
+                    <div className="booking-selected-items">
+                      <p>
+                        <strong>Paket:</strong> {booking.izabraniPaket.naziv} (
+                        {booking.izabraniPaket.tip || "fiksno"}) -{" "}
+                        {getItemCalculationText(booking.izabraniPaket, booking)}
+                      </p>
+
+                      {booking.izabraniPaket.opis && (
+                        <p>- {booking.izabraniPaket.opis}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {Array.isArray(booking.izabraneUsluge) &&
+                    booking.izabraneUsluge.length > 0 && (
+                      <div className="booking-selected-items">
+                        <p>
+                          <strong>Dodatne usluge:</strong>
+                        </p>
+                        {booking.izabraneUsluge.map((item, idx) => (
+                          <p key={`owner-usluga-${idx}`}>
+                            • {item.naziv} ({item.tip || "fiksno"}) -{" "}
+                            {getItemCalculationText(item, booking)}
+                            {item.opis && <span> - {item.opis}</span>}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                  {booking.napomena && <p>📝 Napomena: {booking.napomena}</p>}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   if (authLoading || loading) {
     return <div className="loading-container">⏳ Učitavanje podataka...</div>;
@@ -280,7 +447,10 @@ const OwnerDashboard = () => {
         <div className="loading-container">⏳ Učitavanje statistike...</div>
       ) : (
         <div className="stats-grid">
-          <div className="stat-card blue">
+          <div
+            className="stat-card blue clickable"
+            onClick={() => setShowAllBookingsModal(true)}
+          >
             <span className="stat-icon">📊</span>
             <div className="stat-info">
               <h3>{stats?.totalBookings ?? 0}</h3>
@@ -294,15 +464,18 @@ const OwnerDashboard = () => {
           >
             <span className="stat-icon">✅</span>
             <div className="stat-info">
-              <h3>{confirmedBookings.length}</h3>
+              <h3>{upcomingConfirmedBookings.length}</h3>
               <p>Potvrđene rezervacije</p>
             </div>
           </div>
 
-          <div className="stat-card orange">
+          <div
+            className="stat-card orange clickable"
+            onClick={() => setShowCompletedModal(true)}
+          >
             <span className="stat-icon">🎉</span>
             <div className="stat-info">
-              <h3>{stats?.completedBookings ?? 0}</h3>
+              <h3>{completedBookings.length}</h3>
               <p>Završene rezervacije</p>
             </div>
           </div>
@@ -420,110 +593,86 @@ const OwnerDashboard = () => {
         )}
       </div>
 
-      {showConfirmedModal && (
+      {showAllBookingsModal && (
         <div
           className="modal-overlay"
-          onClick={() => setShowConfirmedModal(false)}
+          onClick={() => {
+            setShowAllBookingsModal(false);
+            setExpandedOwnerBookingId(null);
+          }}
         >
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>✅ Potvrđene rezervacije</h3>
+            <div className="modal-header sticky-modal-header">
+              <h3>📊 Sve rezervacije</h3>
               <button
+                type="button"
                 className="modal-close-btn"
-                onClick={() => setShowConfirmedModal(false)}
+                onClick={() => {
+                  setShowAllBookingsModal(false);
+                  setExpandedOwnerBookingId(null);
+                }}
               >
                 ✖
               </button>
             </div>
 
-            {confirmedBookings.length === 0 ? (
-              <div className="empty-state modal-empty">
-                <p>Nema potvrđenih rezervacija.</p>
-              </div>
-            ) : (
-              <div className="owner-bookings-list modal-bookings-list">
-                {confirmedBookings.map((booking) => (
-                  <div key={booking._id} className="booking-card">
-                    <div className="booking-status-row">
-                      <span className="status-badge confirmed">Potvrđeno</span>
-                    </div>
+            {renderOwnerBookingsAccordion(allOwnerBookings)}
+          </div>
+        </div>
+      )}
 
-                    <p>
-                      <strong>
-                        {booking.imeRoditelja} {booking.prezimeRoditelja}
-                      </strong>
-                    </p>
+      {showCompletedModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setShowCompletedModal(false);
+            setExpandedOwnerBookingId(null);
+          }}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header sticky-modal-header">
+              <h3>🎉 Završene rezervacije</h3>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => {
+                  setShowCompletedModal(false);
+                  setExpandedOwnerBookingId(null);
+                }}
+              >
+                ✖
+              </button>
+            </div>
 
-                    <p>📧 {booking.emailRoditelja || "-"}</p>
-                    <p>
-                      📞 {booking.telefonRoditelja || booking.telefon || "-"}
-                    </p>
-                    <p>
-                      📅{" "}
-                      {booking.datum
-                        ? new Date(booking.datum).toLocaleDateString("sr-RS")
-                        : "-"}
-                    </p>
-                    <p>
-                      ⏰ {booking.vremeOd || "-"} - {booking.vremeDo || "-"}
-                    </p>
-                    <p>👶 Broj dece: {booking.brojDece ?? 0}</p>
-                    <p>👨‍👩‍👧 Broj roditelja: {booking.brojRoditelja ?? 0}</p>
-                    <p>💰 Ukupna cena: {booking.ukupnaCena ?? 0} RSD</p>
-                    {Array.isArray(booking.izabraneCene) &&
-                      booking.izabraneCene.length > 0 && (
-                        <div className="booking-selected-items">
-                          <p>
-                            <strong>Izabrane stavke:</strong>
-                          </p>
-                          {booking.izabraneCene.map((item, idx) => (
-                            <p key={`confirmed-cena-${idx}`}>
-                              • {item.naziv} ({item.tip || "fiksno"}) -{" "}
-                              {getItemCalculationText(item, booking)}
-                              {item.opis && <span> - {item.opis}</span>}
-                            </p>
-                          ))}
-                        </div>
-                      )}
+            {renderOwnerBookingsAccordion(completedBookings)}
+          </div>
+        </div>
+      )}
 
-                    {booking.izabraniPaket?.naziv && (
-                      <div className="booking-selected-items">
-                        <p>
-                          <strong>Paket:</strong> {booking.izabraniPaket.naziv}{" "}
-                          ({booking.izabraniPaket.tip || "fiksno"}) -{" "}
-                          {getItemCalculationText(
-                            booking.izabraniPaket,
-                            booking,
-                          )}
-                        </p>
+      {showConfirmedModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setShowConfirmedModal(false);
+            setExpandedOwnerBookingId(null);
+          }}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header sticky-modal-header">
+              <h3>✅ Potvrđene rezervacije</h3>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => {
+                  setShowConfirmedModal(false);
+                  setExpandedOwnerBookingId(null);
+                }}
+              >
+                ✖
+              </button>
+            </div>
 
-                        {booking.izabraniPaket.opis && (
-                          <p>- {booking.izabraniPaket.opis}</p>
-                        )}
-                      </div>
-                    )}
-
-                    {Array.isArray(booking.izabraneUsluge) &&
-                      booking.izabraneUsluge.length > 0 && (
-                        <div className="booking-selected-items">
-                          <p>
-                            <strong>Dodatne usluge:</strong>
-                          </p>
-                          {booking.izabraneUsluge.map((item, idx) => (
-                            <p key={`confirmed-usluga-${idx}`}>
-                              • {item.naziv} ({item.tip || "fiksno"}) -{" "}
-                              {getItemCalculationText(item, booking)}
-                              {item.opis && <span> - {item.opis}</span>}
-                            </p>
-                          ))}
-                        </div>
-                      )}
-
-                    {booking.napomena && <p>📝 Napomena: {booking.napomena}</p>}
-                  </div>
-                ))}
-              </div>
-            )}
+            {renderOwnerBookingsAccordion(upcomingConfirmedBookings)}
           </div>
         </div>
       )}
