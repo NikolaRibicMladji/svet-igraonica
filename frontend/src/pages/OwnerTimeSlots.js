@@ -243,9 +243,6 @@ const OwnerTimeSlots = () => {
     <div className="container owner-slots-page">
       <div className="page-header">
         <h1>📅 Termini igraonice</h1>
-        <p>
-          Upravljanje terminima po pravilu: jedan termin = jedna rezervacija
-        </p>
       </div>
 
       {error && <div className="error-message">{error}</div>}

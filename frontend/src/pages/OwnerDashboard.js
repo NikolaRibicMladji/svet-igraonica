@@ -21,6 +21,8 @@ const OwnerDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("svi");
   const [dateFilter, setDateFilter] = useState("");
+  const [timeFromFilter, setTimeFromFilter] = useState("");
+  const [timeToFilter, setTimeToFilter] = useState("");
   const [showConfirmedModal, setShowConfirmedModal] = useState(false);
   const [showAllBookingsModal, setShowAllBookingsModal] = useState(false);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
@@ -281,6 +283,23 @@ const OwnerDashboard = () => {
       result = result.filter((booking) => {
         if (!booking.datum) return false;
         return booking.datum.slice(0, 10) === dateFilter;
+      });
+    }
+    if (timeFromFilter || timeToFilter) {
+      result = result.filter((booking) => {
+        if (!booking.vremeOd) return false;
+
+        const bookingStart = booking.vremeOd;
+
+        if (timeFromFilter && bookingStart < timeFromFilter) {
+          return false;
+        }
+
+        if (timeToFilter && bookingStart > timeToFilter) {
+          return false;
+        }
+
+        return true;
       });
     }
 
@@ -729,11 +748,11 @@ const OwnerDashboard = () => {
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
-        <h2>Zdravo, {user?.ime || "vlasniče"} 👋</h2>
-        <p className="playroom-name">
-          📍{" "}
-          {stats?.playroomName || selectedPlayroom?.naziv || "Moja igraonica"}
-        </p>
+        <h2 className="playroom-title">
+          {selectedPlayroom?.naziv
+            ? selectedPlayroom.naziv.toUpperCase()
+            : "IZABERI IGRAONICU"}
+        </h2>
       </header>
 
       {myPlayrooms.length > 1 && (
@@ -767,6 +786,49 @@ const OwnerDashboard = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        <div className="dashboard-filter-group">
+          <label>Vreme od</label>
+          <input
+            type="time"
+            value={timeFromFilter}
+            onChange={(e) => setTimeFromFilter(e.target.value)}
+          />
+        </div>
+
+        <div className="dashboard-filter-group">
+          <label>Vreme do</label>
+          <input
+            type="time"
+            value={timeToFilter}
+            onChange={(e) => setTimeToFilter(e.target.value)}
+          />
+        </div>
+
+        <div className="dashboard-filter-actions">
+          <button
+            type="button"
+            className="btn-reset-filters"
+            onClick={() => {
+              setSearchTerm("");
+              setStatusFilter("svi");
+              setDateFilter("");
+              setTimeFromFilter("");
+              setTimeToFilter("");
+            }}
+          >
+            Resetuj filtere
+          </button>
+        </div>
+
+        <div className="dashboard-filter-group">
+          <label htmlFor="booking-date-filter">Datum</label>
+          <input
+            id="booking-date-filter"
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+          />
+        </div>
 
         <div className="dashboard-filter-group">
           <label htmlFor="booking-status-filter">Status</label>
@@ -781,30 +843,6 @@ const OwnerDashboard = () => {
             <option value="zavrseno">Završene</option>
             <option value="otkazano">Otkazane</option>
           </select>
-        </div>
-
-        <div className="dashboard-filter-group">
-          <label htmlFor="booking-date-filter">Datum</label>
-          <input
-            id="booking-date-filter"
-            type="date"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-          />
-        </div>
-
-        <div className="dashboard-filter-actions">
-          <button
-            type="button"
-            className="btn-reset-filters"
-            onClick={() => {
-              setSearchTerm("");
-              setStatusFilter("svi");
-              setDateFilter("");
-            }}
-          >
-            Resetuj filtere
-          </button>
         </div>
       </div>
       <div className="dashboard-filter-results">

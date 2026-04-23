@@ -47,7 +47,7 @@ const Navbar = () => {
       return (
         <>
           <Link to="/owner/dashboard" onClick={closeMenu}>
-            📊 Dashboard
+            📊 Analitika
           </Link>
           <Link to="/manage-playroom" onClick={closeMenu}>
             🏢 Moja igraonica
