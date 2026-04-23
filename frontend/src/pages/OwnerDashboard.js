@@ -22,6 +22,7 @@ const OwnerDashboard = () => {
   const [showAllBookingsModal, setShowAllBookingsModal] = useState(false);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [expandedOwnerBookingId, setExpandedOwnerBookingId] = useState(null);
+  const [showTodayBookingsModal, setShowTodayBookingsModal] = useState(false);
 
   useEffect(() => {
     if (!authLoading) {
@@ -32,7 +33,7 @@ const OwnerDashboard = () => {
 
   useEffect(() => {
     if (selectedPlayroomId) {
-      fetchStats(selectedPlayroomId);
+      fetchStats(selectedPlayroomId, true);
     } else {
       setStats(null);
     }
@@ -45,7 +46,7 @@ const OwnerDashboard = () => {
       fetchBookings();
 
       if (selectedPlayroomId) {
-        fetchStats(selectedPlayroomId);
+        fetchStats(selectedPlayroomId, false);
       }
     }, 10000);
 
@@ -87,9 +88,12 @@ const OwnerDashboard = () => {
     }
   };
 
-  const fetchStats = async (playroomId) => {
+  const fetchStats = async (playroomId, showLoader = false) => {
     try {
-      setStatsLoading(true);
+      if (showLoader) {
+        setStatsLoading(true);
+      }
+
       setError("");
 
       const resStats = await api.get(`/playrooms/${playroomId}/stats`);
@@ -102,7 +106,9 @@ const OwnerDashboard = () => {
       );
       setStats(null);
     } finally {
-      setStatsLoading(false);
+      if (showLoader) {
+        setStatsLoading(false);
+      }
     }
   };
 
@@ -236,6 +242,15 @@ const OwnerDashboard = () => {
       }),
     [filteredBookings, now],
   );
+
+  const todayBookings = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+
+    return filteredBookings.filter((b) => {
+      if (!b.datum) return false;
+      return b.datum.slice(0, 10) === today;
+    });
+  }, [filteredBookings]);
 
   const renderOwnerBookingsAccordion = (items = []) => {
     if (!items.length) {
@@ -479,119 +494,18 @@ const OwnerDashboard = () => {
               <p>Završene rezervacije</p>
             </div>
           </div>
-
-          <div className="stat-card purple">
-            <span className="stat-icon">💰</span>
+          <div
+            className="stat-card purple clickable"
+            onClick={() => setShowTodayBookingsModal(true)}
+          >
+            <span className="stat-icon">📅</span>
             <div className="stat-info">
-              <h3>{stats?.totalRevenue ?? 0} RSD</h3>
-              <p>Ukupna zarada</p>
+              <h3>{todayBookings.length}</h3>
+              <p>Današnje rezervacije</p>
             </div>
           </div>
         </div>
       )}
-
-      <div className="owner-bookings">
-        <div className="confirmed-header">
-          <h3>📋 Rezervacije na čekanju</h3>
-        </div>
-
-        {bookingsLoading ? (
-          <div className="loading-container">⏳ Učitavanje rezervacija...</div>
-        ) : pendingBookings.length === 0 ? (
-          <div className="empty-state">
-            <p>Nema rezervacija na čekanju za izabranu igraonicu.</p>
-          </div>
-        ) : (
-          <div className="owner-bookings-list">
-            {pendingBookings.map((booking) => (
-              <div key={booking._id} className="booking-card">
-                <div className="booking-status-row">
-                  <span className="status-badge pending">Čeka potvrdu</span>
-                </div>
-
-                <p>
-                  <strong>
-                    {booking.imeRoditelja} {booking.prezimeRoditelja}
-                  </strong>
-                </p>
-
-                <p>📧 {booking.emailRoditelja || "-"}</p>
-                <p>📞 {booking.telefonRoditelja || booking.telefon || "-"}</p>
-                <p>
-                  📅{" "}
-                  {booking.datum
-                    ? new Date(booking.datum).toLocaleDateString("sr-RS")
-                    : "-"}
-                </p>
-                <p>
-                  ⏰ {booking.vremeOd || "-"} - {booking.vremeDo || "-"}
-                </p>
-                <p>👶 Broj dece: {booking.brojDece ?? 0}</p>
-                <p>👨‍👩‍👧 Broj roditelja: {booking.brojRoditelja ?? 0}</p>
-                <p>💰 Ukupna cena: {booking.ukupnaCena ?? 0} RSD</p>
-                {Array.isArray(booking.izabraneCene) &&
-                  booking.izabraneCene.length > 0 && (
-                    <div className="booking-selected-items">
-                      <p>
-                        <strong>Izabrane stavke:</strong>
-                      </p>
-                      {booking.izabraneCene.map((item, idx) => (
-                        <p key={`pending-cena-${idx}`}>
-                          • {item.naziv} ({item.tip || "fiksno"}) -{" "}
-                          {getItemCalculationText(item, booking)}
-                          {item.opis && <span> - {item.opis}</span>}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-
-                {booking.izabraniPaket?.naziv && (
-                  <div className="booking-selected-items">
-                    <p>
-                      <strong>Paket:</strong> {booking.izabraniPaket.naziv} (
-                      {booking.izabraniPaket.tip || "fiksno"}) -{" "}
-                      {getItemCalculationText(booking.izabraniPaket, booking)}
-                    </p>
-
-                    {booking.izabraniPaket.opis && (
-                      <p>- {booking.izabraniPaket.opis}</p>
-                    )}
-                  </div>
-                )}
-
-                {Array.isArray(booking.izabraneUsluge) &&
-                  booking.izabraneUsluge.length > 0 && (
-                    <div className="booking-selected-items">
-                      <p>
-                        <strong>Dodatne usluge:</strong>
-                      </p>
-                      {booking.izabraneUsluge.map((item, idx) => (
-                        <p key={`pending-usluga-${idx}`}>
-                          • {item.naziv} ({item.tip || "fiksno"}) -{" "}
-                          {getItemCalculationText(item, booking)}
-                          {item.opis && <span> - {item.opis}</span>}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-
-                {booking.napomena && <p>📝 Napomena: {booking.napomena}</p>}
-                <button
-                  className="btn-confirm-booking"
-                  onClick={() => handleConfirm(booking._id)}
-                  disabled={
-                    confirmingId === booking._id || booking.status !== "cekanje"
-                  }
-                >
-                  {confirmingId === booking._id
-                    ? "Potvrđujem..."
-                    : "Potvrdi rezervaciju"}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
       {showAllBookingsModal && (
         <div
@@ -617,6 +531,33 @@ const OwnerDashboard = () => {
             </div>
 
             {renderOwnerBookingsAccordion(allOwnerBookings)}
+          </div>
+        </div>
+      )}
+      {showTodayBookingsModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setShowTodayBookingsModal(false);
+            setExpandedOwnerBookingId(null);
+          }}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header sticky-modal-header">
+              <h3>📅 Današnje rezervacije</h3>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => {
+                  setShowTodayBookingsModal(false);
+                  setExpandedOwnerBookingId(null);
+                }}
+              >
+                ✖
+              </button>
+            </div>
+
+            {renderOwnerBookingsAccordion(todayBookings)}
           </div>
         </div>
       )}
