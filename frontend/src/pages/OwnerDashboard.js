@@ -26,6 +26,10 @@ const OwnerDashboard = () => {
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [expandedOwnerBookingId, setExpandedOwnerBookingId] = useState(null);
   const [showTodayBookingsModal, setShowTodayBookingsModal] = useState(false);
+  const [showReviewsModal, setShowReviewsModal] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState("");
 
   useEffect(() => {
     if (!authLoading) {
@@ -37,8 +41,10 @@ const OwnerDashboard = () => {
   useEffect(() => {
     if (selectedPlayroomId) {
       fetchStats(selectedPlayroomId, true);
+      fetchReviews(selectedPlayroomId);
     } else {
       setStats(null);
+      setReviews([]);
     }
   }, [selectedPlayroomId]);
 
@@ -134,6 +140,36 @@ const OwnerDashboard = () => {
     }
   };
 
+  const fetchReviews = async (playroomId) => {
+    if (!playroomId) {
+      setReviews([]);
+      return;
+    }
+
+    try {
+      setReviewsLoading(true);
+      setReviewsError("");
+
+      const res = await api.get(`/reviews/${playroomId}?page=1`);
+
+      const data = Array.isArray(res.data?.data)
+        ? res.data.data
+        : Array.isArray(res.data?.reviews)
+          ? res.data.reviews
+          : [];
+
+      setReviews(data);
+    } catch (err) {
+      console.error("Greška pri učitavanju recenzija:", err);
+      setReviews([]);
+      setReviewsError(
+        err?.response?.data?.message || "Greška pri učitavanju recenzija.",
+      );
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
   const handleConfirm = async (bookingId) => {
     if (confirmingId) return;
 
@@ -202,6 +238,11 @@ const OwnerDashboard = () => {
     }
 
     return `${cena} RSD`;
+  };
+
+  const renderStars = (rating = 0) => {
+    const safe = Math.max(0, Math.min(5, Number(rating) || 0));
+    return "★".repeat(safe) + "☆".repeat(5 - safe);
   };
 
   const filteredBookings = useMemo(() => {
@@ -488,6 +529,27 @@ const OwnerDashboard = () => {
 
     return Math.round((occupied / total) * 100);
   }, [filteredBookings]);
+
+  const reviewsStats = useMemo(() => {
+    const total = reviews.length;
+
+    if (total === 0) {
+      return {
+        total: 0,
+        averageRating: 0,
+      };
+    }
+
+    const sum = reviews.reduce(
+      (acc, review) => acc + Number(review.ocena || review.rating || 0),
+      0,
+    );
+
+    return {
+      total,
+      averageRating: (sum / total).toFixed(1),
+    };
+  }, [reviews]);
 
   const renderOwnerBookingsAccordion = (items = []) => {
     if (!items.length) {
@@ -804,6 +866,16 @@ const OwnerDashboard = () => {
               <p>Statistika</p>
             </div>
           </div>
+          <div
+            className="stat-card dark clickable"
+            onClick={() => setShowReviewsModal(true)}
+          >
+            <span className="stat-icon">⭐</span>
+            <div className="stat-info">
+              <h3>{reviewsStats.total}</h3>
+              <p>Recenzije</p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1017,6 +1089,85 @@ const OwnerDashboard = () => {
                 <p>{occupancyStats}%</p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {showReviewsModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setShowReviewsModal(false);
+          }}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header sticky-modal-header">
+              <h3>⭐ Recenzije</h3>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowReviewsModal(false)}
+              >
+                ✖
+              </button>
+            </div>
+
+            <div className="stats-modal-content">
+              <div className="stats-box">
+                <h4>Ukupno recenzija</h4>
+                <p>{reviewsStats.total}</p>
+              </div>
+
+              <div className="stats-box">
+                <h4>Prosečna ocena</h4>
+                <p>{reviewsStats.averageRating}</p>
+              </div>
+            </div>
+
+            {reviewsLoading ? (
+              <div className="loading-container">
+                ⏳ Učitavanje recenzija...
+              </div>
+            ) : reviewsError ? (
+              <div className="error-message">{reviewsError}</div>
+            ) : reviews.length === 0 ? (
+              <div className="empty-state modal-empty">
+                <p>Još nema recenzija za ovu igraonicu.</p>
+              </div>
+            ) : (
+              <div className="owner-reviews-list">
+                {reviews.map((review) => (
+                  <div key={review._id} className="owner-review-card">
+                    <div className="owner-review-top">
+                      <div>
+                        <h4>
+                          {review.user?.ime ||
+                            review.roditeljId?.ime ||
+                            "Korisnik"}{" "}
+                          {review.user?.prezime ||
+                            review.roditeljId?.prezime ||
+                            ""}
+                        </h4>
+                        <p className="owner-review-date">
+                          {review.createdAt
+                            ? new Date(review.createdAt).toLocaleDateString(
+                                "sr-RS",
+                              )
+                            : "-"}
+                        </p>
+                      </div>
+
+                      <div className="owner-review-rating">
+                        {renderStars(review.ocena || review.rating || 0)}
+                      </div>
+                    </div>
+
+                    <p className="owner-review-text">
+                      {review.komentar || review.comment || "Bez komentara."}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
