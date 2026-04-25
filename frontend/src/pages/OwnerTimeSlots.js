@@ -297,15 +297,6 @@ const OwnerTimeSlots = () => {
             </div>
           </div>
 
-          {selectedPlayroomData && (
-            <div className="playroom-summary">
-              <h2>{selectedPlayroomData.naziv}</h2>
-              <p>
-                📍 {selectedPlayroomData.adresa}, {selectedPlayroomData.grad}
-              </p>
-            </div>
-          )}
-
           {loadingSlots ? (
             <div className="loading-slots">Učitavanje termina...</div>
           ) : timeSlots.length === 0 ? (
