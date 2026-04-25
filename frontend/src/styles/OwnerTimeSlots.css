@@ -28,6 +28,29 @@
   font-size: 0.95rem;
 }
 
+.clickable-slot {
+  cursor: pointer;
+}
+
+.slot-click-hint {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #ff6b4a;
+  color: white;
+  text-align: center;
+  font-weight: 700;
+}
+
+.slot-card.zauzeto .slot-click-hint {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.booking-info {
+  margin-top: 16px;
+}
+
 /* ALERTS */
 
 .success-message {

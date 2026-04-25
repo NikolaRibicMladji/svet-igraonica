@@ -1,12 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyPlayrooms } from "../services/playroomService";
-import {
-  getAllTimeSlotsForOwner,
-  manualBookInterval,
-} from "../services/bookingService";
+import { getAllTimeSlotsForOwner } from "../services/bookingService";
 import { useAuth } from "../context/AuthContext";
-import ManualBookingModal from "../components/ManualBookingModal";
+
 import "../styles/OwnerTimeSlots.css";
 import { useToast } from "../context/ToastContext";
 
@@ -23,9 +20,9 @@ const OwnerTimeSlots = () => {
     new Date().toISOString().split("T")[0],
   );
   const [message, setMessage] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState(null);
+
   const [error, setError] = useState("");
+  const [expandedSlotKey, setExpandedSlotKey] = useState(null);
 
   useEffect(() => {
     if (!authLoading) {
@@ -127,69 +124,30 @@ const OwnerTimeSlots = () => {
   };
 
   const openManualBooking = (slot) => {
-    setSelectedSlot(slot);
-    setMessage("");
-    setError("");
-    setModalOpen(true);
-  };
-
-  const closeManualBooking = () => {
-    setModalOpen(false);
-    setSelectedSlot(null);
-  };
-
-  const handleManualBooking = async (bookingData) => {
-    if (loadingSlots) return;
-    if (!selectedSlot) {
-      setError("Termin nije izabran.");
+    if (!selectedPlayroom || !slot?.vremeOd || !slot?.vremeDo) {
+      setError("Termin nije validan.");
       return;
     }
 
-    setError("");
-    setMessage("");
+    const params = new URLSearchParams({
+      datum: selectedDate,
+      vremeOd: slot.vremeOd,
+      vremeDo: slot.vremeDo,
+      mode: "owner",
+    });
 
-    try {
-      const result = await manualBookInterval({
-        playroomId: selectedPlayroom,
-        datum: selectedDate,
-        vremeOd: bookingData.vremeOd,
-        vremeDo: bookingData.vremeDo,
+    navigate(`/book/${selectedPlayroom}?${params.toString()}`);
+  };
 
-        cenaIds: bookingData.cenaIds,
-        paketId: bookingData.paketId,
-        usluge: bookingData.usluge,
-        brojDece: Number(bookingData.brojDece),
-        brojRoditelja: Number(bookingData.brojRoditelja),
-        imeRoditelja: bookingData.imeRoditelja,
-        prezimeRoditelja: bookingData.prezimeRoditelja,
-        emailRoditelja: bookingData.emailRoditelja,
-        telefonRoditelja: bookingData.telefonRoditelja,
-        napomena: bookingData.napomena || "",
-      });
+  const handleSlotClick = (segment, index) => {
+    const slotKey = `${segment.vremeOd}-${segment.vremeDo}-${index}`;
 
-      if (result?.success) {
-        const successMessage = result.message || "Termin je uspešno zauzet.";
-        setMessage(successMessage);
-        toast.success(successMessage);
-        closeManualBooking();
-
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        await loadTimeSlots();
-
-        setTimeout(() => {
-          setMessage("");
-        }, 3000);
-      } else {
-        toast.error(result?.error || "Greška pri ručnom zauzimanju termina.");
-      }
-    } catch (err) {
-      const message =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Greška pri ručnom zauzimanju termina.";
-      toast.error(message);
-      throw err;
+    if (segment.tip === "zauzeto") {
+      setExpandedSlotKey((prev) => (prev === slotKey ? null : slotKey));
+      return;
     }
+
+    openManualBooking(segment);
   };
 
   const selectedPlayroomData = playrooms.find(
@@ -263,25 +221,6 @@ const OwnerTimeSlots = () => {
         <>
           <div className="filters-card">
             <div className="filter-group">
-              <label htmlFor="owner-playroom-select">Izaberite igraonicu</label>
-              <select
-                id="owner-playroom-select"
-                value={selectedPlayroom}
-                onChange={(e) => {
-                  setSelectedPlayroom(e.target.value);
-                  setMessage("");
-                  setError("");
-                }}
-              >
-                {playrooms.map((playroom) => (
-                  <option key={playroom._id} value={playroom._id}>
-                    {playroom.naziv}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="filter-group">
               <label htmlFor="owner-date-select">Izaberite datum</label>
               <input
                 id="owner-date-select"
@@ -308,7 +247,10 @@ const OwnerTimeSlots = () => {
               {timeSlots.map((segment, index) => (
                 <div
                   key={`${segment.vremeOd}-${segment.vremeDo}-${index}`}
-                  className={`slot-card ${segment.tip === "zauzeto" ? "zauzeto" : "slobodno"}`}
+                  className={`slot-card clickable-slot ${
+                    segment.tip === "zauzeto" ? "zauzeto" : "slobodno"
+                  }`}
+                  onClick={() => handleSlotClick(segment, index)}
                 >
                   <div className="slot-header">
                     <h3>
@@ -328,96 +270,107 @@ const OwnerTimeSlots = () => {
 
                   <div className="slot-body">
                     {segment.booking ? (
-                      <div className="booking-info">
-                        <h4>Rezervacija</h4>
-                        <p>
-                          ⏳ Trajanje:{" "}
-                          {calculateDuration(segment.vremeOd, segment.vremeDo)}
-                        </p>
-                        <p>👤 {formatBookingName(segment.booking)}</p>
-                        <p>📧 {formatBookingEmail(segment.booking)}</p>
-                        <p>📞 {formatBookingPhone(segment.booking)}</p>
-                        <p>
-                          💰 Ukupna cena: {segment.booking.ukupnaCena || 0} RSD
-                        </p>
-                        {Number(segment.booking.brojDece) > 0 && (
-                          <p>👶 Broj dece: {segment.booking.brojDece}</p>
-                        )}
+                      expandedSlotKey ===
+                        `${segment.vremeOd}-${segment.vremeDo}-${index}` && (
+                        <div
+                          className="booking-info"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <h4>Rezervacija</h4>
 
-                        {Number(segment.booking.brojRoditelja) > 0 && (
                           <p>
-                            👨‍👩‍👧 Broj roditelja: {segment.booking.brojRoditelja}
+                            ⏳ Trajanje:{" "}
+                            {calculateDuration(
+                              segment.vremeOd,
+                              segment.vremeDo,
+                            )}
                           </p>
-                        )}
+                          <p>👤 {formatBookingName(segment.booking)}</p>
+                          <p>📧 {formatBookingEmail(segment.booking)}</p>
+                          <p>📞 {formatBookingPhone(segment.booking)}</p>
+                          <p>
+                            💰 Ukupna cena: {segment.booking.ukupnaCena || 0}{" "}
+                            RSD
+                          </p>
 
-                        {Array.isArray(segment.booking.izabraneCene) &&
-                          segment.booking.izabraneCene.length > 0 && (
-                            <div className="booking-extra-block">
-                              <h5>Stavke iz cenovnika</h5>
-                              {segment.booking.izabraneCene.map((item, idx) => (
-                                <p key={`cena-${idx}`}>
-                                  • {item.naziv} (
-                                  {item.tip === "po_osobi"
-                                    ? "po osobi"
-                                    : item.tip === "po_satu"
-                                      ? "po satu"
-                                      : "fiksno"}
-                                  ) - {item.cena} RSD
-                                  {item.opis && <span> - {item.opis}</span>}
-                                </p>
-                              ))}
-                            </div>
+                          {Number(segment.booking.brojDece) > 0 && (
+                            <p>👶 Broj dece: {segment.booking.brojDece}</p>
                           )}
 
-                        {segment.booking.izabraniPaket?.naziv && (
-                          <div className="booking-extra-block">
-                            <h5>Paket</h5>
+                          {Number(segment.booking.brojRoditelja) > 0 && (
                             <p>
-                              • {segment.booking.izabraniPaket.naziv} (
-                              {segment.booking.izabraniPaket.tip === "po_osobi"
-                                ? "po osobi"
-                                : segment.booking.izabraniPaket.tip ===
-                                    "po_satu"
-                                  ? "po satu"
-                                  : "fiksno"}
-                              ) - {segment.booking.izabraniPaket.cena} RSD
+                              👨‍👩‍👧 Broj roditelja: {segment.booking.brojRoditelja}
                             </p>
-                          </div>
-                        )}
+                          )}
 
-                        {Array.isArray(segment.booking.izabraneUsluge) &&
-                          segment.booking.izabraneUsluge.length > 0 && (
+                          {Array.isArray(segment.booking.izabraneCene) &&
+                            segment.booking.izabraneCene.length > 0 && (
+                              <div className="booking-extra-block">
+                                <h5>Stavke iz cenovnika</h5>
+                                {segment.booking.izabraneCene.map(
+                                  (item, idx) => (
+                                    <p key={`cena-${idx}`}>
+                                      • {item.naziv} (
+                                      {item.tip === "po_osobi"
+                                        ? "po osobi"
+                                        : item.tip === "po_satu"
+                                          ? "po satu"
+                                          : "fiksno"}
+                                      ) - {item.cena} RSD
+                                      {item.opis && <span> - {item.opis}</span>}
+                                    </p>
+                                  ),
+                                )}
+                              </div>
+                            )}
+
+                          {segment.booking.izabraniPaket?.naziv && (
                             <div className="booking-extra-block">
-                              <h5>Dodatne usluge</h5>
-                              {segment.booking.izabraneUsluge.map(
-                                (item, idx) => (
-                                  <p key={`usluga-${idx}`}>
-                                    • {item.naziv} (
-                                    {item.tip === "po_osobi"
-                                      ? "po osobi"
-                                      : item.tip === "po_satu"
-                                        ? "po satu"
-                                        : "fiksno"}
-                                    ) - {item.cena} RSD
-                                    {item.opis && <span> - {item.opis}</span>}
-                                  </p>
-                                ),
-                              )}
+                              <h5>Paket</h5>
+                              <p>
+                                • {segment.booking.izabraniPaket.naziv} (
+                                {segment.booking.izabraniPaket.tip ===
+                                "po_osobi"
+                                  ? "po osobi"
+                                  : segment.booking.izabraniPaket.tip ===
+                                      "po_satu"
+                                    ? "po satu"
+                                    : "fiksno"}
+                                ) - {segment.booking.izabraniPaket.cena} RSD
+                              </p>
                             </div>
                           )}
-                        {segment.booking.napomena && (
-                          <p>📝 Napomena: {segment.booking.napomena}</p>
-                        )}
-                      </div>
+
+                          {Array.isArray(segment.booking.izabraneUsluge) &&
+                            segment.booking.izabraneUsluge.length > 0 && (
+                              <div className="booking-extra-block">
+                                <h5>Dodatne usluge</h5>
+                                {segment.booking.izabraneUsluge.map(
+                                  (item, idx) => (
+                                    <p key={`usluga-${idx}`}>
+                                      • {item.naziv} (
+                                      {item.tip === "po_osobi"
+                                        ? "po osobi"
+                                        : item.tip === "po_satu"
+                                          ? "po satu"
+                                          : "fiksno"}
+                                      ) - {item.cena} RSD
+                                      {item.opis && <span> - {item.opis}</span>}
+                                    </p>
+                                  ),
+                                )}
+                              </div>
+                            )}
+
+                          {segment.booking.napomena && (
+                            <p>📝 Napomena: {segment.booking.napomena}</p>
+                          )}
+                        </div>
+                      )
                     ) : (
-                      <button
-                        type="button"
-                        className="btn-primary"
-                        onClick={() => openManualBooking(segment)}
-                        disabled={segment.tip === "zauzeto"}
-                      >
-                        Ručno zauzmi termin
-                      </button>
+                      <div className="slot-click-hint">
+                        Klikni za ručnu rezervaciju
+                      </div>
                     )}
                   </div>
                 </div>
@@ -425,14 +378,6 @@ const OwnerTimeSlots = () => {
             </div>
           )}
         </>
-      )}
-
-      {modalOpen && selectedSlot && (
-        <ManualBookingModal
-          slot={selectedSlot}
-          onClose={closeManualBooking}
-          onSubmit={handleManualBooking}
-        />
       )}
     </div>
   );

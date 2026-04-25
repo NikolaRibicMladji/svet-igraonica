@@ -32,7 +32,7 @@ const createBookingSchema = z.object({
       .string()
       .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
       .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
-    cenaIds: z.array(objectId).min(1, "Izaberi bar jednu stavku"),
+    cenaIds: z.array(objectId).optional().default([]),
     paketId: objectId.nullable().optional().default(null),
     usluge: z.array(objectId).optional().default([]),
     brojDece: z.coerce.number().min(0).optional().default(0),
@@ -78,7 +78,7 @@ const createGuestBookingSchema = z
         .string()
         .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
         .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
-      cenaIds: z.array(objectId).min(1, "Izaberi bar jednu stavku"),
+      cenaIds: z.array(objectId).optional().default([]),
       paketId: objectId.nullable().optional().default(null),
       usluge: z.array(objectId).optional().default([]),
       brojDece: z.coerce.number().min(0).optional().default(0),
@@ -129,7 +129,7 @@ const manualBookingSchema = z.object({
       .string()
       .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
       .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
-    cenaIds: z.array(objectId).min(1, "Izaberi bar jednu stavku"),
+    cenaIds: z.array(objectId).optional().default([]),
     paketId: objectId.nullable().optional().default(null),
     usluge: z.array(objectId).optional().default([]),
     brojDece: z.coerce.number().min(0).optional().default(0),

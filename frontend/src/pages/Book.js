@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   getAvailableTimeSlots,
   createBooking,
@@ -28,6 +28,13 @@ const formatDateForBackend = (date) => {
 const Book = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+
+  const prefillDate = queryParams.get("datum") || "";
+  const prefillStart = queryParams.get("vremeOd") || "";
+  const prefillEnd = queryParams.get("vremeDo") || "";
+  const isOwnerBooking = queryParams.get("mode") === "owner";
   const {
     user,
     isAuthenticated,
@@ -45,8 +52,8 @@ const Book = () => {
 
   const [playroom, setPlayroom] = useState(null);
   const [availability, setAvailability] = useState(null);
-  const [selectedStartTime, setSelectedStartTime] = useState("");
-  const [selectedEndTime, setSelectedEndTime] = useState("");
+  const [selectedStartTime, setSelectedStartTime] = useState(prefillStart);
+  const [selectedEndTime, setSelectedEndTime] = useState(prefillEnd);
   const startDropdownRef = useRef(null);
   const endDropdownRef = useRef(null);
   const [napomena, setNapomena] = useState("");
@@ -57,7 +64,9 @@ const Book = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const brojDeceRef = useRef(null);
-  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedDate, setSelectedDate] = useState(
+    prefillDate || getLocalDate(),
+  );
 
   const [korisnikPodaci, setKorisnikPodaci] = useState({
     ime: "",
@@ -229,8 +238,10 @@ const Book = () => {
   const loadTimeSlots = useCallback(async () => {
     setLoadingSlots(true);
     setError("");
-    setSelectedStartTime("");
-    setSelectedEndTime("");
+    if (!isOwnerBooking) {
+      setSelectedStartTime("");
+      setSelectedEndTime("");
+    }
 
     try {
       const result = await getAvailableTimeSlots(
@@ -257,6 +268,26 @@ const Book = () => {
   }, [id, selectedDate]);
 
   useEffect(() => {
+    if (isOwnerBooking && prefillStart && prefillEnd) {
+      setSelectedStartTime(prefillStart);
+      setSelectedEndTime(prefillEnd);
+    }
+  }, [isOwnerBooking, prefillStart, prefillEnd]);
+
+  useEffect(() => {
+    if (isOwnerBooking) {
+      setKorisnikPodaci({
+        ime: "",
+        prezime: "",
+        email: "",
+        telefon: "",
+        password: "",
+        confirmPassword: "",
+      });
+
+      return;
+    }
+
     if (!authLoading && isAuthenticated && user) {
       setKorisnikPodaci((prev) => ({
         ...prev,
@@ -268,7 +299,7 @@ const Book = () => {
         confirmPassword: "",
       }));
     }
-  }, [authLoading, isAuthenticated, user]);
+  }, [authLoading, isAuthenticated, user, isOwnerBooking]);
 
   useEffect(() => {
     loadPlayroom();
@@ -549,7 +580,7 @@ const Book = () => {
         items.push({
           type: "busy",
           key: `busy-${index}-${segment.vremeOd}-${segment.vremeDo}`,
-          label: `🔒 Zauzeto: ${segment.vremeOd} - ${segment.vremeDo}${
+          label: `❌ Zauzeto: ${segment.vremeOd} - ${segment.vremeDo}${
             segment.pripremaOd && segment.pripremaDo
               ? ` + priprema ${segment.pripremaOd} - ${segment.pripremaDo}`
               : ""
@@ -602,7 +633,7 @@ const Book = () => {
         items.push({
           type: "busy",
           key: `end-busy-${index}-${segment.vremeOd}-${segment.vremeDo}`,
-          label: `🔒 Zauzeto: ${segment.vremeOd} - ${segment.vremeDo}${
+          label: `❌ Zauzeto: ${segment.vremeOd} - ${segment.vremeDo}${
             segment.pripremaOd && segment.pripremaDo
               ? ` + priprema ${segment.pripremaOd} - ${segment.pripremaDo}`
               : ""
@@ -698,8 +729,8 @@ const Book = () => {
       return;
     }
 
-    if (selectedCenaIds.length === 0) {
-      setError("Izaberi bar jednu stavku iz cenovnika.");
+    if (selectedCenaIds.length === 0 && !selectedPaketId) {
+      setError("Izaberi bar jednu stavku iz cenovnika ili paket.");
       scrollToTop();
       return;
     }

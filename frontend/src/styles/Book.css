@@ -725,6 +725,28 @@
   line-height: 1.4;
 }
 
+.custom-time-item.busy {
+  background: #fee2e2;
+  color: #b91c1c;
+  cursor: not-allowed;
+  font-weight: 700;
+}
+
+.custom-time-item.busy:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.custom-time-item.free {
+  background: #e8f7ea;
+  color: #166534;
+  cursor: pointer;
+}
+
+.custom-time-item.free:hover {
+  background: #dcfce7;
+}
+
 /* =========================================
    RESPONSIVE
 ========================================= */

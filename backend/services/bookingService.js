@@ -341,9 +341,6 @@ const reserveSlot = async ({
     ) {
       throw new ErrorResponse("Nedostaju podaci za rezervaciju", 400);
     }
-    if (!Array.isArray(payload?.cenaIds) || payload.cenaIds.length === 0) {
-      throw new ErrorResponse("Izaberi bar jednu stavku iz cenovnika", 400);
-    }
 
     if (!mongoose.Types.ObjectId.isValid(slotId)) {
       throw new ErrorResponse("Nevalidan slot ID", 400);
@@ -428,20 +425,44 @@ const reserveSlot = async ({
       return diff > 0 ? diff : 1;
     })();
 
-    const selectedCenaIds = payload.cenaIds.map((id) => String(id));
+    const selectedCenaIds = (payload.cenaIds || []).map((id) => String(id));
 
     const selectedCene = Array.isArray(playroom.cene)
       ? playroom.cene.filter((c) => selectedCenaIds.includes(String(c._id)))
       : [];
 
-    if (selectedCene.length === 0) {
+    let selectedPaket = null;
+
+    if (payload.paketId) {
+      selectedPaket = Array.isArray(playroom.paketi)
+        ? playroom.paketi.find((p) => String(p._id) === String(payload.paketId))
+        : null;
+
+      if (!selectedPaket) {
+        await TimeSlot.findByIdAndUpdate(
+          slot._id,
+          { $set: { zauzeto: false } },
+          { session },
+        );
+
+        throw new ErrorResponse("Izabrani paket nije pronađen", 400);
+      }
+    }
+
+    const hasValidCene = selectedCene.length > 0;
+    const hasValidPaket = !!selectedPaket;
+
+    if (!hasValidCene && !hasValidPaket) {
       await TimeSlot.findByIdAndUpdate(
         slot._id,
         { $set: { zauzeto: false } },
         { session },
       );
 
-      throw new ErrorResponse("Izabrane cene nisu pronađene", 400);
+      throw new ErrorResponse(
+        "Izaberi validnu stavku iz cenovnika ili paket",
+        400,
+      );
     }
 
     let ukupnaCena = 0;
@@ -460,17 +481,7 @@ const reserveSlot = async ({
       }
     });
 
-    let selectedPaket = null;
-
-    if (payload.paketId) {
-      selectedPaket = Array.isArray(playroom.paketi)
-        ? playroom.paketi.find((p) => String(p._id) === String(payload.paketId))
-        : null;
-
-      if (!selectedPaket) {
-        throw new ErrorResponse("Izabrani paket nije pronađen", 400);
-      }
-
+    if (selectedPaket) {
       if (selectedPaket.tip === "fiksno" || !selectedPaket.tip) {
         ukupnaCena += Number(selectedPaket.cena) || 0;
       }
@@ -540,6 +551,12 @@ const reserveSlot = async ({
     ].some((item) => item?.tip === "po_osobi");
 
     if (hasPerPerson && (!brojDece || brojDece < 1)) {
+      await TimeSlot.findByIdAndUpdate(
+        slot._id,
+        { $set: { zauzeto: false } },
+        { session },
+      );
+
       throw new ErrorResponse(
         "Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po osobi",
         400,
@@ -655,10 +672,6 @@ const reserveCustomInterval = async ({
       !payload?.telefonRoditelja
     ) {
       throw new ErrorResponse("Nedostaju podaci za rezervaciju", 400);
-    }
-
-    if (!Array.isArray(payload?.cenaIds) || payload.cenaIds.length === 0) {
-      throw new ErrorResponse("Izaberi bar jednu stavku iz cenovnika", 400);
     }
 
     if (!mongoose.Types.ObjectId.isValid(playroomId)) {
@@ -788,35 +801,10 @@ const reserveCustomInterval = async ({
     const brojRoditelja = Number(payload.brojRoditelja) || 0;
     const trajanjeSati = (endMinutes - startMinutes) / 60;
 
-    const selectedCenaIds = payload.cenaIds.map((id) => String(id));
-
+    const selectedCenaIds = (payload.cenaIds || []).map((id) => String(id));
     const selectedCene = Array.isArray(playroom.cene)
       ? playroom.cene.filter((c) => selectedCenaIds.includes(String(c._id)))
       : [];
-
-    if (selectedCene.length === 0) {
-      await TimeSlot.findByIdAndUpdate(
-        lockedSlot._id,
-        { $set: { zauzeto: false } },
-        { session },
-      );
-
-      throw new ErrorResponse("Izabrane cene nisu pronađene", 400);
-    }
-
-    let ukupnaCena = 0;
-
-    selectedCene.forEach((c) => {
-      if (c.tip === "fiksno") {
-        ukupnaCena += Number(c.cena) || 0;
-      }
-      if (c.tip === "po_osobi") {
-        ukupnaCena += (Number(c.cena) || 0) * brojDece;
-      }
-      if (c.tip === "po_satu") {
-        ukupnaCena += (Number(c.cena) || 0) * trajanjeSati;
-      }
-    });
 
     let selectedPaket = null;
 
@@ -834,13 +822,47 @@ const reserveCustomInterval = async ({
 
         throw new ErrorResponse("Izabrani paket nije pronađen", 400);
       }
+    }
 
+    const hasValidCene = selectedCene.length > 0;
+    const hasValidPaket = !!selectedPaket;
+
+    if (!hasValidCene && !hasValidPaket) {
+      await TimeSlot.findByIdAndUpdate(
+        lockedSlot._id,
+        { $set: { zauzeto: false } },
+        { session },
+      );
+
+      throw new ErrorResponse(
+        "Izaberi validnu stavku iz cenovnika ili paket",
+        400,
+      );
+    }
+
+    let ukupnaCena = 0;
+
+    selectedCene.forEach((c) => {
+      if (c.tip === "fiksno") {
+        ukupnaCena += Number(c.cena) || 0;
+      }
+      if (c.tip === "po_osobi") {
+        ukupnaCena += (Number(c.cena) || 0) * brojDece;
+      }
+      if (c.tip === "po_satu") {
+        ukupnaCena += (Number(c.cena) || 0) * trajanjeSati;
+      }
+    });
+
+    if (selectedPaket) {
       if (selectedPaket.tip === "fiksno" || !selectedPaket.tip) {
         ukupnaCena += Number(selectedPaket.cena) || 0;
       }
+
       if (selectedPaket.tip === "po_osobi") {
         ukupnaCena += (Number(selectedPaket.cena) || 0) * brojDece;
       }
+
       if (selectedPaket.tip === "po_satu") {
         ukupnaCena += (Number(selectedPaket.cena) || 0) * trajanjeSati;
       }
