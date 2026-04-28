@@ -131,7 +131,11 @@ const createParentUser = async ({
 exports.registerUser = async (data, metadata = {}) => {
   const { ime, prezime, email, password, telefon, role } = data;
 
-  const userRole = role === ROLES.VLASNIK ? ROLES.VLASNIK : ROLES.RODITELJ;
+  if (!role) {
+    throw createError("Tip korisnika je obavezan", 400);
+  }
+
+  const userRole = role;
 
   const user = await createParentUser({
     ime,

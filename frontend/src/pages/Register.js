@@ -13,7 +13,7 @@ const Register = () => {
     email: "",
     password: "",
     telefon: "",
-    role: "roditelj",
+    role: "",
   });
 
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -266,6 +266,7 @@ const Register = () => {
               onChange={handleChange}
               className={errors.role ? "input-error" : ""}
             >
+              <option value="">-- Izaberite tip korisnika --</option>
               <option value="roditelj">Roditelj</option>
               <option value="vlasnik">Vlasnik igraonice</option>
             </select>

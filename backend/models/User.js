@@ -60,7 +60,7 @@ const UserSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: Object.values(ROLES),
-      default: ROLES.RODITELJ,
+      required: true,
       index: true,
     },
 

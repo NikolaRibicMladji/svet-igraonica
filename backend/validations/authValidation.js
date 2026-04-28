@@ -19,7 +19,9 @@ const registerSchema = z.object({
       .regex(/^[0-9]+$/, "Telefon može sadržati samo brojeve")
       .min(8, "Telefon mora imati bar 8 cifara"),
 
-    role: z.enum(["roditelj", "vlasnik"]).optional(),
+    role: z.enum(["roditelj", "vlasnik"], {
+      required_error: "Tip korisnika je obavezan",
+    }),
   }),
   params: z.object({}).optional(),
   query: z.object({}).optional(),
