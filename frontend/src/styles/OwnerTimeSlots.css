@@ -370,6 +370,144 @@
   cursor: not-allowed;
 }
 
+.owner-reservation-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 24px;
+  margin-bottom: 26px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.owner-date-filter {
+  flex: 1;
+  margin: 0;
+}
+
+.owner-reserve-btn {
+  height: 50px;
+  margin-bottom: 0;
+  white-space: nowrap;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 22px;
+  background: #ff6b4a;
+  color: #ffffff;
+  font-weight: 800;
+  cursor: pointer;
+  min-height: 48px;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.owner-reserve-btn:hover {
+  background: #e95d3f;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(255, 107, 74, 0.25);
+}
+
+.owner-reserve-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+  box-shadow: none;
+}
+.slots-grid {
+  align-items: start;
+}
+
+.slot-card.zauzeto {
+  align-self: start;
+  border: 1px solid #e5eaf3;
+  border-left: none;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.slot-card.zauzeto:hover {
+  transform: translateY(-2px);
+}
+
+.owner-booking-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px;
+}
+
+.owner-booking-card-header h3 {
+  margin: 0 0 10px;
+  color: #ff6b4a;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.owner-booking-short-info {
+  margin: 0;
+  color: #475569;
+  font-size: 15px;
+}
+
+.owner-booking-card-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.owner-booking-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.owner-booking-arrow {
+  color: #334155;
+  font-size: 14px;
+  transition: transform 0.2s ease;
+}
+
+.owner-booking-arrow.open {
+  transform: rotate(180deg);
+}
+
+.owner-booking-card-details {
+  border-top: 1px solid #e5eaf3;
+  background: #f8fafc;
+  padding: 18px 22px 22px;
+}
+
+.owner-booking-card-details p {
+  margin: 0 0 13px;
+  color: #475569;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.owner-booking-extra-block {
+  margin-top: 14px;
+}
+
+.owner-booking-extra-block strong {
+  color: #334155;
+}
+
 /* RESPONSIVE */
 
 @media (max-width: 1024px) {
@@ -380,6 +518,35 @@
 }
 
 @media (max-width: 768px) {
+  .owner-booking-card-header {
+    padding: 18px;
+  }
+
+  .owner-booking-card-header h3 {
+    font-size: 18px;
+  }
+
+  .owner-booking-card-right {
+    gap: 8px;
+  }
+
+  .owner-booking-status-badge {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .owner-booking-card-details {
+    padding: 16px 18px 20px;
+  }
+  .owner-reservation-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 18px;
+  }
+
+  .owner-reserve-btn {
+    width: 100%;
+  }
   .owner-slots-page {
     padding: 24px 16px;
   }

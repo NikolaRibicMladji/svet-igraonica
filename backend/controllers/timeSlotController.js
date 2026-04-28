@@ -449,7 +449,7 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
       status: { $in: getBlockingStatuses() },
     })
       .select(
-        "_id roditeljId imeRoditelja prezimeRoditelja emailRoditelja telefonRoditelja napomena status createdAt ukupnaCena vremeOd vremeDo",
+        "_id roditeljId imeRoditelja prezimeRoditelja emailRoditelja telefonRoditelja napomena status createdAt ukupnaCena vremeOd vremeDo brojDece brojRoditelja izabraneCene izabraniPaket izabraneUsluge",
       )
       .populate("roditeljId", "ime prezime email telefon")
       .sort({ vremeOd: 1 })
@@ -469,6 +469,11 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
           emailRoditelja: booking.emailRoditelja,
           telefonRoditelja: booking.telefonRoditelja,
           ukupnaCena: booking.ukupnaCena,
+          brojDece: booking.brojDece,
+          brojRoditelja: booking.brojRoditelja,
+          izabraneCene: booking.izabraneCene || [],
+          izabraniPaket: booking.izabraniPaket || null,
+          izabraneUsluge: booking.izabraneUsluge || [],
           napomena: booking.napomena,
           status: booking.status,
           createdAt: booking.createdAt,
