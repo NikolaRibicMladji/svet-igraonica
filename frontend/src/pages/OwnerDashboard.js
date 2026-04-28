@@ -306,8 +306,6 @@ const OwnerDashboard = () => {
     return result;
   }, [bookings, selectedPlayroomId, searchTerm, statusFilter, dateFilter]);
 
-  const now = new Date();
-
   const allOwnerBookings = useMemo(() => filteredBookings, [filteredBookings]);
 
   const pendingBookings = useMemo(
@@ -316,28 +314,13 @@ const OwnerDashboard = () => {
   );
 
   const upcomingConfirmedBookings = useMemo(
-    () =>
-      filteredBookings.filter((b) => {
-        if (b.status !== "potvrdjeno") return false;
-        if (!b.datum || !b.vremeDo) return false;
-
-        const bookingEnd = new Date(`${b.datum.slice(0, 10)}T${b.vremeDo}:00`);
-        return bookingEnd > now;
-      }),
-    [filteredBookings, now],
+    () => filteredBookings.filter((b) => b.status === "potvrdjeno"),
+    [filteredBookings],
   );
 
   const completedBookings = useMemo(
-    () =>
-      filteredBookings.filter((b) => {
-        if (b.status === "zavrseno") return true;
-
-        if (!b.datum || !b.vremeDo) return false;
-
-        const bookingEnd = new Date(`${b.datum.slice(0, 10)}T${b.vremeDo}:00`);
-        return bookingEnd <= now;
-      }),
-    [filteredBookings, now],
+    () => filteredBookings.filter((b) => b.status === "zavrseno"),
+    [filteredBookings],
   );
 
   const todayBookings = useMemo(() => {
