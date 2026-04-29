@@ -1020,7 +1020,7 @@ const handleBookingEmails = async (bookingId) => {
     const booking = await Booking.findById(bookingId)
       .populate({
         path: "playroomId",
-        select: "naziv adresa grad vlasnikId",
+        select: "naziv adresa grad vlasnikId besplatnePogodnosti",
         populate: {
           path: "vlasnikId",
           select: "ime prezime email",
@@ -1071,7 +1071,7 @@ const sendCancellationEmailById = async (bookingId) => {
     const booking = await Booking.findById(bookingId)
       .populate({
         path: "playroomId",
-        select: "naziv adresa grad vlasnikId",
+        select: "naziv adresa grad vlasnikId besplatnePogodnosti",
         populate: {
           path: "vlasnikId",
           select: "ime prezime email",

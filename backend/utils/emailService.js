@@ -87,11 +87,7 @@ const generateEmailHtml = (
 
   const renderStackedList = (items = []) => {
     if (!Array.isArray(items) || items.length === 0) {
-      return `
-      <div style="font-size:14px;color:#667085;line-height:1.5;">
-        Nema izabranih stavki
-      </div>
-    `;
+      return "";
     }
 
     return items
@@ -353,46 +349,70 @@ const generateEmailHtml = (
                 </table>
               </div>
 
-             <div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px 18px 16px;margin-bottom:18px;background:#ffffff;">
+             ${
+               Array.isArray(booking?.izabraneCene) &&
+               booking.izabraneCene.length > 0
+                 ? `
+<div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px;margin-bottom:18px;background:#ffffff;">
   <div style="font-size:15px;font-weight:800;color:#101828;margin-bottom:14px;">
     Stavke iz cenovnika
   </div>
-  ${renderStackedList(booking?.izabraneCene || [])}
+  ${renderStackedList(booking.izabraneCene)}
 </div>
+`
+                 : ""
+             }
 
-              <div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px 18px 16px;margin-bottom:18px;background:#ffffff;">
-                <div style="font-size:15px;font-weight:800;color:#101828;margin-bottom:14px;">
-                  Izabrani paket
-                </div>
-                ${renderPaket}
-              </div>
+${
+  booking?.izabraniPaket
+    ? `
+<div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px;margin-bottom:18px;background:#ffffff;">
+  <div style="font-size:15px;font-weight:800;color:#101828;margin-bottom:14px;">
+    Izabrani paket
+  </div>
+  ${renderPaket}
+</div>
+`
+    : ""
+}
 
-           <div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px 18px 16px;margin-bottom:18px;background:#ffffff;">
+${
+  Array.isArray(booking?.izabraneUsluge) && booking.izabraneUsluge.length > 0
+    ? `
+<div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px;margin-bottom:18px;background:#ffffff;">
   <div style="font-size:15px;font-weight:800;color:#101828;margin-bottom:14px;">
     Dodatne usluge
   </div>
-  ${renderStackedList(booking?.izabraneUsluge || [])}
+  ${renderStackedList(booking.izabraneUsluge)}
 </div>
+`
+    : ""
+}
 
-              <div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px 18px 16px;margin-bottom:18px;background:#ffffff;">
-                <div style="font-size:15px;font-weight:800;color:#101828;margin-bottom:14px;">
-                  Napomena
-                </div>
-                <div style="font-size:14px;color:#475467;line-height:1.6;">
-                  ${booking?.napomena ? booking.napomena : "Nema dodatne napomene."}
-                </div>
-              </div>
+${
+  booking?.napomena
+    ? `
+<div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px;margin-bottom:18px;background:#ffffff;">
+  <div style="font-size:15px;font-weight:800;color:#101828;margin-bottom:14px;">
+    Napomena
+  </div>
+  <div style="font-size:14px;color:#475467;line-height:1.6;">
+    ${booking.napomena}
+  </div>
+</div>
+`
+    : ""
+}
 
-              <div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px 18px 16px;background:#ffffff;">
-                <div style="font-size:15px;font-weight:800;color:#101828;margin-bottom:14px;">
-                  Besplatne pogodnosti
-                </div>
-                <div>
-                  ${besplatne}
-                </div>
-              </div>
-
-            </div>
+<div style="border:1px solid #eaecf0;border-radius:16px;padding:18px 16px;background:#ffffff;">
+  <div style="font-size:15px;font-weight:800;color:#101828;margin-bottom:14px;">
+    Besplatne pogodnosti
+  </div>
+  <div>
+    ${besplatne}
+  </div>
+</div>
+       </div>
 
             <div style="padding:18px 20px;text-align:center;border-top:1px solid #eaecf0;background:#fcfcfd;color:#667085;font-size:12px;line-height:1.6;">
               © Svet Igraonica<br />
