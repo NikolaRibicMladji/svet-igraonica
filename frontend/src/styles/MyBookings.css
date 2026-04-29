@@ -1,5 +1,7 @@
 .my-bookings-page {
-  padding: 40px 0;
+  padding: 40px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .my-bookings-page h1 {
