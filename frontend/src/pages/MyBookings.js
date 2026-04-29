@@ -157,7 +157,13 @@ const MyBookings = () => {
         clickable: false,
       },
       zavrseno: {
-        text: "🎉 Završeno - ostavi recenziju",
+        text: (
+          <>
+            🎉 Završeno
+            <br />
+            Ostavi recenziju
+          </>
+        ),
         class: "status-completed",
         clickable: true,
       },
