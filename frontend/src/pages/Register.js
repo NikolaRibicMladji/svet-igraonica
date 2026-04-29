@@ -20,6 +20,7 @@ const Register = () => {
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -93,6 +94,11 @@ const Register = () => {
       newErrors.role = "Izaberite tip korisnika.";
     }
 
+    if (!acceptedTerms) {
+      newErrors.acceptedTerms =
+        "Morate prihvatiti uslove korišćenja i politiku privatnosti.";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -138,6 +144,7 @@ const Register = () => {
 
     const result = await register({
       ...formData,
+      acceptedTerms,
       ime: formData.ime.trim(),
       prezime: formData.prezime.trim(),
       email: formData.email.trim(),
@@ -271,6 +278,45 @@ const Register = () => {
               <option value="vlasnik">Vlasnik igraonice</option>
             </select>
             {errors.role && <div className="field-error">{errors.role}</div>}
+          </div>
+          <div className="form-group terms-checkbox">
+            <label className="terms-checkbox-label">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => {
+                  setAcceptedTerms(e.target.checked);
+                  setServerError("");
+
+                  setErrors((prev) => {
+                    if (!prev.acceptedTerms) return prev;
+                    const next = { ...prev };
+                    delete next.acceptedTerms;
+                    return next;
+                  });
+                }}
+              />
+
+              <span>
+                Prihvatam{" "}
+                <a href="/terms-of-service" target="_blank" rel="noreferrer">
+                  Uslove korišćenja
+                </a>
+                ,{" "}
+                <a href="/privacy-policy" target="_blank" rel="noreferrer">
+                  Politiku privatnosti
+                </a>{" "}
+                i{" "}
+                <a href="/booking-policy" target="_blank" rel="noreferrer">
+                  Pravila rezervacije
+                </a>
+                .
+              </span>
+            </label>
+
+            {errors.acceptedTerms && (
+              <div className="field-error">{errors.acceptedTerms}</div>
+            )}
           </div>
 
           <button

@@ -93,6 +93,7 @@ const createParentUser = async ({
   password,
   telefon,
   role = ROLES.RODITELJ,
+  acceptedTerms,
 
   session = null,
 }) => {
@@ -120,6 +121,8 @@ const createParentUser = async ({
         password: hashedPassword,
         telefon: telefon?.trim(),
         role,
+        acceptedTerms: acceptedTerms === true,
+        acceptedTermsAt: acceptedTerms === true ? new Date() : null,
       },
     ],
     session ? { session } : {},
@@ -129,8 +132,13 @@ const createParentUser = async ({
 };
 
 exports.registerUser = async (data, metadata = {}) => {
-  const { ime, prezime, email, password, telefon, role } = data;
-
+  const { ime, prezime, email, password, telefon, role, acceptedTerms } = data;
+  if (acceptedTerms !== true) {
+    throw createError(
+      "Morate prihvatiti uslove korišćenja i politiku privatnosti.",
+      400,
+    );
+  }
   if (!role) {
     throw createError("Tip korisnika je obavezan", 400);
   }
@@ -144,6 +152,7 @@ exports.registerUser = async (data, metadata = {}) => {
     password,
     telefon,
     role: userRole,
+    acceptedTerms,
   });
 
   const tokens = await generateAuthResponse(user, null, metadata);
@@ -286,8 +295,13 @@ exports.logoutUser = async (refreshToken) => {
 };
 
 exports.registerGuestParent = async (data, session = null) => {
-  const { ime, prezime, email, password, telefon } = data;
-
+  const { ime, prezime, email, password, telefon, acceptedTerms } = data;
+  if (acceptedTerms !== true) {
+    throw createError(
+      "Morate prihvatiti uslove korišćenja i politiku privatnosti.",
+      400,
+    );
+  }
   const normalizedEmail = normalizeEmail(email);
 
   const existingQuery = User.findOne({ email: normalizedEmail });
@@ -311,6 +325,7 @@ exports.registerGuestParent = async (data, session = null) => {
     password,
     telefon,
     role: ROLES.RODITELJ,
+    acceptedTerms,
 
     session,
   });

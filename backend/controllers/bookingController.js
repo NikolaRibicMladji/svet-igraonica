@@ -95,6 +95,7 @@ exports.createGuestBooking = async (req, res, next) => {
       telefon,
       password,
       napomena,
+      acceptedTerms,
     } = req.validated.body;
     console.log("🟡 GUEST BOOKING:", {
       requestId: req.requestId,
@@ -109,6 +110,7 @@ exports.createGuestBooking = async (req, res, next) => {
         email,
         password,
         telefon,
+        acceptedTerms,
       },
       session,
     );

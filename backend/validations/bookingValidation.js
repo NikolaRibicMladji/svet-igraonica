@@ -100,6 +100,12 @@ const createGuestBookingSchema = z
         .max(500, "Napomena može imati najviše 500 karaktera")
         .optional()
         .default(""),
+      acceptedTerms: z.literal(true, {
+        errorMap: () => ({
+          message:
+            "Morate prihvatiti uslove korišćenja i politiku privatnosti.",
+        }),
+      }),
     }),
     params: z.object({}).optional(),
     query: z.object({}).optional(),

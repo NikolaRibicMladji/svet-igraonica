@@ -64,6 +64,17 @@ const UserSchema = new mongoose.Schema(
       index: true,
     },
 
+    acceptedTerms: {
+      type: Boolean,
+      required: [true, "Prihvatanje uslova korišćenja je obavezno"],
+      default: false,
+    },
+
+    acceptedTermsAt: {
+      type: Date,
+      default: null,
+    },
+
     deca: {
       type: [deteSchema],
       default: [],

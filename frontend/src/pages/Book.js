@@ -49,7 +49,7 @@ const Book = () => {
   const [openEndDropdown, setOpenEndDropdown] = useState(false);
 
   const topRef = useRef(null);
-
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [playroom, setPlayroom] = useState(null);
   const [availability, setAvailability] = useState(null);
   const [selectedStartTime, setSelectedStartTime] = useState(prefillStart);
@@ -783,6 +783,12 @@ const Book = () => {
         scrollToTop();
         return;
       }
+
+      if (!acceptedTerms) {
+        setError("Morate prihvatiti uslove korišćenja i politiku privatnosti.");
+        scrollToTop();
+        return;
+      }
     }
 
     if (!isQuarterHour(selectedStartTime) || !isQuarterHour(selectedEndTime)) {
@@ -820,6 +826,7 @@ const Book = () => {
           ...bookingPayload,
           password: korisnikPodaci.password,
           confirmPassword: korisnikPodaci.confirmPassword,
+          acceptedTerms,
         });
       }
 
@@ -1421,6 +1428,48 @@ const Book = () => {
                           required={!isAuthenticated}
                         />
                       </div>
+                    </div>
+                  )}
+                  {!isAuthenticated && (
+                    <div className="form-group terms-checkbox">
+                      <label className="terms-checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={acceptedTerms}
+                          onChange={(e) => {
+                            setAcceptedTerms(e.target.checked);
+                            setError("");
+                          }}
+                        />
+
+                        <span>
+                          Prihvatam{" "}
+                          <a
+                            href="/terms-of-service"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Uslove korišćenja
+                          </a>
+                          ,{" "}
+                          <a
+                            href="/privacy-policy"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Politiku privatnosti
+                          </a>{" "}
+                          i{" "}
+                          <a
+                            href="/booking-policy"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Pravila rezervacije
+                          </a>
+                          .
+                        </span>
+                      </label>
                     </div>
                   )}
                 </div>
