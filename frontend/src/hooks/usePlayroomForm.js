@@ -19,6 +19,21 @@ const DEFAULT_DRUSTVENE_MREZE = {
   website: "",
 };
 
+const mergeRadnoVreme = (incoming = {}) => {
+  const result = {};
+
+  for (const [day, defaultValue] of Object.entries(DEFAULT_RADNO_VREME)) {
+    const incomingValue = incoming?.[day] || {};
+
+    result[day] = {
+      ...defaultValue,
+      ...incomingValue,
+    };
+  }
+
+  return result;
+};
+
 export const DEFAULT_DANI = [
   { key: "ponedeljak", naziv: "Ponedeljak" },
   { key: "utorak", naziv: "Utorak" },
@@ -133,10 +148,9 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
     ...(initialData?.drustveneMreze || {}),
   });
 
-  const [radnoVreme, setRadnoVreme] = useState({
-    ...DEFAULT_RADNO_VREME,
-    ...(initialData?.radnoVreme || {}),
-  });
+  const [radnoVreme, setRadnoVreme] = useState(
+    mergeRadnoVreme(initialData?.radnoVreme),
+  );
 
   useEffect(() => {
     setFormData(initialFormData);
@@ -199,10 +213,7 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
       ...(initialData?.drustveneMreze || {}),
     });
 
-    setRadnoVreme({
-      ...DEFAULT_RADNO_VREME,
-      ...(initialData?.radnoVreme || {}),
-    });
+    setRadnoVreme(mergeRadnoVreme(initialData?.radnoVreme));
 
     setError("");
     setErrors({});
@@ -350,15 +361,27 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
   };
 
   const toggleDan = (dan) => {
-    setRadnoVreme((prev) => ({
-      ...prev,
-      [dan]: {
-        ...prev[dan],
-        radi: !prev[dan].radi,
-      },
-    }));
-  };
+    setRadnoVreme((prev) => {
+      const current = prev[dan] || {};
+      const nextRadi = !current.radi;
+      const defaultDay = DEFAULT_RADNO_VREME[dan];
 
+      return {
+        ...prev,
+        [dan]: nextRadi
+          ? {
+              od: current.od || defaultDay.od || "09:00",
+              do: current.do || defaultDay.do || "20:00",
+              radi: true,
+            }
+          : {
+              od: current.od || defaultDay.od || "09:00",
+              do: current.do || defaultDay.do || "20:00",
+              radi: false,
+            },
+      };
+    });
+  };
   const handleAddCena = () => {
     const naziv = sanitizeText(novaCena.naziv);
     const cena = toNumberOrZero(novaCena.cena);

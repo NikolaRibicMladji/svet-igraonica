@@ -14,7 +14,8 @@ const parseTimeString = (time) => {
 };
 
 const getNowInAppTimezone = () => {
-  return toZonedTime(new Date(), APP_TIMEZONE);
+  // Za poređenje vremena u backendu uvek koristi realan trenutni instant
+  return new Date();
 };
 
 const formatDateOnlyInAppTimezone = (date) => {

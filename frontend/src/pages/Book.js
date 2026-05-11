@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useCallback, useState } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useCallback,
+  useState,
+  useMemo,
+} from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   getAvailableTimeSlots,
@@ -22,7 +28,17 @@ const getLocalDate = () => {
 const formatDateForBackend = (date) => {
   if (!date) return "";
 
-  return new Date(date).toISOString().split("T")[0];
+  // date je već YYYY-MM-DD string
+  // ne koristiti toISOString zbog timezone shift problema
+  if (typeof date === "string") {
+    return date;
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 };
 
 const Book = () => {
@@ -56,6 +72,17 @@ const Book = () => {
   const [selectedEndTime, setSelectedEndTime] = useState(prefillEnd);
   const startDropdownRef = useRef(null);
   const endDropdownRef = useRef(null);
+  const startTimeRef = useRef(null);
+  const endTimeRef = useRef(null);
+  const brojDeceWrapperRef = useRef(null);
+  const pricingRef = useRef(null);
+  const imeRef = useRef(null);
+  const prezimeRef = useRef(null);
+  const emailRef = useRef(null);
+  const telefonRef = useRef(null);
+  const passwordRef = useRef(null);
+  const confirmPasswordRef = useRef(null);
+  const termsRef = useRef(null);
   const [napomena, setNapomena] = useState("");
   const [brojDece, setBrojDece] = useState("");
   const [brojRoditelja, setBrojRoditelja] = useState("");
@@ -98,19 +125,23 @@ const Book = () => {
     }).format(new Date(date));
   };
 
-  const hasPerPersonSelection = () => {
+  const hasPerPersonPricing = useMemo(() => {
     const izabraneCene = Array.isArray(playroom?.cene)
-      ? playroom.cene.filter((item) => selectedCenaIds.includes(item._id))
+      ? playroom.cene.filter((item) =>
+          selectedCenaIds.includes(String(item._id)),
+        )
       : [];
 
     const izabranPaket =
       Array.isArray(playroom?.paketi) && selectedPaketId
-        ? playroom.paketi.find((item) => item._id === selectedPaketId)
+        ? playroom.paketi.find(
+            (item) => String(item._id) === String(selectedPaketId),
+          )
         : null;
 
     const izabraneUsluge = Array.isArray(playroom?.dodatneUsluge)
       ? playroom.dodatneUsluge.filter((item) =>
-          selectedUslugeIds.includes(item._id),
+          selectedUslugeIds.includes(String(item._id)),
         )
       : [];
 
@@ -121,7 +152,7 @@ const Book = () => {
     ];
 
     return sveIzabrano.some((item) => item?.tip === "po_osobi");
-  };
+  }, [playroom, selectedCenaIds, selectedPaketId, selectedUslugeIds]);
 
   const showBrojDeceRequiredNotice = () => {
     toast.error(
@@ -151,14 +182,17 @@ const Book = () => {
   const hasSelectedDate = Boolean(selectedDate);
 
   const handleCenaToggle = (cenaId) => {
+    setError("");
     const clickedCena = Array.isArray(playroom?.cene)
-      ? playroom.cene.find((item) => item._id === cenaId)
+      ? playroom.cene.find((item) => String(item._id) === String(cenaId))
       : null;
 
-    const wasSelected = selectedCenaIds.includes(cenaId);
+    const wasSelected = selectedCenaIds.includes(String(cenaId));
 
     setSelectedCenaIds((prev) =>
-      wasSelected ? prev.filter((id) => id !== cenaId) : [...prev, cenaId],
+      wasSelected
+        ? prev.filter((id) => id !== String(cenaId))
+        : [...prev, String(cenaId)],
     );
 
     if (!wasSelected && clickedCena?.tip === "po_osobi" && !Number(brojDece)) {
@@ -168,6 +202,7 @@ const Book = () => {
   };
 
   const handlePaketToggle = (paketId) => {
+    setError("");
     const clickedPaket = Array.isArray(playroom?.paketi)
       ? playroom.paketi.find((item) => String(item._id) === String(paketId))
       : null;
@@ -188,6 +223,7 @@ const Book = () => {
   };
 
   const handleUslugaToggle = (uslugaId) => {
+    setError("");
     const clickedUsluga = Array.isArray(playroom?.dodatneUsluge)
       ? playroom.dodatneUsluge.find(
           (item) => String(item._id) === String(uslugaId),
@@ -241,6 +277,7 @@ const Book = () => {
     if (!isOwnerBooking) {
       setSelectedStartTime("");
       setSelectedEndTime("");
+      setError("");
     }
 
     try {
@@ -349,6 +386,26 @@ const Book = () => {
     }, 100);
   };
 
+  const scrollToField = (ref) => {
+    if (!ref?.current) {
+      scrollToTop();
+      return;
+    }
+
+    const elementTop =
+      ref.current.getBoundingClientRect().top + window.pageYOffset;
+
+    window.scrollTo({
+      top: elementTop - 120,
+      behavior: "smooth",
+    });
+
+    setTimeout(() => {
+      const input = ref.current.querySelector("input, textarea, select");
+      if (input) input.focus();
+    }, 400);
+  };
+
   const selectedCene = Array.isArray(playroom?.cene)
     ? playroom.cene.filter((c) => selectedCenaIds.includes(String(c._id)))
     : [];
@@ -366,7 +423,22 @@ const Book = () => {
   const isFiksno = playroom?.rezimRezervacije === "fiksno";
   const trajanjeTermina = Number(playroom?.trajanjeTermina) || 60;
 
-  const getSlotDurationInHours = () => {
+  const timeToMinutes = (time) => {
+    const [h, m] = String(time || "00:00")
+      .split(":")
+      .map(Number);
+    return h * 60 + m;
+  };
+
+  const minutesToTime = (minutes) => {
+    const safeMinutes = Math.max(0, Number(minutes) || 0);
+    const hour = Math.floor(safeMinutes / 60);
+    const minute = safeMinutes % 60;
+
+    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  };
+
+  const slotDurationHours = useMemo(() => {
     if (!selectedStartTime || !selectedEndTime) return 1;
 
     const startMinutes = timeToMinutes(selectedStartTime);
@@ -376,9 +448,9 @@ const Book = () => {
     if (!Number.isFinite(diff) || diff <= 0) return 1;
 
     return diff / 60;
-  };
+  }, [selectedStartTime, selectedEndTime]);
 
-  const getSlotDurationLabel = () => {
+  const slotDurationLabel = useMemo(() => {
     if (!selectedStartTime || !selectedEndTime) return "";
 
     const startMinutes = timeToMinutes(selectedStartTime);
@@ -399,11 +471,11 @@ const Book = () => {
     }
 
     return `${minuti}min`;
-  };
+  }, [selectedStartTime, selectedEndTime]);
 
-  const calculateTotal = () => {
+  const calculateTotal = useCallback(() => {
     let total = 0;
-    const trajanjeSati = getSlotDurationInHours();
+    const trajanjeSati = slotDurationHours;
 
     if (Array.isArray(selectedCene)) {
       selectedCene.forEach((c) => {
@@ -434,7 +506,7 @@ const Book = () => {
       }
 
       if (selectedPaket.tip === "po_satu") {
-        total += (Number(selectedPaket.cena) || 0) * getSlotDurationInHours();
+        total += (Number(selectedPaket.cena) || 0) * slotDurationHours;
       }
     }
 
@@ -454,21 +526,45 @@ const Book = () => {
     });
 
     return total;
+  }, [
+    selectedCene,
+    selectedPaket,
+    selectedUsluge,
+    brojDece,
+    slotDurationHours,
+  ]);
+
+  const totalPrice = useMemo(() => calculateTotal(), [calculateTotal]);
+
+  const isToday = (date) => {
+    if (!date) return false;
+
+    const today = new Date();
+
+    const todayString = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, "0"),
+      String(today.getDate()).padStart(2, "0"),
+    ].join("-");
+
+    return date === todayString;
   };
 
-  const timeToMinutes = (time) => {
-    const [h, m] = String(time || "00:00")
+  const isPastTime = (time) => {
+    if (!selectedDate || !isToday(selectedDate)) {
+      return false;
+    }
+
+    const now = new Date();
+
+    const [year, month, day] = selectedDate.split("-").map(Number);
+    const [hours, minutes] = String(time || "00:00")
       .split(":")
       .map(Number);
-    return h * 60 + m;
-  };
 
-  const minutesToTime = (minutes) => {
-    const safeMinutes = Math.max(0, Number(minutes) || 0);
-    const hour = Math.floor(safeMinutes / 60);
-    const minute = safeMinutes % 60;
+    const slotDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
 
-    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    return slotDate <= now;
   };
 
   const isQuarterHour = (time) => {
@@ -610,11 +706,13 @@ const Book = () => {
           !doesOverlapBusyInterval(time, calculatedEndTime);
 
         if (isValid) {
+          const isPast = isPastTime(time);
+
           items.push({
-            type: "free",
+            type: isPast ? "busy" : "free",
             key: `free-${index}-${time}`,
             value: time,
-            label: `✅ ${time}`,
+            label: isPast ? `❌ Prošlo: ${time}` : `✅ ${time}`,
           });
         }
       });
@@ -660,11 +758,13 @@ const Book = () => {
         }
 
         if (!doesOverlapBusyInterval(selectedStartTime, time)) {
+          const isPast = isPastTime(time);
+
           items.push({
-            type: "free",
+            type: isPast ? "busy" : "free",
             key: `end-free-${index}-${time}`,
             value: time,
-            label: `✅ ${time}`,
+            label: isPast ? `❌ Prošlo: ${time}` : `✅ ${time}`,
           });
         }
       });
@@ -673,42 +773,59 @@ const Book = () => {
     return items;
   };
 
-  const availabilitySegments = buildAvailabilitySegments();
-  const startDropdownItems = buildStartDropdownItems();
-  const endDropdownItems = buildEndDropdownItems();
+  const availabilitySegments = useMemo(
+    () => buildAvailabilitySegments(),
+    [availability, playroom],
+  );
+  const startDropdownItems = useMemo(
+    () => buildStartDropdownItems(),
+    [availability, availabilitySegments, playroom, selectedDate],
+  );
 
+  const endDropdownItems = useMemo(
+    () => buildEndDropdownItems(),
+    [
+      availability,
+      availabilitySegments,
+      playroom,
+      selectedStartTime,
+      trajanjeTermina,
+    ],
+  );
   const handleBook = async () => {
     setError("");
 
     if (!selectedStartTime || !selectedEndTime) {
       setError("Izaberite vreme početka i završetka.");
-      scrollToTop();
+      scrollToField(startTimeRef);
       return;
     }
-    if (
-      hasPerPersonSelection() &&
-      (!Number(brojDece) || Number(brojDece) < 1)
-    ) {
+    if (isPastTime(selectedStartTime) || isPastTime(selectedEndTime)) {
+      setError("Nije moguće rezervisati termin u prošlosti.");
+      scrollToField(startTimeRef);
+      return;
+    }
+
+    if (hasPerPersonPricing && (!Number(brojDece) || Number(brojDece) < 1)) {
       setError(
         "Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po osobi.",
       );
 
       showBrojDeceRequiredNotice();
       focusBrojDeceField();
-      scrollToTop();
 
       return;
     }
 
     if (timeToMinutes(selectedEndTime) <= timeToMinutes(selectedStartTime)) {
       setError("Vreme završetka mora biti posle vremena početka.");
-      scrollToTop();
+      scrollToField(endTimeRef);
       return;
     }
 
     if (!availability?.workingHours) {
       setError("Igraonica ne radi tog dana.");
-      scrollToTop();
+      scrollToField(startTimeRef);
       return;
     }
 
@@ -719,81 +836,96 @@ const Book = () => {
         timeToMinutes(availability.workingHours.vremeDo)
     ) {
       setError("Izabrani termin mora biti unutar radnog vremena.");
-      scrollToTop();
+      scrollToField(startTimeRef);
       return;
     }
 
     if (doesOverlapBusyInterval(selectedStartTime, selectedEndTime)) {
       setError("Izabrani termin se preklapa sa zauzetim terminom.");
-      scrollToTop();
+      scrollToField(startTimeRef);
       return;
     }
 
     if (selectedCenaIds.length === 0 && !selectedPaketId) {
       setError("Izaberi bar jednu stavku iz cenovnika ili paket.");
-      scrollToTop();
+      scrollToField(pricingRef);
       return;
     }
 
     if (!korisnikPodaci.ime.trim()) {
       setError("Unesite ime.");
-      scrollToTop();
+      scrollToField(imeRef);
       return;
     }
 
     if (!korisnikPodaci.prezime.trim()) {
       setError("Unesite prezime.");
-      scrollToTop();
+      scrollToField(prezimeRef);
       return;
     }
 
     if (!korisnikPodaci.email.trim()) {
       setError("Unesite email.");
-      scrollToTop();
+      scrollToField(emailRef);
       return;
     }
 
     if (!korisnikPodaci.telefon.trim()) {
       setError("Unesite telefon.");
-      scrollToTop();
+      scrollToField(telefonRef);
+      return;
+    }
+    const cleanedPhone = korisnikPodaci.telefon.trim();
+
+    const phoneRegex = /^\+?[0-9]+$/;
+
+    if (!phoneRegex.test(cleanedPhone)) {
+      setError("Telefon može sadržati samo brojeve i znak + na početku.");
+      scrollToField(telefonRef);
+      return;
+    }
+
+    const digitsOnly = cleanedPhone.replace(/\D/g, "");
+
+    if (digitsOnly.length < 6) {
+      setError("Telefon mora imati bar 6 cifara.");
+      scrollToField(telefonRef);
       return;
     }
 
     if (!isAuthenticated) {
       if (!korisnikPodaci.password.trim()) {
         setError("Unesite lozinku.");
-        scrollToTop();
+        scrollToField(passwordRef);
         return;
       }
 
       if (korisnikPodaci.password.trim().length < 6) {
         setError("Lozinka mora imati najmanje 6 karaktera.");
-        scrollToTop();
+        scrollToField(passwordRef);
         return;
       }
 
       if (!korisnikPodaci.confirmPassword.trim()) {
         setError("Potvrdite lozinku.");
-        scrollToTop();
+        scrollToField(confirmPasswordRef);
         return;
       }
 
       if (korisnikPodaci.password !== korisnikPodaci.confirmPassword) {
         setError("Lozinke se ne poklapaju.");
-        scrollToTop();
-        return;
-      }
-
-      if (!acceptedTerms) {
-        setError("Morate prihvatiti uslove korišćenja i politiku privatnosti.");
-        scrollToTop();
+        scrollToField(confirmPasswordRef);
         return;
       }
     }
-
+    if (!acceptedTerms) {
+      setError("Morate prihvatiti uslove korišćenja i politiku privatnosti.");
+      scrollToField(termsRef);
+      return;
+    }
     if (!isQuarterHour(selectedStartTime) || !isQuarterHour(selectedEndTime)) {
       setError("Vreme mora biti u koracima od 15 minuta.");
-      scrollToTop();
+      scrollToField(startTimeRef);
       return;
     }
 
@@ -820,7 +952,10 @@ const Book = () => {
       let result;
 
       if (isAuthenticated) {
-        result = await createBooking(bookingPayload);
+        result = await createBooking({
+          ...bookingPayload,
+          acceptedTerms,
+        });
       } else {
         result = await createGuestBooking({
           ...bookingPayload,
@@ -831,6 +966,9 @@ const Book = () => {
       }
 
       if (result?.success) {
+        setOpenStartDropdown(false);
+        setOpenEndDropdown(false);
+
         if (!isAuthenticated) {
           const authResult = handleAuthSuccess({
             data: {
@@ -843,7 +981,7 @@ const Book = () => {
             setError(
               "Rezervacija je uspešna, ali automatska prijava nije uspela.",
             );
-            scrollToTop();
+            scrollToField(termsRef);
             return;
           }
 
@@ -855,7 +993,7 @@ const Book = () => {
         navigate("/booking-success");
       } else {
         setError(result?.error || "Rezervacija nije uspela.");
-        scrollToTop();
+        scrollToField(startTimeRef);
       }
     } catch (err) {
       setError(
@@ -863,15 +1001,24 @@ const Book = () => {
           err?.message ||
           "Rezervacija nije uspela.",
       );
-      scrollToTop();
+      scrollToField(startTimeRef);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleKorisnikChange = (e) => {
+    setError("");
+
     const { name, value } = e.target;
-    setKorisnikPodaci((prev) => ({ ...prev, [name]: value }));
+
+    const normalizedValue =
+      name === "email" ? value.trim().toLowerCase() : value;
+
+    setKorisnikPodaci((prev) => ({
+      ...prev,
+      [name]: normalizedValue,
+    }));
   };
 
   const getPricingLabel = (item) => {
@@ -983,7 +1130,7 @@ const Book = () => {
                   </div>
 
                   <div className="form-row time-row">
-                    <div className="form-group">
+                    <div className="form-group" ref={startTimeRef}>
                       <label>Vreme od *</label>
                       <div
                         className="custom-time-dropdown"
@@ -992,6 +1139,7 @@ const Book = () => {
                         <button
                           type="button"
                           className="custom-time-trigger"
+                          disabled={loadingSlots}
                           onClick={() => setOpenStartDropdown((prev) => !prev)}
                         >
                           {selectedStartTime || "Izaberi vreme"}
@@ -1004,6 +1152,7 @@ const Book = () => {
                               onClick={() => {
                                 setSelectedStartTime("");
                                 setSelectedEndTime("");
+                                setError("");
                                 setOpenStartDropdown(false);
                                 setOpenEndDropdown(false);
                               }}
@@ -1019,7 +1168,14 @@ const Book = () => {
                                     item.type === "busy" ? "busy" : "free"
                                   }`}
                                   onClick={() => {
-                                    if (item.type === "busy") return;
+                                    setError("");
+                                    if (item.type !== "free") {
+                                      setError(
+                                        "Ovaj termin nije dostupan za rezervaciju.",
+                                      );
+                                      setOpenStartDropdown(false);
+                                      return;
+                                    }
 
                                     setSelectedStartTime(item.value);
                                     setOpenStartDropdown(false);
@@ -1056,7 +1212,7 @@ const Book = () => {
                     </div>
 
                     {!isFiksno ? (
-                      <div className="form-group">
+                      <div className="form-group" ref={endTimeRef}>
                         <label>Vreme do *</label>
 
                         <div
@@ -1070,7 +1226,7 @@ const Book = () => {
                               if (!selectedStartTime) return;
                               setOpenEndDropdown((prev) => !prev);
                             }}
-                            disabled={!selectedStartTime}
+                            disabled={!selectedStartTime || loadingSlots}
                           >
                             {selectedEndTime || "Izaberi vreme"}
                           </button>
@@ -1081,6 +1237,7 @@ const Book = () => {
                                 className="custom-time-item clear"
                                 onClick={() => {
                                   setSelectedEndTime("");
+                                  setError("");
                                   setOpenEndDropdown(false);
                                 }}
                               >
@@ -1094,7 +1251,14 @@ const Book = () => {
                                       item.type === "busy" ? "busy" : "free"
                                     }`}
                                     onClick={() => {
-                                      if (item.type === "busy") return;
+                                      setError("");
+                                      if (item.type !== "free") {
+                                        setError(
+                                          "Ovaj termin nije dostupan za rezervaciju.",
+                                        );
+                                        setOpenEndDropdown(false);
+                                        return;
+                                      }
 
                                       setSelectedEndTime(item.value);
                                       setOpenEndDropdown(false);
@@ -1138,13 +1302,13 @@ const Book = () => {
                     ⏰ Vreme: {selectedStartTime || "-"} -{" "}
                     {selectedEndTime || "-"}
                     {selectedStartTime && selectedEndTime
-                      ? ` (${getSlotDurationLabel()})`
+                      ? ` (${slotDurationLabel})`
                       : ""}
                   </p>
                 </div>
 
                 {Array.isArray(playroom.cene) && playroom.cene.length > 0 && (
-                  <div className="form-group">
+                  <div className="form-group" ref={pricingRef}>
                     <label className="booking-section-title">
                       Stavke iz cenovnika
                     </label>
@@ -1273,26 +1437,33 @@ const Book = () => {
                     </div>
                   )}
                 <div className="form-row">
-                  <div className="form-group">
+                  <div className="form-group" ref={brojDeceWrapperRef}>
                     <label>
                       Broj dece{" "}
                       <span className="inline-bracket-text">
-                        {hasPerPersonSelection() ? "(obavezno)" : "(opciono)"}
+                        {hasPerPersonPricing ? "(obavezno)" : "(opciono)"}
                       </span>
                     </label>
                     <input
                       ref={brojDeceRef}
+                      onKeyDown={(e) => {
+                        if (["e", "E", "+", "-"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
                       type="number"
-                      min={hasPerPersonSelection() ? "1" : "0"}
+                      inputMode="numeric"
+                      min={hasPerPersonPricing ? "1" : "0"}
                       max="100"
-                      required={hasPerPersonSelection()}
+                      required={hasPerPersonPricing}
                       value={brojDece}
                       className={
-                        hasPerPersonSelection() && !Number(brojDece)
+                        hasPerPersonPricing && !Number(brojDece)
                           ? "input-error"
                           : ""
                       }
                       onChange={(e) => {
+                        setError("");
                         const val = e.target.value;
                         if (
                           val === "" ||
@@ -1302,7 +1473,7 @@ const Book = () => {
                         }
                       }}
                     />
-                    {hasPerPersonSelection() && !Number(brojDece) && (
+                    {hasPerPersonPricing && !Number(brojDece) && (
                       <p className="field-hint-error">
                         Broj dece je obavezan jer je izabrana stavka koja se
                         naplaćuje po osobi.
@@ -1316,11 +1487,18 @@ const Book = () => {
                       <span className="inline-bracket-text">(opciono)</span>
                     </label>
                     <input
+                      onKeyDown={(e) => {
+                        if (["e", "E", "+", "-"].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
                       type="number"
+                      inputMode="numeric"
                       min="0"
                       max="100"
                       value={brojRoditelja}
                       onChange={(e) => {
+                        setError("");
                         const val = e.target.value;
                         if (
                           val === "" ||
@@ -1340,8 +1518,12 @@ const Book = () => {
 
                   <textarea
                     rows="3"
+                    maxLength={500}
                     value={napomena}
-                    onChange={(e) => setNapomena(e.target.value)}
+                    onChange={(e) => {
+                      setError("");
+                      setNapomena(e.target.value);
+                    }}
                     placeholder="Npr. alergije, posebni zahtevi, dolazak sa kolicima..."
                   />
                 </div>
@@ -1356,12 +1538,12 @@ const Book = () => {
                       </span>
                     )}
                   </div>
-
                   <div className="form-row">
-                    <div className="form-group">
+                    <div className="form-group" ref={imeRef}>
                       <label>Ime *</label>
                       <input
                         type="text"
+                        autoComplete="given-name"
                         name="ime"
                         value={korisnikPodaci.ime}
                         onChange={handleKorisnikChange}
@@ -1369,10 +1551,11 @@ const Book = () => {
                       />
                     </div>
 
-                    <div className="form-group">
+                    <div className="form-group" ref={prezimeRef}>
                       <label>Prezime *</label>
                       <input
                         type="text"
+                        autoComplete="family-name"
                         name="prezime"
                         value={korisnikPodaci.prezime}
                         onChange={handleKorisnikChange}
@@ -1380,12 +1563,12 @@ const Book = () => {
                       />
                     </div>
                   </div>
-
                   <div className="form-row">
-                    <div className="form-group">
+                    <div className="form-group" ref={emailRef}>
                       <label>Email *</label>
                       <input
                         type="email"
+                        autoComplete="email"
                         name="email"
                         value={korisnikPodaci.email}
                         onChange={handleKorisnikChange}
@@ -1393,10 +1576,11 @@ const Book = () => {
                       />
                     </div>
 
-                    <div className="form-group">
+                    <div className="form-group" ref={telefonRef}>
                       <label>Telefon *</label>
                       <input
                         type="tel"
+                        autoComplete="tel"
                         name="telefon"
                         value={korisnikPodaci.telefon}
                         onChange={handleKorisnikChange}
@@ -1404,13 +1588,13 @@ const Book = () => {
                       />
                     </div>
                   </div>
-
                   {!isAuthenticated && (
                     <div className="form-row">
-                      <div className="form-group">
+                      <div className="form-group" ref={passwordRef}>
                         <label>Lozinka *</label>
                         <input
                           type="password"
+                          autoComplete="new-password"
                           name="password"
                           value={korisnikPodaci.password}
                           onChange={handleKorisnikChange}
@@ -1418,10 +1602,11 @@ const Book = () => {
                         />
                       </div>
 
-                      <div className="form-group">
+                      <div className="form-group" ref={confirmPasswordRef}>
                         <label>Potvrda lozinke *</label>
                         <input
                           type="password"
+                          autoComplete="new-password"
                           name="confirmPassword"
                           value={korisnikPodaci.confirmPassword}
                           onChange={handleKorisnikChange}
@@ -1430,48 +1615,47 @@ const Book = () => {
                       </div>
                     </div>
                   )}
-                  {!isAuthenticated && (
-                    <div className="form-group terms-checkbox">
-                      <label className="terms-checkbox-label">
-                        <input
-                          type="checkbox"
-                          checked={acceptedTerms}
-                          onChange={(e) => {
-                            setAcceptedTerms(e.target.checked);
-                            setError("");
-                          }}
-                        />
 
-                        <span>
-                          Prihvatam{" "}
-                          <a
-                            href="/terms-of-service"
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Uslove korišćenja
-                          </a>
-                          ,{" "}
-                          <a
-                            href="/privacy-policy"
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Politiku privatnosti
-                          </a>{" "}
-                          i{" "}
-                          <a
-                            href="/booking-policy"
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Pravila rezervacije
-                          </a>
-                          .
-                        </span>
-                      </label>
-                    </div>
-                  )}
+                  <div className="form-group terms-checkbox" ref={termsRef}>
+                    <label className="terms-checkbox-label">
+                      <span>
+                        Prihvatam{" "}
+                        <a
+                          href="/terms-of-service"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Uslove korišćenja
+                        </a>
+                        ,{" "}
+                        <a
+                          href="/privacy-policy"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Politiku privatnosti
+                        </a>{" "}
+                        i{" "}
+                        <a
+                          href="/booking-policy"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Pravila rezervacije
+                        </a>
+                        .
+                      </span>
+
+                      <input
+                        type="checkbox"
+                        checked={acceptedTerms}
+                        onChange={(e) => {
+                          setAcceptedTerms(e.target.checked);
+                          setError("");
+                        }}
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 <div className="order-summary">
@@ -1496,8 +1680,8 @@ const Book = () => {
                           <span>{item.naziv}</span>
                           <span>
                             {item.tip === "po_satu"
-                              ? `${item.cena} RSD × ${getSlotDurationInHours()}h = ${
-                                  item.cena * getSlotDurationInHours()
+                              ? `${item.cena} RSD × ${slotDurationHours}h = ${
+                                  item.cena * slotDurationHours
                                 } RSD`
                               : item.tip === "po_osobi"
                                 ? `${item.cena} RSD × ${formatBrojDece(brojDece)} = ${(item.cena || 0) * (Number(brojDece) || 0)} RSD`
@@ -1512,9 +1696,9 @@ const Book = () => {
                       <span>{selectedPaket.naziv}</span>
                       <span>
                         {selectedPaket.tip === "po_satu"
-                          ? `${selectedPaket.cena} RSD × ${getSlotDurationInHours()}h = ${
+                          ? `${selectedPaket.cena} RSD × ${slotDurationHours}h = ${
                               (Number(selectedPaket.cena) || 0) *
-                              getSlotDurationInHours()
+                              slotDurationHours
                             } RSD`
                           : selectedPaket.tip === "po_osobi"
                             ? `${selectedPaket.cena} RSD × ${formatBrojDece(brojDece)} = ${
@@ -1530,8 +1714,8 @@ const Book = () => {
                       <span>{u.naziv}</span>
                       <span>
                         {u.tip === "po_satu"
-                          ? `${u.cena} RSD × ${getSlotDurationInHours()}h = ${
-                              (Number(u.cena) || 0) * getSlotDurationInHours()
+                          ? `${u.cena} RSD × ${slotDurationHours}h = ${
+                              (Number(u.cena) || 0) * slotDurationHours
                             } RSD`
                           : u.tip === "po_osobi"
                             ? `${u.cena} RSD × ${formatBrojDece(brojDece)} = ${
@@ -1544,7 +1728,7 @@ const Book = () => {
 
                   <div className="summary-total">
                     <span>Ukupno za plaćanje:</span>
-                    <strong>{calculateTotal()} RSD</strong>
+                    <strong>{totalPrice} RSD</strong>
                   </div>
                 </div>
 

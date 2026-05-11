@@ -28,7 +28,11 @@ const normalizeRadnoVreme = (radnoVreme = {}) => {
   const normalized = {};
 
   for (const day of days) {
-    const value = radnoVreme?.[day] || {};
+    const value = radnoVreme?.[day] ?? null;
+    if (!value) {
+      normalized[day] = { radi: false };
+      continue;
+    }
     const radi = value.radi === true;
 
     if (!radi) {
@@ -276,6 +280,7 @@ exports.updatePlayroom = async (req, res, next) => {
 
     const updateData = {
       ...req.body,
+      ...(hasRadnoVremeUpdate ? { radnoVreme: newRadnoVreme } : {}),
       ...(req.body.naziv ? { naziv: req.body.naziv.trim() } : {}),
       ...(req.body.grad ? { grad: req.body.grad.trim() } : {}),
       ...(req.body.kontaktEmail

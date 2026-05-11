@@ -46,7 +46,7 @@ const createBookingSchema = z.object({
     telefonRoditelja: z
       .string()
       .min(6, "Telefon mora imati bar 6 cifara")
-      .regex(/^[0-9]+$/, "Telefon može sadržati samo brojeve")
+      .regex(/^\+?[0-9]+$/, "Telefon sadrži nedozvoljene karaktere")
       .trim(),
     napomena: z
       .string()
@@ -89,7 +89,7 @@ const createGuestBookingSchema = z
       telefon: z
         .string()
         .min(6, "Telefon mora imati bar 6 cifara")
-        .regex(/^[0-9]+$/, "Telefon može sadržati samo brojeve")
+        .regex(/^\+?[0-9]+$/, "Telefon sadrži nedozvoljene karaktere")
         .trim(),
       password: z.string().min(6, "Lozinka mora imati bar 6 karaktera"),
       confirmPassword: z
@@ -149,7 +149,7 @@ const manualBookingSchema = z.object({
     telefonRoditelja: z
       .string()
       .min(6, "Telefon mora imati bar 6 cifara")
-      .regex(/^[0-9]+$/, "Telefon može sadržati samo brojeve")
+      .regex(/^\+?[0-9]+$/, "Telefon sadrži nedozvoljene karaktere")
       .trim(),
     napomena: z
       .string()

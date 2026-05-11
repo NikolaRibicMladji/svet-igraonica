@@ -348,6 +348,7 @@
 ========================================= */
 
 .error-message {
+  scroll-margin-top: 120px;
   background: #ffebee;
   color: #c62828;
   padding: 14px;
@@ -752,6 +753,19 @@
 ========================================= */
 
 @media (max-width: 768px) {
+  .order-summary {
+    position: static;
+    transform: none;
+    width: 100%;
+    max-height: unset;
+    overflow: visible;
+    margin-top: 24px;
+  }
+
+  .booking-form {
+    padding-bottom: 40px;
+  }
+
   .book-card {
     padding: 20px;
   }
@@ -768,5 +782,8 @@
   .count-row {
     grid-template-columns: 1fr;
     gap: 14px;
+  }
+  .custom-time-menu {
+    max-height: 240px;
   }
 }

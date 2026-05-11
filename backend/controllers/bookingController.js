@@ -28,16 +28,6 @@ exports.createBooking = async (req, res, next) => {
       napomena,
     } = req.validated.body;
 
-    console.log("🟢 CREATE BOOKING:", {
-      requestId: req.requestId,
-      user: req.user?.id || null,
-      playroomId,
-      datum,
-      vremeOd,
-      vremeDo,
-      time: new Date().toISOString(),
-    });
-
     const booking = await bookingService.reserveCustomInterval({
       playroomId,
       datum,
@@ -57,8 +47,6 @@ exports.createBooking = async (req, res, next) => {
         napomena,
       },
     });
-
-    await bookingService.handleBookingEmails(booking._id);
 
     return res.status(201).json({
       success: true,
@@ -97,11 +85,6 @@ exports.createGuestBooking = async (req, res, next) => {
       napomena,
       acceptedTerms,
     } = req.validated.body;
-    console.log("🟡 GUEST BOOKING:", {
-      requestId: req.requestId,
-      email,
-      time: new Date().toISOString(),
-    });
 
     const authResult = await authService.registerGuestParent(
       {
@@ -141,7 +124,6 @@ exports.createGuestBooking = async (req, res, next) => {
     });
 
     await session.commitTransaction();
-    await bookingService.handleBookingEmails(createdBooking._id);
 
     res.cookie("refreshToken", refreshToken, authService.cookieOptions);
 
@@ -219,12 +201,6 @@ exports.cancelBooking = async (req, res, next) => {
   try {
     const { id } = req.validated.params;
 
-    console.log("🔴 CANCEL BOOKING:", {
-      requestId: req.requestId,
-      bookingId: id,
-      user: req.user?.id || null,
-      time: new Date().toISOString(),
-    });
     const canceledBooking = await bookingService.cancelBookingById({
       bookingId: id,
       currentUser: req.user,

@@ -281,22 +281,6 @@ const Register = () => {
           </div>
           <div className="form-group terms-checkbox">
             <label className="terms-checkbox-label">
-              <input
-                type="checkbox"
-                checked={acceptedTerms}
-                onChange={(e) => {
-                  setAcceptedTerms(e.target.checked);
-                  setServerError("");
-
-                  setErrors((prev) => {
-                    if (!prev.acceptedTerms) return prev;
-                    const next = { ...prev };
-                    delete next.acceptedTerms;
-                    return next;
-                  });
-                }}
-              />
-
               <span>
                 Prihvatam{" "}
                 <a href="/terms-of-service" target="_blank" rel="noreferrer">
@@ -312,6 +296,21 @@ const Register = () => {
                 </a>
                 .
               </span>
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => {
+                  setAcceptedTerms(e.target.checked);
+                  setServerError("");
+
+                  setErrors((prev) => {
+                    if (!prev.acceptedTerms) return prev;
+                    const next = { ...prev };
+                    delete next.acceptedTerms;
+                    return next;
+                  });
+                }}
+              />
             </label>
 
             {errors.acceptedTerms && (
@@ -322,7 +321,7 @@ const Register = () => {
           <button
             type="submit"
             className="btn btn-primary"
-            disabled={submitting}
+            disabled={submitting || !acceptedTerms}
           >
             {submitting ? "Registrujem..." : "Registruj se"}
           </button>

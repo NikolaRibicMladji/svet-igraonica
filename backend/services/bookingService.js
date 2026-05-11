@@ -89,7 +89,7 @@ const parseValidDate = (dateString) => {
   }
 
   // ako je string "YYYY-MM-DD"
-  const parsed = new Date(dateString + "T00:00:00");
+  const parsed = parseDateOnlyInAppTimezone(dateString);
 
   if (Number.isNaN(parsed.getTime())) {
     throw new ErrorResponse("Datum nije validan", 400);
@@ -368,9 +368,9 @@ const reserveSlot = async ({
       throw new ErrorResponse("Termin je već zauzet ili ne postoji", 400);
     }
 
-    const slotEnd = buildDateTime(slot.datum, slot.vremeDo);
+    const slotStart = buildDateTime(slot.datum, slot.vremeOd);
 
-    if (slotEnd <= new Date()) {
+    if (slotStart <= getNowInAppTimezone()) {
       await TimeSlot.findByIdAndUpdate(
         slot._id,
         { $set: { zauzeto: false } },
@@ -722,10 +722,13 @@ const reserveCustomInterval = async ({
       );
     }
 
-    const bookingEndDate = buildDateTime(bookingDate, vremeDo);
+    const bookingStartDate = buildDateTime(bookingDate, vremeOd);
 
-    if (bookingEndDate <= new Date()) {
-      throw new ErrorResponse("Ne možeš rezervisati prošli termin", 400);
+    if (bookingStartDate <= getNowInAppTimezone()) {
+      throw new ErrorResponse(
+        "Nije moguće rezervisati termin u prošlosti",
+        400,
+      );
     }
 
     const preparationMinutes = getPreparationMinutes(playroom);

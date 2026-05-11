@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
@@ -29,6 +30,16 @@ import ResetPassword from "./pages/ResetPassword";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import BookingPolicy from "./pages/BookingPolicy";
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+};
 
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -69,6 +80,15 @@ const RoditeljRoute = ({ children }) => (
 );
 
 function AppRoutes() {
+  const location = useLocation();
+
+  const showFooter = [
+    "/",
+    "/playrooms",
+    "/privacy-policy",
+    "/terms-of-service",
+    "/booking-policy",
+  ].includes(location.pathname);
   return (
     <>
       <Navbar />
@@ -154,7 +174,7 @@ function AppRoutes() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
-      <Footer />
+      {showFooter && <Footer />}
     </>
   );
 }
@@ -164,6 +184,7 @@ export default function App() {
     <ToastProvider>
       <AuthProvider>
         <Router>
+          <ScrollToTop />
           <ToastContainer />
           <AppRoutes />
         </Router>
