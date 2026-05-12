@@ -591,53 +591,99 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
   };
 
   const validateForm = () => {
-    const newErrors = {};
+    const createError = (field, message) => {
+      setErrors({ [field]: message });
+
+      setTimeout(() => {
+        const element = document.querySelector(
+          `[name="${field}"], .${field}-error`,
+        );
+
+        if (element) {
+          element.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+
+          if (typeof element.focus === "function") {
+            element.focus();
+          }
+        }
+      }, 100);
+
+      return false;
+    };
 
     if (!sanitizeText(formData.naziv)) {
-      newErrors.naziv = "Naziv je obavezan.";
+      return createError("naziv", "Naziv je obavezan.");
     }
 
     if (!sanitizeText(formData.adresa)) {
-      newErrors.adresa = "Adresa je obavezna.";
+      return createError("adresa", "Adresa je obavezna.");
     }
 
     if (!sanitizeText(formData.grad)) {
-      newErrors.grad = "Grad je obavezan.";
+      return createError("grad", "Grad je obavezan.");
     }
 
     if (!sanitizeText(formData.opis)) {
-      newErrors.opis = "Opis je obavezan.";
+      return createError("opis", "Opis je obavezan.");
+    }
+
+    if (sanitizeText(formData.opis).length < 10) {
+      return createError("opis", "Opis mora imati bar 10 karaktera.");
     }
 
     if (!sanitizeText(formData.kontaktTelefon)) {
-      newErrors.kontaktTelefon = "Telefon je obavezan.";
-    } else if (!/^\+?[0-9]+$/.test(formData.kontaktTelefon.trim())) {
-      newErrors.kontaktTelefon =
-        "Telefon može sadržati samo brojeve i opcioni + na početku.";
-    } else if (formData.kontaktTelefon.replace("+", "").length < 8) {
-      newErrors.kontaktTelefon = "Telefon mora imati najmanje 8 cifara.";
+      return createError("kontaktTelefon", "Telefon je obavezan.");
     }
+
+    if (!/^\+?[0-9]+$/.test(formData.kontaktTelefon.trim())) {
+      return createError(
+        "kontaktTelefon",
+        "Telefon može sadržati samo brojeve i opcioni + na početku.",
+      );
+    }
+
+    if (formData.kontaktTelefon.replace("+", "").length < 8) {
+      return createError(
+        "kontaktTelefon",
+        "Telefon mora imati najmanje 8 cifara.",
+      );
+    }
+
     if (!formData.rezimRezervacije) {
-      newErrors.rezimRezervacije = "Način rezervacije je obavezan.";
+      return createError("rezimRezervacije", "Način rezervacije je obavezan.");
     }
+
     if (!sanitizeText(formData.kontaktEmail)) {
-      newErrors.kontaktEmail = "Email je obavezan.";
-    } else if (!/\S+@\S+\.\S+/.test(formData.kontaktEmail)) {
-      newErrors.kontaktEmail = "Email nije validan.";
+      return createError("kontaktEmail", "Email je obavezan.");
+    }
+
+    if (!/\S+@\S+\.\S+/.test(formData.kontaktEmail)) {
+      return createError("kontaktEmail", "Email nije validan.");
     }
 
     if (formData.kapacitet.deca) {
       const kapacitetDece = Number(formData.kapacitet.deca);
+
       if (!Number.isFinite(kapacitetDece) || kapacitetDece < 0) {
-        newErrors["kapacitet.deca"] = "Kapacitet dece ne može biti negativan.";
+        return createError(
+          "kapacitet.deca",
+          "Kapacitet dece ne može biti negativan.",
+        );
       }
     }
+
     if (cene.length === 0 && paketi.length === 0) {
-      newErrors.cenePaketi = "Morate dodati bar jednu cenu ili jedan paket.";
+      return createError(
+        "cenePaketi",
+        "Morate dodati bar jednu cenu ili jedan paket.",
+      );
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors({});
+    return true;
   };
 
   const handleSubmit = async (e) => {
@@ -647,10 +693,11 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
       return;
     }
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
     setError("");
 
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      return;
+    }
 
     const submitData = {
       ...formData,
@@ -725,6 +772,11 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
           err?.message ||
           "Greška pri čuvanju igraonice.",
       );
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
     } finally {
       setSubmitting(false);
     }

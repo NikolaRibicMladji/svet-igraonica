@@ -538,4 +538,49 @@ exports.sendCancellationToOwner = async (
   });
 };
 
+exports.sendPlayroomVerificationNotification = async (playroom, owner) => {
+  const adminEmail = process.env.ADMIN_EMAIL;
+
+  if (!adminEmail) {
+    console.warn(
+      "ADMIN_EMAIL nije podešen. Email za verifikaciju nije poslat.",
+    );
+    return false;
+  }
+
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const adminUrl = `${frontendUrl}/admin`;
+
+  return sendMail({
+    from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+    to: adminEmail,
+    subject: `🧾 Nova igraonica čeka verifikaciju - ${playroom.naziv}`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;">
+        <div style="background:#ff6b4a;color:#ffffff;padding:24px;text-align:center;">
+          <h2 style="margin:0;">Nova igraonica čeka verifikaciju</h2>
+        </div>
+
+        <div style="padding:24px;color:#111827;">
+          <p>Registrovana je nova igraonica na platformi <strong>Svet Igraonica</strong>.</p>
+
+          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;padding:16px;margin:20px 0;">
+            <p><strong>Naziv:</strong> ${playroom.naziv}</p>
+            <p><strong>Grad:</strong> ${playroom.grad}</p>
+            <p><strong>Adresa:</strong> ${playroom.adresa}</p>
+            <p><strong>Telefon:</strong> ${playroom.kontaktTelefon}</p>
+            <p><strong>Email:</strong> ${playroom.kontaktEmail}</p>
+            <p><strong>Vlasnik:</strong> ${owner?.ime || ""} ${owner?.prezime || ""}</p>
+            <p><strong>Email vlasnika:</strong> ${owner?.email || "Nije dostupno"}</p>
+          </div>
+
+          <a href="${adminUrl}" style="display:inline-block;background:#ff6b4a;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:12px;font-weight:bold;">
+            Otvori admin panel
+          </a>
+        </div>
+      </div>
+    `,
+  });
+};
+
 exports.sendMail = sendMail;

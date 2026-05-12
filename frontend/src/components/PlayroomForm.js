@@ -83,6 +83,10 @@ const PlayroomForm = ({
 
         {error && <div className="error-message">{error}</div>}
 
+        {Object.keys(errors).length > 0 && (
+          <div className="top-form-error">{Object.values(errors)[0]}</div>
+        )}
+
         <BasicInfoSection
           formData={formData}
           handleChange={handleChange}

@@ -8,6 +8,10 @@ const {
   verifyPlayroomAndGenerateSlots,
   regenerateSlotsForPlayroom,
 } = require("../services/playroomService");
+const User = require("../models/User");
+const {
+  sendPlayroomVerificationNotification,
+} = require("../utils/emailService");
 const { syncTimeSlotsWithWorkingHours } = require("../utils/generateTimeSlots");
 const isEqual = require("lodash.isequal");
 const {
@@ -80,6 +84,16 @@ exports.createPlayroom = async (req, res, next) => {
       gradNormalized: normalizeText(trimmedGrad),
       kontaktEmail: body.kontaktEmail?.trim()?.toLowerCase(),
     });
+    const owner = await User.findById(req.user.id).select("ime prezime email");
+
+    sendPlayroomVerificationNotification(result.playroom, owner).catch(
+      (err) => {
+        console.error(
+          "Greška pri slanju emaila za verifikaciju igraonice:",
+          err,
+        );
+      },
+    );
 
     res.status(201).json({
       success: true,
