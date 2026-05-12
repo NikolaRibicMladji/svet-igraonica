@@ -617,7 +617,9 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
     } else if (formData.kontaktTelefon.replace("+", "").length < 8) {
       newErrors.kontaktTelefon = "Telefon mora imati najmanje 8 cifara.";
     }
-
+    if (!formData.rezimRezervacije) {
+      newErrors.rezimRezervacije = "Način rezervacije je obavezan.";
+    }
     if (!sanitizeText(formData.kontaktEmail)) {
       newErrors.kontaktEmail = "Email je obavezan.";
     } else if (!/\S+@\S+\.\S+/.test(formData.kontaktEmail)) {
@@ -629,6 +631,9 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
       if (!Number.isFinite(kapacitetDece) || kapacitetDece < 0) {
         newErrors["kapacitet.deca"] = "Kapacitet dece ne može biti negativan.";
       }
+    }
+    if (cene.length === 0 && paketi.length === 0) {
+      newErrors.cenePaketi = "Morate dodati bar jednu cenu ili jedan paket.";
     }
 
     setErrors(newErrors);

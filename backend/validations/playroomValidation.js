@@ -3,6 +3,8 @@ const { z } = require("zod");
 const PHONE_REGEX = /^\+?[0-9]+$/;
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 
+const REQUIRED_PRICE_MESSAGE = "Morate dodati bar jednu cenu ili jedan paket";
+
 const phoneSchema = z
   .string()
   .trim()
@@ -17,8 +19,8 @@ const phoneSchema = z
 const priceTypeSchema = z.enum(["fiksno", "po_osobi", "po_satu"]);
 
 const priceItemSchema = z.object({
-  naziv: z.string().trim().min(1, "Naziv cene je obavezan").max(100),
-  cena: z.number().min(0, "Cena ne može biti negativna"),
+  naziv: z.string().trim().min(1, "Naziv je obavezan").max(100),
+  cena: z.coerce.number().min(0, "Cena ne može biti negativna"),
   tip: priceTypeSchema.default("fiksno"),
   opis: z.string().trim().max(500).optional().default(""),
 });
@@ -62,11 +64,8 @@ const profileImageSchema = z
 
 const videoSchema = z.object({
   url: z
-    .string()
-    .trim()
-    .url("URL videa nije validan")
-    .optional()
-    .or(z.literal("")),
+    .union([z.string().trim().url("URL videa nije validan"), z.literal("")])
+    .optional(),
   publicId: z.string().trim().optional().default(""),
   thumbnail: z.string().trim().optional().default(""),
   naziv: z.string().trim().max(150).optional().default(""),
@@ -83,7 +82,7 @@ const socialLinksSchema = z
   .optional()
   .default({});
 
-const playroomBodySchema = z.object({
+const basePlayroomBodySchema = z.object({
   naziv: z.string().trim().min(2, "Naziv je obavezan").max(150),
   adresa: z.string().trim().min(2, "Adresa je obavezna").max(200),
   grad: z.string().trim().min(2, "Grad je obavezan").max(100),
@@ -97,7 +96,9 @@ const playroomBodySchema = z.object({
     .toLowerCase()
     .regex(EMAIL_REGEX, "Kontakt email nije validan"),
 
-  rezimRezervacije: z.enum(["fleksibilno", "fiksno"]).default("fleksibilno"),
+  rezimRezervacije: z.enum(["fleksibilno", "fiksno"], {
+    required_error: "Način rezervacije je obavezan",
+  }),
 
   trajanjeTermina: z.coerce
     .number()
@@ -130,11 +131,13 @@ const playroomBodySchema = z.object({
     .default([]),
 
   profilnaSlika: profileImageSchema,
+
   slike: z
     .array(imageSchema)
     .max(10, "Maksimalno 10 slika")
     .optional()
     .default([]),
+
   videoGalerija: z
     .array(videoSchema)
     .max(3, "Maksimalno 3 videa")
@@ -145,14 +148,44 @@ const playroomBodySchema = z.object({
   radnoVreme: radnoVremeSchema.optional().default({}),
 });
 
+const createPlayroomBodySchema = basePlayroomBodySchema
+  .strict()
+  .refine((data) => data.cene.length > 0 || data.paketi.length > 0, {
+    message: REQUIRED_PRICE_MESSAGE,
+    path: ["cenePaketi"],
+  });
+
+const updatePlayroomBodySchema = basePlayroomBodySchema
+  .partial()
+  .strict()
+  .refine(
+    (data) => {
+      if (
+        !Object.prototype.hasOwnProperty.call(data, "cene") &&
+        !Object.prototype.hasOwnProperty.call(data, "paketi")
+      ) {
+        return true;
+      }
+
+      const cene = data.cene || [];
+      const paketi = data.paketi || [];
+
+      return cene.length > 0 || paketi.length > 0;
+    },
+    {
+      message: REQUIRED_PRICE_MESSAGE,
+      path: ["cenePaketi"],
+    },
+  );
+
 const createPlayroomSchema = z.object({
-  body: playroomBodySchema,
+  body: createPlayroomBodySchema,
   params: z.object({}).optional(),
   query: z.object({}).optional(),
 });
 
 const updatePlayroomSchema = z.object({
-  body: playroomBodySchema.partial(),
+  body: updatePlayroomBodySchema,
   params: z.object({
     id: z.string().min(1, "ID igraonice je obavezan"),
   }),

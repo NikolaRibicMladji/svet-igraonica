@@ -124,6 +124,9 @@ const PlayroomForm = ({
           handleAddCena={handleAddCena}
           handleRemoveCena={handleRemoveCena}
         />
+        {errors.cenePaketi && (
+          <div className="field-error">{errors.cenePaketi}</div>
+        )}
 
         <PackagesSection
           noviPaket={noviPaket}
