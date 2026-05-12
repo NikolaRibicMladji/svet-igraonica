@@ -37,11 +37,15 @@ const Register = () => {
   };
 
   const validateTelefon = (telefon) => {
-    if (!/^[0-9]+$/.test(telefon)) {
-      return "Telefon može sadržati samo brojeve.";
+    const normalizedTelefon = telefon.trim();
+
+    if (!/^\+?[0-9]+$/.test(normalizedTelefon)) {
+      return "Telefon može sadržati samo brojeve i opcioni + na početku.";
     }
 
-    if (telefon.length < 8) {
+    const digitsOnly = normalizedTelefon.replace("+", "");
+
+    if (digitsOnly.length < 8) {
       return "Telefon mora imati najmanje 8 cifara.";
     }
 
@@ -105,6 +109,16 @@ const Register = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === "telefon") {
+      const sanitizedValue = value.replace(/(?!^\+)[^0-9]/g, "");
+
+      setFormData((prev) => ({
+        ...prev,
+        [name]: sanitizedValue,
+      }));
+
+      return;
+    }
 
     setFormData((prev) => ({
       ...prev,

@@ -326,6 +326,17 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === "kontaktTelefon") {
+      const sanitizedValue = value.replace(/(?!^\+)[^0-9]/g, "");
+
+      setFormData((prev) => ({
+        ...prev,
+        [name]: sanitizedValue,
+      }));
+
+      clearFieldError(name);
+      return;
+    }
 
     if (name.includes(".")) {
       const [parent, child] = name.split(".");
@@ -600,8 +611,11 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
 
     if (!sanitizeText(formData.kontaktTelefon)) {
       newErrors.kontaktTelefon = "Telefon je obavezan.";
-    } else if (!/^[0-9+ ]+$/.test(formData.kontaktTelefon)) {
-      newErrors.kontaktTelefon = "Telefon može sadržati samo brojeve.";
+    } else if (!/^\+?[0-9]+$/.test(formData.kontaktTelefon.trim())) {
+      newErrors.kontaktTelefon =
+        "Telefon može sadržati samo brojeve i opcioni + na početku.";
+    } else if (formData.kontaktTelefon.replace("+", "").length < 8) {
+      newErrors.kontaktTelefon = "Telefon mora imati najmanje 8 cifara.";
     }
 
     if (!sanitizeText(formData.kontaktEmail)) {

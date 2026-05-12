@@ -54,11 +54,12 @@ const normalizeRadnoVreme = (radnoVreme = {}) => {
 // @access  Private (vlasnik ili admin)
 exports.createPlayroom = async (req, res, next) => {
   try {
-    req.body.vlasnikId = req.user.id;
+    const body = req.validated.body;
+    body.vlasnikId = req.user.id;
 
     const postoji = await Playroom.findOne({
-      nazivNormalized: normalizeText(req.body.naziv?.trim()),
-      gradNormalized: normalizeText(req.body.grad?.trim()),
+      nazivNormalized: normalizeText(body.naziv?.trim()),
+      gradNormalized: normalizeText(body.grad?.trim()),
     });
 
     if (postoji) {
@@ -68,16 +69,16 @@ exports.createPlayroom = async (req, res, next) => {
       });
     }
 
-    const trimmedNaziv = req.body.naziv?.trim() || "";
-    const trimmedGrad = req.body.grad?.trim() || "";
+    const trimmedNaziv = body.naziv?.trim() || "";
+    const trimmedGrad = body.grad?.trim() || "";
 
     const result = await createPlayroomWithSlots({
-      ...req.body,
+      ...body,
       naziv: trimmedNaziv,
       nazivNormalized: normalizeText(trimmedNaziv),
       grad: trimmedGrad,
       gradNormalized: normalizeText(trimmedGrad),
-      kontaktEmail: req.body.kontaktEmail?.trim()?.toLowerCase(),
+      kontaktEmail: body.kontaktEmail?.trim()?.toLowerCase(),
     });
 
     res.status(201).json({
@@ -219,6 +220,7 @@ exports.getMyPlayrooms = async (req, res, next) => {
 // @access  Private (vlasnik te igraonice ili admin)
 exports.updatePlayroom = async (req, res, next) => {
   try {
+    const body = req.validated.body;
     let playroom = await Playroom.findById(req.params.id);
 
     if (!playroom) {
@@ -240,11 +242,11 @@ exports.updatePlayroom = async (req, res, next) => {
 
     const oldRadnoVreme = normalizeRadnoVreme(playroom.radnoVreme);
     const hasRadnoVremeUpdate = Object.prototype.hasOwnProperty.call(
-      req.body,
+      body,
       "radnoVreme",
     );
     const newRadnoVreme = hasRadnoVremeUpdate
-      ? normalizeRadnoVreme(req.body.radnoVreme)
+      ? normalizeRadnoVreme(body.radnoVreme)
       : oldRadnoVreme;
 
     const oldRezimRezervacije = playroom.rezimRezervacije || "fleksibilno";
@@ -252,39 +254,39 @@ exports.updatePlayroom = async (req, res, next) => {
     const oldVremePripremeTermina = Number(playroom.vremePripremeTermina) || 0;
 
     const hasRezimRezervacijeUpdate = Object.prototype.hasOwnProperty.call(
-      req.body,
+      body,
       "rezimRezervacije",
     );
 
     const hasTrajanjeTerminaUpdate = Object.prototype.hasOwnProperty.call(
-      req.body,
+      body,
       "trajanjeTermina",
     );
 
     const hasVremePripremeTerminaUpdate = Object.prototype.hasOwnProperty.call(
-      req.body,
+      body,
       "vremePripremeTermina",
     );
 
     const newRezimRezervacije = hasRezimRezervacijeUpdate
-      ? req.body.rezimRezervacije
+      ? body.rezimRezervacije
       : oldRezimRezervacije;
 
     const newTrajanjeTermina = hasTrajanjeTerminaUpdate
-      ? Number(req.body.trajanjeTermina)
+      ? Number(body.trajanjeTermina)
       : oldTrajanjeTermina;
 
     const newVremePripremeTermina = hasVremePripremeTerminaUpdate
-      ? Number(req.body.vremePripremeTermina)
+      ? Number(body.vremePripremeTermina)
       : oldVremePripremeTermina;
 
     const updateData = {
-      ...req.body,
+      ...body,
       ...(hasRadnoVremeUpdate ? { radnoVreme: newRadnoVreme } : {}),
-      ...(req.body.naziv ? { naziv: req.body.naziv.trim() } : {}),
-      ...(req.body.grad ? { grad: req.body.grad.trim() } : {}),
-      ...(req.body.kontaktEmail
-        ? { kontaktEmail: req.body.kontaktEmail.trim().toLowerCase() }
+      ...(body.naziv ? { naziv: body.naziv.trim() } : {}),
+      ...(body.grad ? { grad: body.grad.trim() } : {}),
+      ...(body.kontaktEmail
+        ? { kontaktEmail: body.kontaktEmail.trim().toLowerCase() }
         : {}),
     };
 

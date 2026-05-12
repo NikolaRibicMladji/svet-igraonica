@@ -1,6 +1,10 @@
 const express = require("express");
 const router = express.Router();
-
+const validate = require("../middleware/validate");
+const {
+  createPlayroomSchema,
+  updatePlayroomSchema,
+} = require("../validations/playroomValidation");
 const { protect } = require("../middleware/authMiddleware");
 const authorize = require("../middleware/roleMiddleware");
 const checkOwner = require("../middleware/ownerMiddleware");
@@ -43,13 +47,20 @@ router.get(
 router.get("/:id", getPlayroomById);
 
 // ✏️ CRUD
-router.post("/", protect, authorize(ROLES.VLASNIK), createPlayroom);
+router.post(
+  "/",
+  protect,
+  authorize(ROLES.VLASNIK),
+  validate(createPlayroomSchema),
+  createPlayroom,
+);
 
 router.put(
   "/:id",
   protect,
   authorize(ROLES.VLASNIK),
   checkOwner,
+  validate(updatePlayroomSchema),
   updatePlayroom,
 );
 

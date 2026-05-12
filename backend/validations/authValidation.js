@@ -16,8 +16,13 @@ const registerSchema = z.object({
     telefon: z
       .string()
       .trim()
-      .regex(/^[0-9]+$/, "Telefon može sadržati samo brojeve")
-      .min(8, "Telefon mora imati bar 8 cifara"),
+      .regex(
+        /^\+?[0-9]+$/,
+        "Telefon može sadržati samo brojeve i opcioni + na početku",
+      )
+      .refine((value) => value.replace("+", "").length >= 8, {
+        message: "Telefon mora imati bar 8 cifara",
+      }),
     acceptedTerms: z.literal(true, {
       errorMap: () => ({
         message: "Morate prihvatiti uslove korišćenja i politiku privatnosti.",
