@@ -436,7 +436,7 @@ const sendMail = async (options) => {
     await transporter.sendMail(options);
     return true;
   } catch (err) {
-    console.error("❌ Email error:", err.message);
+    console.error("❌ FULL EMAIL ERROR:", err);
     return false;
   }
 };
