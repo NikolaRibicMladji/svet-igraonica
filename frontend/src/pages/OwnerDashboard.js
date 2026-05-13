@@ -759,8 +759,24 @@ const OwnerDashboard = () => {
 
       {error && <div className="error-message">{error}</div>}
       <div className="dashboard-filters">
-        <div className="dashboard-filter-group">
-          <label htmlFor="booking-search">Pretraga</label>
+        <div className="dashboard-filter-group pretraga-group">
+          <div className="pretraga-header">
+            <label htmlFor="booking-search">Pretraga</label>
+
+            <button
+              type="button"
+              className="btn-reset-filters mobile-reset-btn"
+              onClick={() => {
+                setSearchTerm("");
+                setStatusFilter("svi");
+                setDateFilter("");
+                setTimeFromFilter("");
+                setTimeToFilter("");
+              }}
+            >
+              Resetuj
+            </button>
+          </div>
           <input
             id="booking-search"
             type="text"
@@ -785,22 +801,6 @@ const OwnerDashboard = () => {
             value={timeToFilter}
             onChange={(e) => setTimeToFilter(e.target.value)}
           />
-        </div>
-
-        <div className="dashboard-filter-actions">
-          <button
-            type="button"
-            className="btn-reset-filters"
-            onClick={() => {
-              setSearchTerm("");
-              setStatusFilter("svi");
-              setDateFilter("");
-              setTimeFromFilter("");
-              setTimeToFilter("");
-            }}
-          >
-            Resetuj filtere
-          </button>
         </div>
 
         <div className="dashboard-filter-group">
