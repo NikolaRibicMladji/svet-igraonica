@@ -23,6 +23,7 @@ const OwnerDashboard = () => {
   const [dateFilter, setDateFilter] = useState("");
   const [timeFromFilter, setTimeFromFilter] = useState("");
   const [timeToFilter, setTimeToFilter] = useState("");
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showConfirmedModal, setShowConfirmedModal] = useState(false);
   const [showAllBookingsModal, setShowAllBookingsModal] = useState(false);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
@@ -758,7 +759,17 @@ const OwnerDashboard = () => {
       )}
 
       {error && <div className="error-message">{error}</div>}
-      <div className="dashboard-filters">
+      <div className="mobile-filters-toggle-wrap">
+        <button
+          type="button"
+          className="mobile-filters-toggle"
+          onClick={() => setShowMobileFilters((prev) => !prev)}
+        >
+          {showMobileFilters ? "Sakrij filtere" : "Filteri"}
+        </button>
+      </div>
+
+      <div className={`dashboard-filters ${showMobileFilters ? "open" : ""}`}>
         <div className="dashboard-filter-group pretraga-group">
           <div className="pretraga-header">
             <label htmlFor="booking-search">Pretraga</label>

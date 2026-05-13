@@ -597,6 +597,9 @@
   margin-bottom: 24px;
   letter-spacing: 1.5px;
 }
+.mobile-filters-toggle-wrap {
+  display: none;
+}
 .pretraga-header {
   display: flex;
   justify-content: space-between;
@@ -609,24 +612,38 @@
 }
 
 @media (max-width: 768px) {
+  .mobile-filters-toggle-wrap {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 14px;
+  }
+
+  .mobile-filters-toggle {
+    border: none;
+    border-radius: 12px;
+    padding: 9px 14px;
+    background: #0f172a;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .dashboard-filters {
+    display: none;
+  }
+
+  .dashboard-filters.open {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
   .stats-modal-content {
     grid-template-columns: 1fr;
   }
   .dashboard-filters {
     grid-template-columns: 1fr;
     gap: 14px;
-  }
-
-  .dashboard-filter-group.pretraga-group {
-    position: relative;
-  }
-
-  .dashboard-filter-actions.mobile-reset {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: auto;
-    align-items: center;
   }
 
   .btn-reset-filters {
