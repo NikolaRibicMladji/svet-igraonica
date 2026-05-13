@@ -3,25 +3,22 @@ const nodemailer = require("nodemailer");
 // 🔒 lazy transporter (da ne crashuje app ako env nije spreman)
 let transporter;
 
-const getTransporter = () => {
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: "74.125.140.108",
-      port: 465,
-      secure: true,
-      family: 4,
-      connectionTimeout: 30000,
-      greetingTimeout: 30000,
-      socketTimeout: 30000,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-  }
+transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  requireTLS: true,
+  family: 4,
 
-  return transporter;
-};
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+
+  tls: {
+    rejectUnauthorized: false,
+  },
+});
 
 // ==============================
 // 🧠 HTML GENERATOR
@@ -438,7 +435,6 @@ ${
 // ==============================
 const sendMail = async (options) => {
   try {
-    const transporter = getTransporter();
     console.log("📨 SENDING EMAIL TO:", options.to);
     await transporter.sendMail(options);
     return true;
