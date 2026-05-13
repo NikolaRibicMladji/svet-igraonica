@@ -1020,6 +1020,7 @@ const {
 // 🔥 CENTRALIZOVANO SLANJE EMAILOVA
 const handleBookingEmails = async (bookingId) => {
   try {
+    console.log("📧 EMAIL FLOW START:", bookingId);
     const booking = await Booking.findById(bookingId)
       .populate({
         path: "playroomId",
@@ -1033,7 +1034,12 @@ const handleBookingEmails = async (bookingId) => {
       .populate("timeSlotId");
 
     if (!booking) return;
-
+    console.log("📧 EMAIL BOOKING FOUND:", {
+      bookingId: booking._id,
+      emailRoditelja: booking.emailRoditelja,
+      roditeljIdEmail: booking.roditeljId?.email,
+      ownerEmail: booking.playroomId?.vlasnikId?.email,
+    });
     const userForEmail = {
       ime: booking.imeRoditelja || booking.roditeljId?.ime || "",
       prezime: booking.prezimeRoditelja || booking.roditeljId?.prezime || "",

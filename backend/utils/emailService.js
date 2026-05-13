@@ -432,6 +432,7 @@ ${
 const sendMail = async (options) => {
   try {
     const transporter = getTransporter();
+    console.log("📨 SENDING EMAIL TO:", options.to);
     await transporter.sendMail(options);
     return true;
   } catch (err) {
