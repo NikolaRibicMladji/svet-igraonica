@@ -51,6 +51,14 @@ router.post(
       if (req.file?.path) {
         await safeRemoveFile(req.file.path);
       }
+
+      console.error("TEMP UPLOAD ERROR:", {
+        message: error.message,
+        name: error.name,
+        http_code: error.http_code,
+        stack: error.stack,
+      });
+
       next(error);
     }
   },
