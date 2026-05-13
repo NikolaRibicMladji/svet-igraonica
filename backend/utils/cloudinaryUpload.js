@@ -7,9 +7,20 @@ const uploadFileToCloudinary = ({
   resourceType,
   transformation,
 }) => {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error("Cloudinary ENV varijable nisu podešene.");
+  }
+
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
+        cloud_name: cloudName,
+        api_key: apiKey,
+        api_secret: apiSecret,
         folder,
         resource_type: resourceType,
         transformation,
