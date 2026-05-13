@@ -1034,11 +1034,11 @@ const handleBookingEmails = async (bookingId) => {
 
     if (!booking) return;
 
-    const userForEmail = booking.roditeljId || {
-      ime: booking.imeRoditelja,
-      prezime: booking.prezimeRoditelja,
-      email: booking.emailRoditelja,
-      telefon: booking.telefonRoditelja,
+    const userForEmail = {
+      ime: booking.imeRoditelja || booking.roditeljId?.ime || "",
+      prezime: booking.prezimeRoditelja || booking.roditeljId?.prezime || "",
+      email: booking.emailRoditelja || booking.roditeljId?.email || "",
+      telefon: booking.telefonRoditelja || booking.roditeljId?.telefon || "",
     };
 
     const playroom = booking.playroomId;
@@ -1087,11 +1087,11 @@ const sendCancellationEmailById = async (bookingId) => {
 
     const { sendCancellationToOwner } = require("../utils/emailService");
 
-    const userForEmail = booking.roditeljId || {
-      ime: booking.imeRoditelja,
-      prezime: booking.prezimeRoditelja,
-      email: booking.emailRoditelja,
-      telefon: booking.telefonRoditelja,
+    const userForEmail = {
+      ime: booking.imeRoditelja || booking.roditeljId?.ime || "",
+      prezime: booking.prezimeRoditelja || booking.roditeljId?.prezime || "",
+      email: booking.emailRoditelja || booking.roditeljId?.email || "",
+      telefon: booking.telefonRoditelja || booking.roditeljId?.telefon || "",
     };
 
     const timeSlot = {
