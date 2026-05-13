@@ -1,5 +1,12 @@
 const fs = require("fs");
 const cloudinary = require("../config/cloudinary");
+console.log("CLOUDINARY RUNTIME CONFIG", {
+  cloud_name: cloudinary.config().cloud_name,
+  has_api_key: Boolean(cloudinary.config().api_key),
+  api_key_start: cloudinary.config().api_key
+    ? String(cloudinary.config().api_key).slice(0, 4)
+    : null,
+});
 
 const uploadFileToCloudinary = ({
   filePath,
