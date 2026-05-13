@@ -6,7 +6,7 @@ let transporter;
 const getTransporter = () => {
   if (!transporter) {
     transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
+      host: "74.125.140.108",
       port: 465,
       secure: true,
       family: 4,
