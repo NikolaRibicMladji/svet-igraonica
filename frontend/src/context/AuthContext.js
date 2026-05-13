@@ -114,8 +114,13 @@ export const AuthProvider = ({ children }) => {
     setError(null);
 
     try {
+      const pendingEmail = userData?.email?.trim().toLowerCase();
+
+      if (pendingEmail) {
+        localStorage.setItem("pendingOwnerEmail", pendingEmail);
+      }
+
       const response = await api.post("/auth/register", userData);
-      localStorage.setItem("pendingOwnerEmail", userData.email);
       return handleAuthSuccess(response, userData);
     } catch (err) {
       return handleAuthError(err, "Greška pri registraciji.");

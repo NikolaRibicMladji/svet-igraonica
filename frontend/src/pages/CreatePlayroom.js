@@ -10,12 +10,6 @@ const CreatePlayroom = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user?.email) {
-      localStorage.removeItem("pendingOwnerEmail");
-    }
-  }, [user?.email]);
-
-  useEffect(() => {
     const syncUserEmail = async () => {
       if (!loading && user && !user.email) {
         setSyncingUser(true);
@@ -54,8 +48,13 @@ const CreatePlayroom = () => {
     );
   }
 
-  const ownerEmail =
-    user?.email || localStorage.getItem("pendingOwnerEmail") || "";
+  const ownerEmail = (
+    user?.email ||
+    localStorage.getItem("pendingOwnerEmail") ||
+    ""
+  )
+    .trim()
+    .toLowerCase();
 
   return (
     <div className="container">

@@ -95,6 +95,7 @@ const PlayroomForm = ({
           formData={formData}
           handleChange={handleChange}
           errors={errors}
+          ownerEmail={ownerEmail || user?.email || ""}
         />
 
         <CapacitySection

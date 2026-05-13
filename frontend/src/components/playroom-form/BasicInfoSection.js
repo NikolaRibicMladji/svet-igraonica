@@ -1,6 +1,11 @@
 import React from "react";
 
-const BasicInfoSection = ({ formData, handleChange, errors }) => {
+const BasicInfoSection = ({
+  formData,
+  handleChange,
+  errors,
+  ownerEmail = "",
+}) => {
   return (
     <div className="form-section">
       <h3>📋 Osnovni podaci</h3>
@@ -77,7 +82,7 @@ const BasicInfoSection = ({ formData, handleChange, errors }) => {
           <input
             type="email"
             name="kontaktEmail"
-            value={formData.kontaktEmail || ""}
+            value={ownerEmail || formData.kontaktEmail || ""}
             readOnly
             tabIndex={-1}
             className={`locked-email-input ${errors.kontaktEmail ? "input-error" : ""}`}
