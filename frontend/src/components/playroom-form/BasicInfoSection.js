@@ -77,10 +77,14 @@ const BasicInfoSection = ({ formData, handleChange, errors }) => {
           <input
             type="email"
             name="kontaktEmail"
-            value={formData.kontaktEmail}
-            onChange={handleChange}
-            className={errors.kontaktEmail ? "input-error" : ""}
+            value={formData.kontaktEmail || ""}
+            readOnly
+            tabIndex={-1}
+            className={`locked-email-input ${errors.kontaktEmail ? "input-error" : ""}`}
           />
+          <small className="field-hint">
+            Email je preuzet sa vašeg naloga i ne može se menjati.
+          </small>
           {errors.kontaktEmail && (
             <div className="field-error">{errors.kontaktEmail}</div>
           )}

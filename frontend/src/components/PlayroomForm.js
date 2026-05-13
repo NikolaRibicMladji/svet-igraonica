@@ -12,13 +12,16 @@ import PackagesSection from "./playroom-form/PackagesSection";
 import AdditionalServicesSection from "./playroom-form/AdditionalServicesSection";
 import BenefitsSection from "./playroom-form/BenefitsSection";
 import { DEFAULT_DANI, usePlayroomForm } from "../hooks/usePlayroomForm";
+import { useAuth } from "../context/AuthContext";
 
 const PlayroomForm = ({
   initialData,
   onSubmit,
   onCancel,
   isEditing = false,
+  ownerEmail = "",
 }) => {
+  const { user } = useAuth();
   const {
     formData,
     error,
@@ -69,6 +72,7 @@ const PlayroomForm = ({
   } = usePlayroomForm({
     initialData,
     onSubmit,
+    ownerEmail: ownerEmail || user?.email || "",
   });
 
   return (
@@ -129,7 +133,9 @@ const PlayroomForm = ({
           handleRemoveCena={handleRemoveCena}
         />
         {errors.cenePaketi && (
-          <div className="field-error">{errors.cenePaketi}</div>
+          <div className="field-error cenePaketi-error" tabIndex="-1">
+            {errors.cenePaketi}
+          </div>
         )}
 
         <PackagesSection

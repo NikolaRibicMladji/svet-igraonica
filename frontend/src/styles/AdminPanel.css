@@ -294,9 +294,19 @@
   color: #fff;
   padding: 12px 22px;
   border-radius: 8px;
-  cursor: not-allowed;
+  cursor: pointer;
   font-size: 15px;
-  opacity: 0.6;
+  transition: all 0.2s ease;
+}
+
+.btn-reject:hover:not(:disabled) {
+  background: #c62828;
+  transform: scale(1.03);
+}
+
+.btn-reject:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 @media (max-width: 900px) {

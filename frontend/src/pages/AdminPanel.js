@@ -434,7 +434,10 @@ const AdminPanel = () => {
                     type="button"
                     className="btn-reject"
                     onClick={() => handleReject(selectedPlayroom._id)}
-                    disabled={rejectingId === selectedPlayroom._id}
+                    disabled={
+                      rejectingId === selectedPlayroom._id ||
+                      !rejectReason.trim()
+                    }
                   >
                     {rejectingId === selectedPlayroom._id
                       ? "Odbijam..."

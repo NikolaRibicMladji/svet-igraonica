@@ -175,6 +175,13 @@ const PlayroomSchema = new mongoose.Schema(
       maxlength: 200,
     },
 
+    adresaNormalized: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
     grad: {
       type: String,
       required: [true, "Grad je obavezan"],
@@ -202,6 +209,8 @@ const PlayroomSchema = new mongoose.Schema(
       required: [true, "Kontakt email je obavezan"],
       trim: true,
       lowercase: true,
+      unique: true,
+      index: true,
       match: [/^\S+@\S+\.\S+$/, "Kontakt email nije validan"],
     },
 
@@ -217,17 +226,16 @@ const PlayroomSchema = new mongoose.Schema(
     rezimRezervacije: {
       type: String,
       enum: ["fleksibilno", "fiksno"],
-      default: "fleksibilno",
+      required: true,
     },
-
     trajanjeTermina: {
       type: Number,
-      enum: [15, 30, 45, 60, 90, 120, 150, 180],
+      enum: [60, 90, 120, 150, 180, 210, 240, 270, 300],
       default: 60,
     },
     vremePripremeTermina: {
       type: Number,
-      enum: [0, 5, 10, 15, 20, 25, 30],
+      enum: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60],
       default: 0,
     },
     gradNormalized: {
@@ -365,6 +373,10 @@ PlayroomSchema.pre("save", function (next) {
     this.nazivNormalized = normalizeText(this.naziv);
   }
 
+  if (this.isModified("adresa")) {
+    this.adresaNormalized = normalizeText(this.adresa);
+  }
+
   next();
 });
 
@@ -383,6 +395,10 @@ PlayroomSchema.index({ gradNormalized: 1 });
 
 PlayroomSchema.index(
   { nazivNormalized: 1, gradNormalized: 1 },
+  { unique: true },
+);
+PlayroomSchema.index(
+  { adresaNormalized: 1, gradNormalized: 1 },
   { unique: true },
 );
 

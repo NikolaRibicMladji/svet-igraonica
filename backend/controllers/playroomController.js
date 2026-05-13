@@ -61,15 +61,40 @@ exports.createPlayroom = async (req, res, next) => {
     const body = req.validated.body;
     body.vlasnikId = req.user.id;
 
-    const postoji = await Playroom.findOne({
-      nazivNormalized: normalizeText(body.naziv?.trim()),
-      gradNormalized: normalizeText(body.grad?.trim()),
+    const ownerUser = await User.findById(req.user.id).select("email");
+
+    if (!ownerUser?.email) {
+      return res.status(401).json({
+        success: false,
+        message: "Korisnik nije pronađen ili nema email.",
+      });
+    }
+
+    const normalizedNaziv = normalizeText(body.naziv?.trim());
+    const normalizedGrad = normalizeText(body.grad?.trim());
+    const normalizedAdresa = normalizeText(body.adresa?.trim());
+
+    const postojiNaziv = await Playroom.findOne({
+      nazivNormalized: normalizedNaziv,
+      gradNormalized: normalizedGrad,
     });
 
-    if (postoji) {
+    if (postojiNaziv) {
       return res.status(400).json({
         success: false,
-        message: "Igraonica sa ovim imenom već postoji",
+        message: "Igraonica sa ovim nazivom već postoji u ovom gradu.",
+      });
+    }
+
+    const postojiAdresa = await Playroom.findOne({
+      adresaNormalized: normalizedAdresa,
+      gradNormalized: normalizedGrad,
+    });
+
+    if (postojiAdresa) {
+      return res.status(400).json({
+        success: false,
+        message: "Igraonica sa ovom adresom već postoji u ovom gradu.",
       });
     }
 
@@ -79,10 +104,12 @@ exports.createPlayroom = async (req, res, next) => {
     const result = await createPlayroomWithSlots({
       ...body,
       naziv: trimmedNaziv,
-      nazivNormalized: normalizeText(trimmedNaziv),
+      nazivNormalized: normalizedNaziv,
       grad: trimmedGrad,
-      gradNormalized: normalizeText(trimmedGrad),
-      kontaktEmail: body.kontaktEmail?.trim()?.toLowerCase(),
+      gradNormalized: normalizedGrad,
+      adresa: body.adresa?.trim(),
+      adresaNormalized: normalizedAdresa,
+      kontaktEmail: ownerUser.email.trim().toLowerCase(),
     });
     const owner = await User.findById(req.user.id).select("ime prezime email");
 
@@ -299,6 +326,7 @@ exports.updatePlayroom = async (req, res, next) => {
       ...(hasRadnoVremeUpdate ? { radnoVreme: newRadnoVreme } : {}),
       ...(body.naziv ? { naziv: body.naziv.trim() } : {}),
       ...(body.grad ? { grad: body.grad.trim() } : {}),
+      ...(body.adresa ? { adresa: body.adresa.trim() } : {}),
       ...(body.kontaktEmail
         ? { kontaktEmail: body.kontaktEmail.trim().toLowerCase() }
         : {}),
@@ -312,6 +340,10 @@ exports.updatePlayroom = async (req, res, next) => {
       updateData.gradNormalized = normalizeText(updateData.grad);
     }
 
+    if (updateData.adresa) {
+      updateData.adresaNormalized = normalizeText(updateData.adresa);
+    }
+
     if (updateData.nazivNormalized) {
       const existingPlayroom = await Playroom.findOne({
         _id: { $ne: playroom._id },
@@ -323,6 +355,22 @@ exports.updatePlayroom = async (req, res, next) => {
         return res.status(400).json({
           success: false,
           message: "Igraonica sa ovim imenom već postoji",
+        });
+      }
+    }
+
+    if (updateData.adresaNormalized || updateData.gradNormalized) {
+      const existingAddress = await Playroom.findOne({
+        _id: { $ne: playroom._id },
+        adresaNormalized:
+          updateData.adresaNormalized || playroom.adresaNormalized,
+        gradNormalized: updateData.gradNormalized || playroom.gradNormalized,
+      });
+
+      if (existingAddress) {
+        return res.status(400).json({
+          success: false,
+          message: "Igraonica sa ovom adresom već postoji u ovom gradu.",
         });
       }
     }

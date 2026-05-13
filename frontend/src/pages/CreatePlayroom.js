@@ -1,12 +1,34 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PlayroomForm from "../components/PlayroomForm";
 import { createPlayroom } from "../services/playroomService";
 import { useAuth } from "../context/AuthContext";
 
 const CreatePlayroom = () => {
-  const { user } = useAuth();
+  const { user, loading, loadUser } = useAuth();
+  const [syncingUser, setSyncingUser] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user?.email) {
+      localStorage.removeItem("pendingOwnerEmail");
+    }
+  }, [user?.email]);
+
+  useEffect(() => {
+    const syncUserEmail = async () => {
+      if (!loading && user && !user.email) {
+        setSyncingUser(true);
+        await loadUser();
+        setSyncingUser(false);
+      }
+    };
+
+    syncUserEmail();
+  }, [loading, user, loadUser]);
+  if (loading || syncingUser) {
+    return <div className="container loading">Učitavanje...</div>;
+  }
 
   const handleSubmit = async (data) => {
     const result = await createPlayroom(data);
@@ -32,12 +54,16 @@ const CreatePlayroom = () => {
     );
   }
 
+  const ownerEmail =
+    user?.email || localStorage.getItem("pendingOwnerEmail") || "";
+
   return (
     <div className="container">
       <PlayroomForm
         onSubmit={handleSubmit}
         onCancel={handleCancel}
         isEditing={false}
+        ownerEmail={ownerEmail}
       />
     </div>
   );

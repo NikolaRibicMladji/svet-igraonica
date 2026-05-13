@@ -167,9 +167,13 @@ const Register = () => {
 
     if (result?.success) {
       if (formData.role === "vlasnik") {
-        navigate("/manage-playroom");
+        navigate("/create-playroom", {
+          replace: true,
+        });
       } else {
-        navigate("/");
+        navigate("/", {
+          replace: true,
+        });
       }
     } else {
       setServerError(result?.error || "Greška pri registraciji.");
@@ -190,6 +194,8 @@ const Register = () => {
             <label htmlFor="register-ime">Ime</label>
             <input
               id="register-ime"
+              required
+              minLength={2}
               type="text"
               name="ime"
               value={formData.ime}
@@ -204,6 +210,8 @@ const Register = () => {
             <label htmlFor="register-prezime">Prezime</label>
             <input
               id="register-prezime"
+              required
+              minLength={2}
               type="text"
               name="prezime"
               value={formData.prezime}
@@ -220,6 +228,7 @@ const Register = () => {
             <label htmlFor="register-email">Email</label>
             <input
               id="register-email"
+              required
               type="email"
               name="email"
               value={formData.email}
@@ -234,6 +243,8 @@ const Register = () => {
             <label htmlFor="register-password">Lozinka</label>
             <input
               id="register-password"
+              required
+              minLength={6}
               type="password"
               name="password"
               value={formData.password}
@@ -250,6 +261,8 @@ const Register = () => {
             <label htmlFor="register-confirm-password">Potvrdite lozinku</label>
             <input
               id="register-confirm-password"
+              required
+              minLength={6}
               type="password"
               value={confirmPassword}
               onChange={handleConfirmPasswordChange}
@@ -265,6 +278,7 @@ const Register = () => {
             <label htmlFor="register-telefon">Telefon</label>
             <input
               id="register-telefon"
+              required
               type="tel"
               name="telefon"
               value={formData.telefon}
@@ -282,6 +296,7 @@ const Register = () => {
             <label htmlFor="register-role">Tip korisnika</label>
             <select
               id="register-role"
+              required
               name="role"
               value={formData.role}
               onChange={handleChange}
@@ -312,6 +327,7 @@ const Register = () => {
               </span>
               <input
                 type="checkbox"
+                required
                 checked={acceptedTerms}
                 onChange={(e) => {
                   setAcceptedTerms(e.target.checked);

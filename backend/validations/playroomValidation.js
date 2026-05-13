@@ -102,15 +102,22 @@ const basePlayroomBodySchema = z.object({
 
   trajanjeTermina: z.coerce
     .number()
-    .refine((value) => [15, 30, 45, 60, 90, 120, 150, 180].includes(value), {
-      message: "Trajanje termina nije validno",
-    }),
+    .refine(
+      (value) => [60, 90, 120, 150, 180, 210, 240, 270, 300].includes(value),
+      {
+        message: "Trajanje termina nije validno",
+      },
+    ),
 
   vremePripremeTermina: z.coerce
     .number()
-    .refine((value) => [0, 5, 10, 15, 20, 25, 30].includes(value), {
-      message: "Vreme pripreme termina nije validno",
-    }),
+    .refine(
+      (value) =>
+        [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60].includes(value),
+      {
+        message: "Vreme pripreme termina nije validno",
+      },
+    ),
 
   kapacitet: z
     .object({

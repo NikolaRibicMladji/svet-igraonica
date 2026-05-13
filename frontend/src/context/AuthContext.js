@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }) => {
     loadUser();
   }, []);
 
-  const handleAuthSuccess = (response) => {
+  const handleAuthSuccess = (response, fallbackUserData = null) => {
     const payload =
       response?.data?.accessToken || response?.data?.user
         ? response.data
@@ -84,7 +84,12 @@ export const AuthProvider = ({ children }) => {
         : payload;
 
     const token = authData?.accessToken || authData?.token || null;
-    const userDataRes = authData?.user || null;
+    const userDataRes = authData?.user
+      ? {
+          ...authData.user,
+          email: authData.user.email || fallbackUserData?.email || "",
+        }
+      : null;
 
     if (!token || !userDataRes) {
       console.error("handleAuthSuccess: nedostaju token ili user", response);
@@ -110,7 +115,8 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const response = await api.post("/auth/register", userData);
-      return handleAuthSuccess(response);
+      localStorage.setItem("pendingOwnerEmail", userData.email);
+      return handleAuthSuccess(response, userData);
     } catch (err) {
       return handleAuthError(err, "Greška pri registraciji.");
     }

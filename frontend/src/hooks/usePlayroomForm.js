@@ -54,7 +54,7 @@ const toNumberOrZero = (value) => {
 
 const sanitizeText = (value) => (typeof value === "string" ? value.trim() : "");
 
-export const usePlayroomForm = ({ initialData, onSubmit }) => {
+export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
   const initialFormData = useMemo(
     () => ({
       naziv: initialData?.naziv || "",
@@ -62,7 +62,7 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
       grad: initialData?.grad || "",
       opis: initialData?.opis || "",
       kontaktTelefon: initialData?.kontaktTelefon || "",
-      kontaktEmail: initialData?.kontaktEmail || "",
+      kontaktEmail: initialData?.kontaktEmail || ownerEmail || "",
       rezimRezervacije: initialData?.rezimRezervacije || "",
       trajanjeTermina: initialData?.trajanjeTermina || 60,
       vremePripremeTermina: initialData?.vremePripremeTermina ?? 0,
@@ -71,10 +71,18 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
         roditelji: initialData?.kapacitet?.roditelji || "",
       },
     }),
-    [initialData],
+    [initialData, ownerEmail],
   );
 
   const [formData, setFormData] = useState(initialFormData);
+  useEffect(() => {
+    if (!ownerEmail || initialData?.kontaktEmail) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      kontaktEmail: prev.kontaktEmail || ownerEmail,
+    }));
+  }, [ownerEmail, initialData?.kontaktEmail]);
   const [cene, setCene] = useState(
     Array.isArray(initialData?.cene) ? initialData.cene : [],
   );
@@ -153,7 +161,15 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
   );
 
   useEffect(() => {
-    setFormData(initialFormData);
+    setFormData((prev) => {
+      const existingEmail =
+        prev.kontaktEmail || initialData?.kontaktEmail || ownerEmail || "";
+
+      return {
+        ...initialFormData,
+        kontaktEmail: existingEmail,
+      };
+    });
     setCene(Array.isArray(initialData?.cene) ? initialData.cene : []);
     setNovaCena({
       naziv: "",
@@ -217,7 +233,7 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
 
     setError("");
     setErrors({});
-  }, [initialData, initialFormData]);
+  }, [initialData, initialFormData, ownerEmail]);
 
   useEffect(() => {
     if (!error) return;
@@ -326,6 +342,9 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === "kontaktEmail" && ownerEmail) {
+      return;
+    }
     if (name === "kontaktTelefon") {
       const sanitizedValue = value.replace(/(?!^\+)[^0-9]/g, "");
 
@@ -706,7 +725,7 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
       grad: sanitizeText(formData.grad),
       opis: sanitizeText(formData.opis),
       kontaktTelefon: sanitizeText(formData.kontaktTelefon),
-      kontaktEmail: sanitizeText(formData.kontaktEmail),
+      kontaktEmail: sanitizeText(ownerEmail || formData.kontaktEmail),
       rezimRezervacije: formData.rezimRezervacije || "fleksibilno",
       trajanjeTermina: Number(formData.trajanjeTermina) || 60,
       vremePripremeTermina: Number(formData.vremePripremeTermina) || 0,

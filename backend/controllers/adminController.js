@@ -9,7 +9,7 @@ const {
 const {
   sendPlayroomApprovedEmail,
   sendPlayroomRejectedEmail,
-} = require("../services/emailService");
+} = require("../utils/emailService");
 
 // @desc    Dohvati sve neverifikovane igraonice
 // @route   GET /api/admin/playrooms/unverified
