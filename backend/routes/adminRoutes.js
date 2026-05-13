@@ -9,6 +9,7 @@ const {
   getUnverifiedPlayrooms,
   getAllUsers,
   verifyPlayroom,
+  rejectPlayroom,
 } = require("../controllers/adminController");
 
 // 🔒 sve rute su zaštićene + samo ADMIN
@@ -18,6 +19,7 @@ router.use(authorize(ROLES.ADMIN));
 // 📦 PLAYROOMS
 router.get("/playrooms/unverified", getUnverifiedPlayrooms);
 router.put("/playrooms/:id/verify", verifyPlayroom);
+router.put("/playrooms/:id/reject", rejectPlayroom);
 
 // 👤 USERS
 router.get("/users", getAllUsers);

@@ -41,6 +41,27 @@ export const verifyPlayroom = async (id) => {
   }
 };
 
+export const rejectPlayroom = async (id, reason) => {
+  try {
+    const response = await api.put(`/admin/playrooms/${id}/reject`, {
+      reason,
+    });
+
+    return {
+      success: true,
+      data: response.data?.data || null,
+      message: response.data?.message || "Igraonica je odbijena.",
+    };
+  } catch (error) {
+    console.error("Greška pri odbijanju igraonice:", error);
+
+    return {
+      success: false,
+      error: error.response?.data?.message || "Greška pri odbijanju igraonice.",
+    };
+  }
+};
+
 export const getAllUsers = async (page = 1, limit = 10) => {
   try {
     const response = await api.get(`/admin/users?page=${page}&limit=${limit}`);

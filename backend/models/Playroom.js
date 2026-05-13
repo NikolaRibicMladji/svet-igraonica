@@ -332,6 +332,17 @@ const PlayroomSchema = new mongoose.Schema(
       default: PLAYROOM_STATUS.U_IZRADI,
       index: true,
     },
+    razlogOdbijanja: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1000,
+    },
+
+    odbijenAt: {
+      type: Date,
+      default: null,
+    },
 
     drustveneMreze: {
       instagram: { type: String, default: "", trim: true },

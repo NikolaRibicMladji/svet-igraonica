@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   getUnverifiedPlayrooms,
   verifyPlayroom,
   getAllUsers,
+  rejectPlayroom,
 } from "../services/adminService";
 import { useAuth } from "../context/AuthContext";
 import "../styles/AdminPanel.css";
@@ -13,9 +14,12 @@ const AdminPanel = () => {
   const [playrooms, setPlayrooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [verifyingId, setVerifyingId] = useState("");
+  const [selectedPlayroom, setSelectedPlayroom] = useState(null);
+  const detailsPanelRef = useRef(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectingId, setRejectingId] = useState("");
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersPage, setUsersPage] = useState(1);
@@ -31,6 +35,12 @@ const AdminPanel = () => {
     }
   }, [user, authLoading, usersPage]);
 
+  useEffect(() => {
+    if (selectedPlayroom && detailsPanelRef.current) {
+      detailsPanelRef.current.scrollTop = 0;
+    }
+  }, [selectedPlayroom?._id]);
+
   const loadUnverifiedPlayrooms = async () => {
     setLoading(true);
     setError("");
@@ -39,7 +49,9 @@ const AdminPanel = () => {
       const result = await getUnverifiedPlayrooms();
 
       if (result?.success) {
-        setPlayrooms(Array.isArray(result.data) ? result.data : []);
+        const loadedPlayrooms = Array.isArray(result.data) ? result.data : [];
+        setPlayrooms(loadedPlayrooms);
+        setSelectedPlayroom(null);
       } else {
         setPlayrooms([]);
         setError(
@@ -114,6 +126,42 @@ const AdminPanel = () => {
     }
   };
 
+  const handleReject = async (id) => {
+    if (!rejectReason.trim()) {
+      setError("Unesi razlog odbijanja.");
+      return;
+    }
+
+    setRejectingId(id);
+    setError("");
+    setMessage("");
+
+    try {
+      const result = await rejectPlayroom(id, rejectReason);
+
+      if (result?.success) {
+        setMessage(result.message || "Igraonica je odbijena.");
+
+        setRejectReason("");
+        setSelectedPlayroom(null);
+
+        await loadUnverifiedPlayrooms();
+
+        setTimeout(() => {
+          setMessage("");
+        }, 3000);
+      } else {
+        setError(result?.error || "Greška pri odbijanju.");
+      }
+    } catch (err) {
+      setError(
+        err?.response?.data?.message || err?.message || "Greška pri odbijanju.",
+      );
+    } finally {
+      setRejectingId("");
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="container admin-panel">
@@ -147,63 +195,255 @@ const AdminPanel = () => {
           <p>🎉 Nema igraonica koje čekaju verifikaciju.</p>
         </div>
       ) : (
-        <div className="admin-playrooms-list">
-          {playrooms.map((playroom) => {
-            const vlasnik = playroom?.vlasnikId || {};
+        <div className="admin-verification-grid">
+          <div className="admin-playrooms-list">
+            {playrooms.map((playroom) => {
+              const vlasnik = playroom?.vlasnikId || {};
+              const isActive = selectedPlayroom?._id === playroom._id;
 
-            return (
-              <div key={playroom._id} className="admin-playroom-card">
-                <div className="admin-playroom-info">
+              return (
+                <button
+                  key={playroom._id}
+                  type="button"
+                  className={`admin-playroom-preview-card ${isActive ? "active" : ""}`}
+                  onClick={() => {
+                    setRejectReason("");
+
+                    setSelectedPlayroom((prev) =>
+                      prev?._id === playroom._id ? null : playroom,
+                    );
+                  }}
+                >
                   <h3>{playroom.naziv}</h3>
 
                   <p>
-                    <strong>Vlasnik:</strong> {vlasnik?.ime || "-"}{" "}
-                    {vlasnik?.prezime || ""}
+                    {playroom.grad || "-"} · {playroom.adresa || "-"}
                   </p>
 
                   <p>
-                    <strong>Email:</strong> {vlasnik?.email || "-"}
+                    Vlasnik: {vlasnik?.ime || "-"} {vlasnik?.prezime || ""}
                   </p>
+
+                  <span>
+                    {isActive ? "Zatvori detalje ↑" : "Otvori detalje →"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="admin-details-panel" ref={detailsPanelRef}>
+            {selectedPlayroom && (
+              <div className="admin-playroom-card admin-playroom-details-card">
+                <div className="admin-playroom-info">
+                  <h3>{selectedPlayroom.naziv}</h3>
+                  {selectedPlayroom?.profilnaSlika?.url && (
+                    <div className="admin-profile-image-box">
+                      <img
+                        src={selectedPlayroom.profilnaSlika.url}
+                        alt={selectedPlayroom.naziv}
+                        className="admin-profile-image"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
 
                   <p>
-                    <strong>Telefon:</strong> {vlasnik?.telefon || "-"}
+                    <strong>Opis:</strong> {selectedPlayroom?.opis || "-"}
                   </p>
-
                   <p>
-                    <strong>Adresa:</strong> {playroom?.adresa || "-"}
-                    {playroom?.grad ? `, ${playroom.grad}` : ""}
+                    <strong>Grad:</strong> {selectedPlayroom?.grad || "-"}
                   </p>
-
+                  <p>
+                    <strong>Adresa:</strong> {selectedPlayroom?.adresa || "-"}
+                  </p>
+                  <p>
+                    <strong>Kontakt telefon:</strong>{" "}
+                    {selectedPlayroom?.kontaktTelefon || "-"}
+                  </p>
+                  <p>
+                    <strong>Kontakt email:</strong>{" "}
+                    {selectedPlayroom?.kontaktEmail || "-"}
+                  </p>
+                  <p>
+                    <strong>Režim rezervacije:</strong>{" "}
+                    {selectedPlayroom?.rezimRezervacije || "-"}
+                  </p>
+                  <p>
+                    <strong>Trajanje termina:</strong>{" "}
+                    {selectedPlayroom?.trajanjeTermina || 0} min
+                  </p>
+                  <p>
+                    <strong>Vreme pripreme:</strong>{" "}
+                    {selectedPlayroom?.vremePripremeTermina || 0} min
+                  </p>
                   <p>
                     <strong>Kapacitet dece:</strong>{" "}
-                    {playroom?.kapacitet?.deca || 0}
+                    {selectedPlayroom?.kapacitet?.deca || 0}
                   </p>
-
                   <p>
                     <strong>Kapacitet roditelja:</strong>{" "}
-                    {playroom?.kapacitet?.roditelji
-                      ? `${playroom.kapacitet.roditelji} roditelja`
-                      : "Neograničeno"}
+                    {selectedPlayroom?.kapacitet?.roditelji || 0}
                   </p>
 
-                  <p>
-                    <strong>Opis:</strong> {playroom?.opis || "-"}
-                  </p>
+                  <div className="admin-section">
+                    <h4>Radno vreme</h4>
+                    {Object.entries(selectedPlayroom?.radnoVreme || {}).map(
+                      ([dan, vreme]) => (
+                        <div key={dan} className="admin-row">
+                          <span>{dan}</span>
+                          <span>
+                            {vreme?.radi
+                              ? `${vreme?.od || "-"} - ${vreme?.do || "-"}`
+                              : "Ne radi"}
+                          </span>
+                        </div>
+                      ),
+                    )}
+                  </div>
+
+                  <div className="admin-section">
+                    <h4>Cenovnik</h4>
+                    {selectedPlayroom?.cene?.length ? (
+                      selectedPlayroom.cene.map((item, index) => (
+                        <div key={index} className="admin-box">
+                          <p>
+                            <strong>{item.naziv}</strong>
+                          </p>
+                          <p>
+                            {item.cena} RSD · {item.tip}
+                          </p>
+                          <p>{item.opis || "-"}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p>Nema cenovnika.</p>
+                    )}
+                  </div>
+
+                  <div className="admin-section">
+                    <h4>Paketi</h4>
+                    {selectedPlayroom?.paketi?.length ? (
+                      selectedPlayroom.paketi.map((item, index) => (
+                        <div key={index} className="admin-box">
+                          <p>
+                            <strong>{item.naziv}</strong>
+                          </p>
+                          <p>
+                            {item.cena} RSD · {item.tip}
+                          </p>
+                          <p>{item.opis || "-"}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p>Nema paketa.</p>
+                    )}
+                  </div>
+
+                  <div className="admin-section">
+                    <h4>Dodatne usluge</h4>
+                    {selectedPlayroom?.dodatneUsluge?.length ? (
+                      selectedPlayroom.dodatneUsluge.map((item, index) => (
+                        <div key={index} className="admin-box">
+                          <p>
+                            <strong>{item.naziv}</strong>
+                          </p>
+                          <p>
+                            {item.cena} RSD · {item.tip}
+                          </p>
+                          <p>{item.opis || "-"}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p>Nema dodatnih usluga.</p>
+                    )}
+                  </div>
+
+                  <div className="admin-section">
+                    <h4>Galerija slika</h4>
+                    {selectedPlayroom?.slike?.length ? (
+                      <div className="admin-gallery">
+                        {selectedPlayroom.slike.map((slika, index) => (
+                          <img
+                            key={index}
+                            src={slika.url}
+                            alt={selectedPlayroom.naziv}
+                            className="admin-gallery-image"
+                            loading="lazy"
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <p>Nema slika.</p>
+                    )}
+                  </div>
+                  <div className="admin-section">
+                    <h4>Galerija video zapisa</h4>
+
+                    {selectedPlayroom?.videoGalerija?.length ? (
+                      <div className="admin-video-gallery">
+                        {selectedPlayroom.videoGalerija.map((video, index) => (
+                          <div
+                            key={video.publicId || index}
+                            className="admin-video-card"
+                          >
+                            <video
+                              src={video.url}
+                              controls
+                              preload="metadata"
+                              className="admin-video"
+                            />
+
+                            <p>{video.naziv || `Video ${index + 1}`}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>Nema video zapisa.</p>
+                    )}
+                  </div>
                 </div>
 
-                <button
-                  type="button"
-                  className="btn-verify"
-                  onClick={() => handleVerify(playroom._id)}
-                  disabled={verifyingId === playroom._id}
-                >
-                  {verifyingId === playroom._id
-                    ? "Verifikujem..."
-                    : "✅ Verifikuj igraonicu"}
-                </button>
+                <div className="admin-actions">
+                  <button
+                    type="button"
+                    className="btn-verify"
+                    onClick={() => handleVerify(selectedPlayroom._id)}
+                    disabled={verifyingId === selectedPlayroom._id}
+                  >
+                    {verifyingId === selectedPlayroom._id
+                      ? "Verifikujem..."
+                      : "✅ Verifikuj"}
+                  </button>
+                </div>
+
+                <div className="admin-reject-section">
+                  <div className="admin-reject-box">
+                    <label htmlFor="rejectReason">Razlog odbijanja</label>
+
+                    <textarea
+                      id="rejectReason"
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                      placeholder="Unesi razlog odbijanja..."
+                      className="admin-reject-textarea"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-reject"
+                    onClick={() => handleReject(selectedPlayroom._id)}
+                    disabled={rejectingId === selectedPlayroom._id}
+                  >
+                    {rejectingId === selectedPlayroom._id
+                      ? "Odbijam..."
+                      : "✖ Odbij"}
+                  </button>
+                </div>
               </div>
-            );
-          })}
+            )}
+          </div>
         </div>
       )}
 

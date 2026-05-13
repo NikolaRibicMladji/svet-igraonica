@@ -583,4 +583,98 @@ exports.sendPlayroomVerificationNotification = async (playroom, owner) => {
   });
 };
 
+// ==============================
+// ✅ VERIFIKACIJA IGRAONICE
+// ==============================
+exports.sendPlayroomApprovedEmail = async (playroom, owner) => {
+  return sendMail({
+    from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+    to: owner.email,
+    subject: `✅ Vaša igraonica je verifikovana - ${playroom.naziv}`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;">
+        
+        <div style="background:#16a34a;color:#ffffff;padding:28px;text-align:center;">
+          <h1 style="margin:0;font-size:28px;">
+            Igraonica je verifikovana
+          </h1>
+        </div>
+
+        <div style="padding:28px;color:#111827;">
+          <p style="font-size:16px;line-height:1.7;">
+            Zdravo ${owner?.ime || ""},
+          </p>
+
+          <p style="font-size:15px;line-height:1.8;color:#374151;">
+            Vaša igraonica <strong>${playroom.naziv}</strong> je uspešno verifikovana i sada je aktivna na platformi <strong>Svet Igraonica</strong>.
+          </p>
+
+          <div style="margin-top:24px;padding:20px;border:1px solid #e5e7eb;border-radius:14px;background:#f9fafb;">
+            <p><strong>Naziv:</strong> ${playroom.naziv}</p>
+            <p><strong>Grad:</strong> ${playroom.grad}</p>
+            <p><strong>Adresa:</strong> ${playroom.adresa}</p>
+          </div>
+
+          <p style="margin-top:24px;font-size:15px;color:#374151;line-height:1.8;">
+            Korisnici sada mogu da pregledaju i rezervišu termine vaše igraonice.
+          </p>
+        </div>
+
+        <div style="padding:20px;text-align:center;background:#fcfcfd;border-top:1px solid #e5e7eb;color:#667085;font-size:13px;">
+          © Svet Igraonica
+        </div>
+      </div>
+    `,
+  });
+};
+
+// ==============================
+// ❌ ODBIJANJE IGRAONICE
+// ==============================
+exports.sendPlayroomRejectedEmail = async (playroom, owner, reason) => {
+  return sendMail({
+    from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+    to: owner.email,
+    subject: `❌ Verifikacija igraonice nije odobrena - ${playroom.naziv}`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;">
+        
+        <div style="background:#dc2626;color:#ffffff;padding:28px;text-align:center;">
+          <h1 style="margin:0;font-size:28px;">
+            Igraonica nije odobrena
+          </h1>
+        </div>
+
+        <div style="padding:28px;color:#111827;">
+          <p style="font-size:16px;line-height:1.7;">
+            Zdravo ${owner?.ime || ""},
+          </p>
+
+          <p style="font-size:15px;line-height:1.8;color:#374151;">
+            Verifikacija vaše igraonice <strong>${playroom.naziv}</strong> trenutno nije odobrena.
+          </p>
+
+          <div style="margin-top:24px;padding:20px;border:1px solid #fecaca;border-radius:14px;background:#fef2f2;">
+            <div style="font-size:14px;font-weight:700;margin-bottom:10px;color:#991b1b;">
+              Razlog odbijanja
+            </div>
+
+            <div style="font-size:14px;line-height:1.7;color:#7f1d1d;">
+              ${reason}
+            </div>
+          </div>
+
+          <p style="margin-top:24px;font-size:15px;color:#374151;line-height:1.8;">
+            Ispravite navedene probleme i ponovo pošaljite igraonicu na verifikaciju.
+          </p>
+        </div>
+
+        <div style="padding:20px;text-align:center;background:#fcfcfd;border-top:1px solid #e5e7eb;color:#667085;font-size:13px;">
+          © Svet Igraonica
+        </div>
+      </div>
+    `,
+  });
+};
+
 exports.sendMail = sendMail;

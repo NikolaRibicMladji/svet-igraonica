@@ -63,7 +63,7 @@ export const usePlayroomForm = ({ initialData, onSubmit }) => {
       opis: initialData?.opis || "",
       kontaktTelefon: initialData?.kontaktTelefon || "",
       kontaktEmail: initialData?.kontaktEmail || "",
-      rezimRezervacije: initialData?.rezimRezervacije || "fleksibilno",
+      rezimRezervacije: initialData?.rezimRezervacije || "",
       trajanjeTermina: initialData?.trajanjeTermina || 60,
       vremePripremeTermina: initialData?.vremePripremeTermina ?? 0,
       kapacitet: {
