@@ -6,7 +6,14 @@ const app = require("./app");
 // Load env
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
-const requiredEnv = ["MONGO_URI", "JWT_SECRET", "REFRESH_TOKEN_SECRET"];
+const requiredEnv = [
+  "MONGO_URI",
+  "JWT_SECRET",
+  "REFRESH_TOKEN_SECRET",
+  "CLOUDINARY_CLOUD_NAME",
+  "CLOUDINARY_API_KEY",
+  "CLOUDINARY_API_SECRET",
+];
 
 for (const key of requiredEnv) {
   if (!process.env[key]) {
