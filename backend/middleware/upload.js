@@ -38,8 +38,7 @@ const allowedImageExtensions = new Set([
   ".bmp",
   ".svg",
   ".avif",
-  ".heic",
-  ".heif",
+
   ".tif",
   ".tiff",
   ".ico",
