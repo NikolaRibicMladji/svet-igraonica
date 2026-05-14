@@ -35,6 +35,7 @@ const startServer = async () => {
     if (process.env.NODE_ENV !== "test") {
       require("./jobs/completeBookings");
       require("./jobs/emailQueueWorker");
+      require("./jobs/cleanupEmailQueue");
     }
 
     server = app.listen(PORT, () => {
