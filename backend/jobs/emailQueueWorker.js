@@ -78,7 +78,8 @@ const processEmailQueue = async () => {
   }
 };
 
-cron.schedule("*/5 * * * *", processEmailQueue);
+cron.schedule("* * * * *", processEmailQueue);
+processEmailQueue();
 
 console.log("📨 Email queue worker pokrenut");
 
