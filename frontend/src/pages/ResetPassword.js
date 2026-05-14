@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import api from "../services/api";
 import "../styles/global.css";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const ResetPassword = () => {
   const { token } = useParams();
@@ -15,6 +16,8 @@ const ResetPassword = () => {
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const validateForm = () => {
     const newErrors = {};
@@ -94,15 +97,25 @@ const ResetPassword = () => {
         <form onSubmit={handleSubmit} noValidate>
           <div className="form-group">
             <label htmlFor="reset-password">Nova lozinka</label>
-            <input
-              id="reset-password"
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              autoComplete="new-password"
-              className={errors.password ? "input-error" : ""}
-            />
+            <div className="password-input-wrapper">
+              <input
+                id="reset-password"
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                autoComplete="new-password"
+                className={errors.password ? "input-error" : ""}
+              />
+
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowPassword((prev) => !prev)}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
             {errors.password && (
               <div className="field-error">{errors.password}</div>
             )}
@@ -110,15 +123,25 @@ const ResetPassword = () => {
 
           <div className="form-group">
             <label htmlFor="reset-confirm-password">Potvrdite lozinku</label>
-            <input
-              id="reset-confirm-password"
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              autoComplete="new-password"
-              className={errors.confirmPassword ? "input-error" : ""}
-            />
+            <div className="password-input-wrapper">
+              <input
+                id="reset-confirm-password"
+                type={showConfirmPassword ? "text" : "password"}
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                autoComplete="new-password"
+                className={errors.confirmPassword ? "input-error" : ""}
+              />
+
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+              >
+                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
             {errors.confirmPassword && (
               <div className="field-error">{errors.confirmPassword}</div>
             )}

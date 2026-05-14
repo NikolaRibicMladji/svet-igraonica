@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import "../styles/global.css";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ const Login = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
@@ -119,14 +121,25 @@ const Login = () => {
 
           <div className="form-group">
             <label htmlFor="login-password">Lozinka</label>
-            <input
-              id="login-password"
-              type="password"
-              value={password}
-              onChange={handlePasswordChange}
-              autoComplete="current-password"
-              className={errors.password ? "input-error" : ""}
-            />
+            <div className="password-input-wrapper">
+              <input
+                id="login-password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={handlePasswordChange}
+                autoComplete="current-password"
+                className={errors.password ? "input-error" : ""}
+              />
+
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "Sakrij lozinku" : "Prikaži lozinku"}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
             {errors.password && (
               <div className="field-error">{errors.password}</div>
             )}

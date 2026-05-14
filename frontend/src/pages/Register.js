@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import "../styles/global.css";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -17,6 +18,8 @@ const Register = () => {
   });
 
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -241,17 +244,27 @@ const Register = () => {
 
           <div className="form-group">
             <label htmlFor="register-password">Lozinka</label>
-            <input
-              id="register-password"
-              required
-              minLength={6}
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              autoComplete="new-password"
-              className={errors.password ? "input-error" : ""}
-            />
+            <div className="password-input-wrapper">
+              <input
+                id="register-password"
+                required
+                minLength={6}
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                autoComplete="new-password"
+                className={errors.password ? "input-error" : ""}
+              />
+
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowPassword((prev) => !prev)}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
             {errors.password && (
               <div className="field-error">{errors.password}</div>
             )}
@@ -259,16 +272,26 @@ const Register = () => {
 
           <div className="form-group">
             <label htmlFor="register-confirm-password">Potvrdite lozinku</label>
-            <input
-              id="register-confirm-password"
-              required
-              minLength={6}
-              type="password"
-              value={confirmPassword}
-              onChange={handleConfirmPasswordChange}
-              autoComplete="new-password"
-              className={errors.confirmPassword ? "input-error" : ""}
-            />
+            <div className="password-input-wrapper">
+              <input
+                id="register-confirm-password"
+                required
+                minLength={6}
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={handleConfirmPasswordChange}
+                autoComplete="new-password"
+                className={errors.confirmPassword ? "input-error" : ""}
+              />
+
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+              >
+                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
             {errors.confirmPassword && (
               <div className="field-error">{errors.confirmPassword}</div>
             )}
