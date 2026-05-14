@@ -4,19 +4,13 @@ const nodemailer = require("nodemailer");
 let transporter;
 
 transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
+  host: "smtp-relay.brevo.com",
   port: 587,
   secure: false,
-  requireTLS: true,
-  family: 4,
 
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-
-  tls: {
-    rejectUnauthorized: false,
+    user: process.env.BREVO_SMTP_USER,
+    pass: process.env.BREVO_SMTP_PASS,
   },
 });
 
@@ -454,7 +448,7 @@ exports.sendBookingConfirmation = async (
   timeSlot,
 ) => {
   return sendMail({
-    from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+    from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
     to: roditelj.email,
     subject: `✅ Potvrda rezervacije - ${playroom.naziv}`,
     html: generateEmailHtml(
@@ -480,7 +474,7 @@ exports.sendBookingConfirmationToOwner = async (
   vlasnik,
 ) => {
   return sendMail({
-    from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+    from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
     to: vlasnik.email,
     subject: `🆕 Nova rezervacija - ${playroom.naziv}`,
     html: generateEmailHtml(
@@ -504,7 +498,7 @@ exports.sendBookingCancellation = async (
   timeSlot,
 ) => {
   return sendMail({
-    from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+    from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
     to: roditelj.email,
     subject: `❌ Otkazivanje rezervacije - ${playroom.naziv}`,
     html: generateEmailHtml(
@@ -527,7 +521,7 @@ exports.sendCancellationToOwner = async (
   vlasnik,
 ) => {
   return sendMail({
-    from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+    from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
     to: vlasnik.email,
     subject: `❌ Otkazana rezervacija - ${playroom.naziv}`,
     html: generateEmailHtml(
@@ -556,7 +550,7 @@ exports.sendPlayroomVerificationNotification = async (playroom, owner) => {
   const adminUrl = `${frontendUrl}/admin`;
 
   return sendMail({
-    from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+    from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
     to: adminEmail,
     subject: `🧾 Nova igraonica čeka verifikaciju - ${playroom.naziv}`,
     html: `
@@ -592,7 +586,7 @@ exports.sendPlayroomVerificationNotification = async (playroom, owner) => {
 // ==============================
 exports.sendPlayroomApprovedEmail = async (playroom, owner) => {
   return sendMail({
-    from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+    from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
     to: owner.email,
     subject: `✅ Vaša igraonica je verifikovana - ${playroom.naziv}`,
     html: `
@@ -637,7 +631,7 @@ exports.sendPlayroomApprovedEmail = async (playroom, owner) => {
 // ==============================
 exports.sendPlayroomRejectedEmail = async (playroom, owner, reason) => {
   return sendMail({
-    from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+    from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
     to: owner.email,
     subject: `❌ Verifikacija igraonice nije odobrena - ${playroom.naziv}`,
     html: `
