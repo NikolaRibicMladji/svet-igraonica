@@ -4,9 +4,36 @@ import { useAuth } from "../context/AuthContext";
 import "../styles/Navbar.css";
 
 const Navbar = () => {
-  const { user, isAuthenticated, logout } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    logout,
+    changePassword,
+    changeEmail,
+    deleteAccount,
+  } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState(null);
+  const [formError, setFormError] = useState("");
+  const [formSuccess, setFormSuccess] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmNewPassword: "",
+  });
+
+  const [emailForm, setEmailForm] = useState({
+    currentPassword: "",
+    newEmail: "",
+  });
+
+  const [deleteForm, setDeleteForm] = useState({
+    currentPassword: "",
+  });
 
   const closeMenu = () => {
     setMenuOpen(false);
@@ -14,6 +41,32 @@ const Navbar = () => {
 
   const toggleMenu = () => {
     setMenuOpen((prev) => !prev);
+  };
+
+  const openAccountModal = (modalName) => {
+    setActiveModal(modalName);
+    setAccountOpen(false);
+    setFormError("");
+    setFormSuccess("");
+    closeMenu();
+  };
+
+  const closeAccountModal = () => {
+    setActiveModal(null);
+    setFormError("");
+    setFormSuccess("");
+    setPasswordForm({
+      currentPassword: "",
+      newPassword: "",
+      confirmNewPassword: "",
+    });
+    setEmailForm({
+      currentPassword: "",
+      newEmail: "",
+    });
+    setDeleteForm({
+      currentPassword: "",
+    });
   };
 
   const handleLogout = async () => {
@@ -73,67 +126,348 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="navbar">
-      <div className="container navbar-container">
-        <Link to="/" className="navbar-logo" onClick={closeMenu}>
-          🎈 Svet Igraonica
-        </Link>
+    <>
+      <nav className="navbar">
+        <div className="container navbar-container">
+          <Link to="/" className="navbar-logo" onClick={closeMenu}>
+            🎈 Svet Igraonica
+          </Link>
 
-        <button
-          type="button"
-          className={`hamburger ${menuOpen ? "open" : ""}`}
-          onClick={toggleMenu}
-          aria-label={menuOpen ? "Zatvori meni" : "Otvori meni"}
-          aria-expanded={menuOpen}
-        >
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
+          <button
+            type="button"
+            className={`hamburger ${menuOpen ? "open" : ""}`}
+            onClick={toggleMenu}
+            aria-label={menuOpen ? "Zatvori meni" : "Otvori meni"}
+            aria-expanded={menuOpen}
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
 
-        <div className={`navbar-links ${menuOpen ? "open" : ""}`}>
-          <NavLink to="/" onClick={closeMenu}>
-            🏠 Početna
-          </NavLink>
+          <div className={`navbar-links ${menuOpen ? "open" : ""}`}>
+            <NavLink to="/" onClick={closeMenu}>
+              🏠 Početna
+            </NavLink>
 
-          <NavLink to="/playrooms" onClick={closeMenu}>
-            🎯 Igraonice
-          </NavLink>
+            <NavLink to="/playrooms" onClick={closeMenu}>
+              🎯 Igraonice
+            </NavLink>
 
-          {!isAuthenticated ? (
-            <div className="auth-links">
-              <Link to="/login" className="btn-login" onClick={closeMenu}>
-                🔑 Prijava
-              </Link>
-              <Link to="/register" className="btn-register" onClick={closeMenu}>
-                📝 Registracija
-              </Link>
-            </div>
-          ) : (
-            <>
-              {renderAuthenticatedLinks()}
-
-              <div className="navbar-user">
-                <span className="navbar-user-name">
-                  👤{" "}
-                  {user?.ime
-                    ? `${user.ime}${user?.prezime ? ` ${user.prezime}` : ""}`
-                    : user?.email || "Korisnik"}
-                </span>
+            {!isAuthenticated ? (
+              <div className="auth-links">
+                <Link to="/login" className="btn-login" onClick={closeMenu}>
+                  🔑 Prijava
+                </Link>
+                <Link
+                  to="/register"
+                  className="btn-register"
+                  onClick={closeMenu}
+                >
+                  📝 Registracija
+                </Link>
               </div>
+            ) : (
+              <>
+                {renderAuthenticatedLinks()}
 
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="logout-btn"
-              >
-                🚪 Odjava
-              </button>
-            </>
-          )}
+                <div className="navbar-user">
+                  <button
+                    type="button"
+                    className="navbar-user-name"
+                    onClick={() => setAccountOpen((prev) => !prev)}
+                  >
+                    👤{" "}
+                    {user?.ime
+                      ? `${user.ime}${user?.prezime ? ` ${user.prezime}` : ""}`
+                      : user?.email || "Korisnik"}{" "}
+                    ▾
+                  </button>
+
+                  {accountOpen && (
+                    <div className="account-dropdown">
+                      <button
+                        type="button"
+                        onClick={() => openAccountModal("password")}
+                      >
+                        🔒 Promeni lozinku
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => openAccountModal("email")}
+                      >
+                        📧 Promeni email
+                      </button>
+
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={() => openAccountModal("delete")}
+                      >
+                        🗑️ Obriši profil
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="logout-btn"
+                >
+                  🚪 Odjava
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+      {activeModal && (
+        <div className="account-modal-overlay" onClick={closeAccountModal}>
+          <div className="account-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="account-modal-close"
+              onClick={closeAccountModal}
+            >
+              ✖
+            </button>
+
+            {/* PROMENA LOZINKE */}
+            {activeModal === "password" && (
+              <>
+                <h2>Promena lozinke</h2>
+
+                <form
+                  className="account-form"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+
+                    setFormError("");
+                    setFormSuccess("");
+                    setSubmitting(true);
+
+                    const result = await changePassword(passwordForm);
+
+                    setSubmitting(false);
+
+                    if (result.success) {
+                      setFormSuccess(result.message);
+
+                      setTimeout(() => {
+                        navigate("/login");
+                      }, 1500);
+                    } else {
+                      setFormError(result.error);
+                    }
+                  }}
+                >
+                  <input
+                    type="password"
+                    placeholder="Trenutna lozinka"
+                    value={passwordForm.currentPassword}
+                    onChange={(e) =>
+                      setPasswordForm((prev) => ({
+                        ...prev,
+                        currentPassword: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+
+                  <input
+                    type="password"
+                    placeholder="Nova lozinka"
+                    value={passwordForm.newPassword}
+                    onChange={(e) =>
+                      setPasswordForm((prev) => ({
+                        ...prev,
+                        newPassword: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+
+                  <input
+                    type="password"
+                    placeholder="Potvrda nove lozinke"
+                    value={passwordForm.confirmNewPassword}
+                    onChange={(e) =>
+                      setPasswordForm((prev) => ({
+                        ...prev,
+                        confirmNewPassword: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+
+                  {formError && (
+                    <div className="account-error">{formError}</div>
+                  )}
+
+                  {formSuccess && (
+                    <div className="account-success">{formSuccess}</div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="account-submit-btn"
+                    disabled={submitting}
+                  >
+                    {submitting ? "Čuvanje..." : "Promeni lozinku"}
+                  </button>
+                </form>
+              </>
+            )}
+
+            {/* PROMENA EMAILA */}
+            {activeModal === "email" && (
+              <>
+                <h2>Promena emaila</h2>
+
+                <form
+                  className="account-form"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+
+                    setFormError("");
+                    setFormSuccess("");
+                    setSubmitting(true);
+
+                    const result = await changeEmail(emailForm);
+
+                    setSubmitting(false);
+
+                    if (result.success) {
+                      setFormSuccess(result.message);
+
+                      setTimeout(() => {
+                        navigate("/login");
+                      }, 1500);
+                    } else {
+                      setFormError(result.error);
+                    }
+                  }}
+                >
+                  <input
+                    type="email"
+                    placeholder="Nova email adresa"
+                    value={emailForm.newEmail}
+                    onChange={(e) =>
+                      setEmailForm((prev) => ({
+                        ...prev,
+                        newEmail: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+
+                  <input
+                    type="password"
+                    placeholder="Trenutna lozinka"
+                    value={emailForm.currentPassword}
+                    onChange={(e) =>
+                      setEmailForm((prev) => ({
+                        ...prev,
+                        currentPassword: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+
+                  {formError && (
+                    <div className="account-error">{formError}</div>
+                  )}
+
+                  {formSuccess && (
+                    <div className="account-success">{formSuccess}</div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="account-submit-btn"
+                    disabled={submitting}
+                  >
+                    {submitting ? "Čuvanje..." : "Promeni email"}
+                  </button>
+                </form>
+              </>
+            )}
+
+            {/* BRISANJE NALOGA */}
+            {activeModal === "delete" && (
+              <>
+                <h2>Brisanje profila</h2>
+
+                <p className="account-warning">
+                  Ova akcija je trajna i ne može se poništiti.
+                </p>
+
+                <form
+                  className="account-form"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+
+                    const confirmed = window.confirm(
+                      "Da li ste sigurni da želite da obrišete profil?",
+                    );
+
+                    if (!confirmed) return;
+
+                    setFormError("");
+                    setFormSuccess("");
+                    setSubmitting(true);
+
+                    const result = await deleteAccount(deleteForm);
+
+                    setSubmitting(false);
+
+                    if (result.success) {
+                      setFormSuccess(result.message);
+
+                      setTimeout(() => {
+                        navigate("/");
+                      }, 1500);
+                    } else {
+                      setFormError(result.error);
+                    }
+                  }}
+                >
+                  <input
+                    type="password"
+                    placeholder="Trenutna lozinka"
+                    value={deleteForm.currentPassword}
+                    onChange={(e) =>
+                      setDeleteForm({
+                        currentPassword: e.target.value,
+                      })
+                    }
+                    required
+                  />
+
+                  {formError && (
+                    <div className="account-error">{formError}</div>
+                  )}
+
+                  {formSuccess && (
+                    <div className="account-success">{formSuccess}</div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="account-submit-btn danger"
+                    disabled={submitting}
+                  >
+                    {submitting ? "Brisanje..." : "Obriši profil"}
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

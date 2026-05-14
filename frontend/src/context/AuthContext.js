@@ -152,6 +152,57 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const changePassword = async (payload) => {
+    setError(null);
+
+    try {
+      const response = await api.put("/auth/change-password", payload);
+      clearAuthData();
+
+      return {
+        success: true,
+        message: response.data?.message || "Lozinka je promenjena.",
+      };
+    } catch (err) {
+      return handleAuthError(err, "Greška pri promeni lozinke.");
+    }
+  };
+
+  const changeEmail = async (payload) => {
+    setError(null);
+
+    try {
+      const response = await api.put("/auth/change-email", payload);
+      clearAuthData();
+
+      return {
+        success: true,
+        message: response.data?.message || "Email je promenjen.",
+      };
+    } catch (err) {
+      return handleAuthError(err, "Greška pri promeni emaila.");
+    }
+  };
+
+  const deleteAccount = async (payload) => {
+    setError(null);
+
+    try {
+      const response = await api.delete("/auth/delete-account", {
+        data: payload,
+      });
+
+      clearAuthData();
+
+      return {
+        success: true,
+        message: response.data?.message || "Nalog je obrisan.",
+      };
+    } catch (err) {
+      return handleAuthError(err, "Greška pri brisanju naloga.");
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -159,6 +210,9 @@ export const AuthProvider = ({ children }) => {
     register,
     login,
     logout,
+    changePassword,
+    changeEmail,
+    deleteAccount,
     loadUser,
     handleAuthSuccess,
     isAuthenticated: Boolean(user),

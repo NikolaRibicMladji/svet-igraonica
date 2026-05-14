@@ -9,6 +9,9 @@ const {
   getMe,
   forgotPassword,
   resetPassword,
+  changePassword,
+  changeEmail,
+  deleteAccount,
 } = require("../controllers/authController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -20,6 +23,9 @@ const {
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  changePasswordSchema,
+  changeEmailSchema,
+  deleteAccountSchema,
 } = require("../validations/authValidation");
 
 // 🌐 JAVNE RUTE
@@ -36,5 +42,20 @@ router.put(
 
 // 🔒 PRIVATNE RUTE
 router.get("/me", protect, getMe);
+router.put(
+  "/change-password",
+  protect,
+  validate(changePasswordSchema),
+  changePassword,
+);
+
+router.put("/change-email", protect, validate(changeEmailSchema), changeEmail);
+
+router.delete(
+  "/delete-account",
+  protect,
+  validate(deleteAccountSchema),
+  deleteAccount,
+);
 
 module.exports = router;

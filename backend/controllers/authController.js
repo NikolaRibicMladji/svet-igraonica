@@ -3,6 +3,10 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const { sendMail } = require("../utils/emailService");
 const authService = require("../services/authService");
+const RefreshSession = require("../models/RefreshSession");
+const Booking = require("../models/Booking");
+const Playroom = require("../models/Playroom");
+const BOOKING_STATUS = require("../constants/bookingStatus");
 
 const getRequestMetadata = (req) => ({
   userAgent: req.get("user-agent") || "",
@@ -215,6 +219,200 @@ exports.resetPassword = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Lozinka je uspešno promenjena.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Promena lozinke
+// @route   PUT /api/auth/change-password
+// @access  Private
+exports.changePassword = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+
+    const { currentPassword, newPassword } = req.validated.body;
+
+    const user = await User.findById(userId).select("+password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Korisnik nije pronađen.",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Trenutna lozinka nije tačna.",
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+
+    user.password = await bcrypt.hash(newPassword, salt);
+
+    await user.save();
+
+    await RefreshSession.deleteMany({
+      userId: user._id,
+    });
+
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Lozinka je uspešno promenjena. Prijavite se ponovo.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Promena emaila
+// @route   PUT /api/auth/change-email
+// @access  Private
+exports.changeEmail = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+
+    const { currentPassword, newEmail } = req.validated.body;
+
+    const existingUser = await User.findOne({
+      email: newEmail,
+      _id: { $ne: userId },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "Email je već zauzet.",
+      });
+    }
+
+    const user = await User.findById(userId).select("+password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Korisnik nije pronađen.",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Trenutna lozinka nije tačna.",
+      });
+    }
+
+    user.email = newEmail;
+
+    await user.save();
+
+    await RefreshSession.deleteMany({
+      userId: user._id,
+    });
+
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Email je uspešno promenjen. Prijavite se ponovo.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Brisanje naloga
+// @route   DELETE /api/auth/delete-account
+// @access  Private
+exports.deleteAccount = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+
+    const { currentPassword } = req.validated.body;
+
+    const user = await User.findById(userId).select("+password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Korisnik nije pronađen.",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Trenutna lozinka nije tačna.",
+      });
+    }
+
+    // RODITELJ — zabrana ako ima buduće rezervacije
+    if (user.role === "roditelj") {
+      const activeBookings = await Booking.countDocuments({
+        roditeljId: user._id,
+        status: {
+          $in: [BOOKING_STATUS.CEKANJE, BOOKING_STATUS.POTVRDJENO],
+        },
+        datum: { $gte: new Date() },
+      });
+
+      if (activeBookings > 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Ne možete obrisati nalog dok imate aktivne rezervacije.",
+        });
+      }
+    }
+
+    // VLASNIK — zabrana ako ima igraonicu
+    if (user.role === "vlasnik") {
+      const existingPlayroom = await Playroom.findOne({
+        vlasnikId: user._id,
+      });
+
+      if (existingPlayroom) {
+        return res.status(400).json({
+          success: false,
+          message: "Ne možete obrisati nalog dok imate registrovanu igraonicu.",
+        });
+      }
+    }
+
+    await RefreshSession.deleteMany({
+      userId: user._id,
+    });
+
+    await User.findByIdAndDelete(user._id);
+
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Nalog je uspešno obrisan.",
     });
   } catch (error) {
     next(error);

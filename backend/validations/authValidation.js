@@ -82,9 +82,53 @@ const resetPasswordSchema = z
     path: ["body", "confirmPassword"],
   });
 
+const changePasswordSchema = z
+  .object({
+    body: z.object({
+      currentPassword: z.string().min(1, "Trenutna lozinka je obavezna"),
+      newPassword: z
+        .string()
+        .min(6, "Nova lozinka mora imati bar 6 karaktera")
+        .max(50, "Nova lozinka je preduga"),
+      confirmNewPassword: z
+        .string()
+        .min(6, "Potvrda nove lozinke mora imati bar 6 karaktera"),
+    }),
+    params: z.object({}).optional(),
+    query: z.object({}).optional(),
+  })
+  .refine((data) => data.body.newPassword === data.body.confirmNewPassword, {
+    message: "Nove lozinke se ne poklapaju",
+    path: ["body", "confirmNewPassword"],
+  });
+
+const changeEmailSchema = z.object({
+  body: z.object({
+    currentPassword: z.string().min(1, "Trenutna lozinka je obavezna"),
+    newEmail: z
+      .string()
+      .email("Neispravan format email adrese")
+      .toLowerCase()
+      .trim(),
+  }),
+  params: z.object({}).optional(),
+  query: z.object({}).optional(),
+});
+
+const deleteAccountSchema = z.object({
+  body: z.object({
+    currentPassword: z.string().min(1, "Trenutna lozinka je obavezna"),
+  }),
+  params: z.object({}).optional(),
+  query: z.object({}).optional(),
+});
+
 module.exports = {
   registerSchema,
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  changePasswordSchema,
+  changeEmailSchema,
+  deleteAccountSchema,
 };

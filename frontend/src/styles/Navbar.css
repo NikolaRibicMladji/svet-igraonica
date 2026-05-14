@@ -215,3 +215,171 @@
     padding: 20px 16px;
   }
 }
+
+/* ACCOUNT DROPDOWN */
+
+.navbar-user {
+  position: relative;
+}
+
+.navbar-user-name {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.navbar-user-name:hover {
+  color: #ff6b4a;
+}
+
+.account-dropdown {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  width: 240px;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 2000;
+}
+
+.account-dropdown button {
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.account-dropdown button:hover {
+  background: #f8fafc;
+}
+
+.account-dropdown .danger {
+  color: #dc2626;
+}
+
+/* ACCOUNT MODAL */
+
+.account-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 3000;
+}
+
+.account-modal {
+  width: 100%;
+  max-width: 460px;
+  background: white;
+  border-radius: 24px;
+  padding: 28px;
+  position: relative;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+}
+
+.account-modal h2 {
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  color: #0f172a;
+}
+
+.account-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.account-form input {
+  width: 100%;
+  border: 1px solid #dbe2ea;
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 0.95rem;
+}
+
+.account-form input:focus {
+  outline: none;
+  border-color: #ff6b4a;
+}
+
+.account-submit-btn {
+  border: none;
+  background: linear-gradient(135deg, #ff6b4a, #ff8c6e);
+  color: white;
+  padding: 14px;
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.account-submit-btn.danger {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+}
+
+.account-error {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+}
+
+.account-success {
+  background: #f0fdf4;
+  color: #15803d;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+}
+
+.account-warning {
+  color: #475569;
+  margin-bottom: 18px;
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .account-dropdown {
+    position: static;
+    width: 100%;
+  }
+
+  .navbar-user {
+    width: 100%;
+  }
+
+  .navbar-user-name {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .account-modal {
+    padding: 22px;
+  }
+}
