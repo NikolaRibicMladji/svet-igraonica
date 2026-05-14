@@ -1,18 +1,5 @@
-const nodemailer = require("nodemailer");
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
-// 🔒 lazy transporter (da ne crashuje app ako env nije spreman)
-let transporter;
-
-transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 465,
-  secure: true,
-
-  auth: {
-    user: process.env.BREVO_SMTP_USER,
-    pass: process.env.BREVO_SMTP_PASS,
-  },
-});
 // ==============================
 // 🧠 HTML GENERATOR
 // ==============================
@@ -428,8 +415,51 @@ ${
 // ==============================
 const sendMail = async (options) => {
   try {
+    if (!process.env.BREVO_API_KEY) {
+      console.error("❌ BREVO_API_KEY nije podešen");
+      return false;
+    }
+
+    if (!process.env.BREVO_SENDER_EMAIL) {
+      console.error("❌ BREVO_SENDER_EMAIL nije podešen");
+      return false;
+    }
+
     console.log("📨 SENDING EMAIL TO:", options.to);
-    await transporter.sendMail(options);
+
+    const response = await fetch(BREVO_API_URL, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": process.env.BREVO_API_KEY,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: {
+          name: "Svet Igraonica",
+          email: process.env.BREVO_SENDER_EMAIL,
+        },
+        to: [
+          {
+            email: options.to,
+          },
+        ],
+        subject: options.subject,
+        htmlContent: options.html,
+      }),
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      console.error("❌ BREVO API ERROR:", {
+        status: response.status,
+        data,
+      });
+      return false;
+    }
+
+    console.log("✅ EMAIL SENT:", data);
     return true;
   } catch (err) {
     console.error("❌ FULL EMAIL ERROR:", err);
