@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import "../styles/Navbar.css";
 
 const Navbar = () => {
@@ -13,11 +14,12 @@ const Navbar = () => {
     deleteAccount,
   } = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [formError, setFormError] = useState("");
-  const [formSuccess, setFormSuccess] = useState("");
+
   const [submitting, setSubmitting] = useState(false);
 
   const [passwordForm, setPasswordForm] = useState({
@@ -47,14 +49,13 @@ const Navbar = () => {
     setActiveModal(modalName);
     setAccountOpen(false);
     setFormError("");
-    setFormSuccess("");
+
     closeMenu();
   };
 
   const closeAccountModal = () => {
     setActiveModal(null);
     setFormError("");
-    setFormSuccess("");
     setPasswordForm({
       currentPassword: "",
       newPassword: "",
@@ -245,7 +246,6 @@ const Navbar = () => {
                     e.preventDefault();
 
                     setFormError("");
-                    setFormSuccess("");
                     setSubmitting(true);
 
                     const result = await changePassword(passwordForm);
@@ -253,12 +253,12 @@ const Navbar = () => {
                     setSubmitting(false);
 
                     if (result.success) {
-                      setFormSuccess("Lozinka je uspešno promenjena.");
+                      showToast("Lozinka je uspešno promenjena.", "success");
 
                       setTimeout(() => {
                         closeAccountModal();
                         navigate("/login");
-                      }, 1500);
+                      }, 1200);
                     } else {
                       setFormError(result.error);
                     }
@@ -307,10 +307,6 @@ const Navbar = () => {
                     <div className="account-error">{formError}</div>
                   )}
 
-                  {formSuccess && (
-                    <div className="account-success">{formSuccess}</div>
-                  )}
-
                   <button
                     type="submit"
                     className="account-submit-btn"
@@ -333,7 +329,6 @@ const Navbar = () => {
                     e.preventDefault();
 
                     setFormError("");
-                    setFormSuccess("");
                     setSubmitting(true);
 
                     const result = await changeEmail(emailForm);
@@ -341,12 +336,12 @@ const Navbar = () => {
                     setSubmitting(false);
 
                     if (result.success) {
-                      setFormSuccess("Email je uspešno promenjen.");
+                      showToast("Email je uspešno promenjen.", "success");
 
                       setTimeout(() => {
                         closeAccountModal();
                         navigate("/login");
-                      }, 1500);
+                      }, 1200);
                     } else {
                       setFormError(result.error);
                     }
@@ -382,10 +377,6 @@ const Navbar = () => {
                     <div className="account-error">{formError}</div>
                   )}
 
-                  {formSuccess && (
-                    <div className="account-success">{formSuccess}</div>
-                  )}
-
                   <button
                     type="submit"
                     className="account-submit-btn"
@@ -418,7 +409,6 @@ const Navbar = () => {
                     if (!confirmed) return;
 
                     setFormError("");
-                    setFormSuccess("");
                     setSubmitting(true);
 
                     const result = await deleteAccount(deleteForm);
@@ -426,11 +416,12 @@ const Navbar = () => {
                     setSubmitting(false);
 
                     if (result.success) {
-                      setFormSuccess(result.message);
+                      showToast("Profil je uspešno obrisan.", "success");
 
                       setTimeout(() => {
+                        closeAccountModal();
                         navigate("/");
-                      }, 1500);
+                      }, 1200);
                     } else {
                       setFormError(result.error);
                     }
@@ -450,10 +441,6 @@ const Navbar = () => {
 
                   {formError && (
                     <div className="account-error">{formError}</div>
-                  )}
-
-                  {formSuccess && (
-                    <div className="account-success">{formSuccess}</div>
                   )}
 
                   <button
