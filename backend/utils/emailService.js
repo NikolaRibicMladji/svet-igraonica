@@ -1,3 +1,5 @@
+const EmailLog = require("../models/EmailLog");
+
 const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
 // ==============================
@@ -417,17 +419,23 @@ const sendMail = async (options) => {
   try {
     if (!process.env.BREVO_API_KEY) {
       console.error("❌ BREVO_API_KEY nije podešen");
-      return false;
-    }
 
-    if (!process.env.BREVO_SENDER_EMAIL) {
-      console.error("❌ BREVO_SENDER_EMAIL nije podešen");
+      await EmailLog.create({
+        to: options.to,
+        subject: options.subject,
+        type: options.type,
+        status: "failed",
+        error: "BREVO_API_KEY missing",
+        bookingId: options.bookingId || null,
+        playroomId: options.playroomId || null,
+      });
+
       return false;
     }
 
     console.log("📨 SENDING EMAIL TO:", options.to);
 
-    const response = await fetch(BREVO_API_URL, {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
         accept: "application/json",
@@ -439,11 +447,13 @@ const sendMail = async (options) => {
           name: "Svet Igraonica",
           email: process.env.BREVO_SENDER_EMAIL,
         },
+
         to: [
           {
             email: options.to,
           },
         ],
+
         subject: options.subject,
         htmlContent: options.html,
       }),
@@ -452,17 +462,46 @@ const sendMail = async (options) => {
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {
-      console.error("❌ BREVO API ERROR:", {
-        status: response.status,
-        data,
+      console.error("❌ BREVO API ERROR:", data);
+
+      await EmailLog.create({
+        to: options.to,
+        subject: options.subject,
+        type: options.type,
+        status: "failed",
+        error: JSON.stringify(data),
+        bookingId: options.bookingId || null,
+        playroomId: options.playroomId || null,
       });
+
       return false;
     }
 
-    console.log("✅ EMAIL SENT:", data);
+    await EmailLog.create({
+      to: options.to,
+      subject: options.subject,
+      type: options.type,
+      status: "success",
+      bookingId: options.bookingId || null,
+      playroomId: options.playroomId || null,
+    });
+
+    console.log("✅ EMAIL SENT");
+
     return true;
   } catch (err) {
     console.error("❌ FULL EMAIL ERROR:", err);
+
+    await EmailLog.create({
+      to: options.to,
+      subject: options.subject,
+      type: options.type,
+      status: "failed",
+      error: err.message,
+      bookingId: options.bookingId || null,
+      playroomId: options.playroomId || null,
+    });
+
     return false;
   }
 };
@@ -477,6 +516,9 @@ exports.sendBookingConfirmation = async (
   timeSlot,
 ) => {
   return sendMail({
+    type: "booking_confirmation",
+    bookingId: booking._id,
+    playroomId: playroom._id,
     from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
     to: roditelj.email,
     subject: `✅ Potvrda rezervacije - ${playroom.naziv}`,
@@ -503,6 +545,9 @@ exports.sendBookingConfirmationToOwner = async (
   vlasnik,
 ) => {
   return sendMail({
+    type: "booking_owner",
+    bookingId: booking._id,
+    playroomId: playroom._id,
     from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
     to: vlasnik.email,
     subject: `🆕 Nova rezervacija - ${playroom.naziv}`,
@@ -527,6 +572,9 @@ exports.sendBookingCancellation = async (
   timeSlot,
 ) => {
   return sendMail({
+    type: "booking_cancellation",
+    bookingId: booking._id,
+    playroomId: playroom._id,
     from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
     to: roditelj.email,
     subject: `❌ Otkazivanje rezervacije - ${playroom.naziv}`,
@@ -550,6 +598,9 @@ exports.sendCancellationToOwner = async (
   vlasnik,
 ) => {
   return sendMail({
+    type: "booking_cancellation_owner",
+    bookingId: booking._id,
+    playroomId: playroom._id,
     from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
     to: vlasnik.email,
     subject: `❌ Otkazana rezervacija - ${playroom.naziv}`,
@@ -579,6 +630,8 @@ exports.sendPlayroomVerificationNotification = async (playroom, owner) => {
   const adminUrl = `${frontendUrl}/admin`;
 
   return sendMail({
+    type: "playroom_verification",
+    playroomId: playroom._id,
     from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
     to: adminEmail,
     subject: `🧾 Nova igraonica čeka verifikaciju - ${playroom.naziv}`,
@@ -615,6 +668,8 @@ exports.sendPlayroomVerificationNotification = async (playroom, owner) => {
 // ==============================
 exports.sendPlayroomApprovedEmail = async (playroom, owner) => {
   return sendMail({
+    type: "playroom_approved",
+    playroomId: playroom._id,
     from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
     to: owner.email,
     subject: `✅ Vaša igraonica je verifikovana - ${playroom.naziv}`,
@@ -660,6 +715,8 @@ exports.sendPlayroomApprovedEmail = async (playroom, owner) => {
 // ==============================
 exports.sendPlayroomRejectedEmail = async (playroom, owner, reason) => {
   return sendMail({
+    type: "playroom_rejected",
+    playroomId: playroom._id,
     from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
     to: owner.email,
     subject: `❌ Verifikacija igraonice nije odobrena - ${playroom.naziv}`,
