@@ -253,9 +253,10 @@ const Navbar = () => {
                     setSubmitting(false);
 
                     if (result.success) {
-                      setFormSuccess(result.message);
+                      setFormSuccess("Lozinka je uspešno promenjena.");
 
                       setTimeout(() => {
+                        closeAccountModal();
                         navigate("/login");
                       }, 1500);
                     } else {
@@ -340,9 +341,10 @@ const Navbar = () => {
                     setSubmitting(false);
 
                     if (result.success) {
-                      setFormSuccess(result.message);
+                      setFormSuccess("Email je uspešno promenjen.");
 
                       setTimeout(() => {
+                        closeAccountModal();
                         navigate("/login");
                       }, 1500);
                     } else {
