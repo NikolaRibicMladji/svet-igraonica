@@ -16,6 +16,7 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import "../styles/Book.css";
 import { normalizeText } from "../utils/normalizeText";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const getLocalDate = () => {
   const d = new Date();
@@ -63,6 +64,8 @@ const Book = () => {
   const [selectedUslugeIds, setSelectedUslugeIds] = useState([]);
   const [openStartDropdown, setOpenStartDropdown] = useState(false);
   const [openEndDropdown, setOpenEndDropdown] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const topRef = useRef(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -1592,26 +1595,48 @@ const Book = () => {
                     <div className="form-row">
                       <div className="form-group" ref={passwordRef}>
                         <label>Lozinka *</label>
-                        <input
-                          type="password"
-                          autoComplete="new-password"
-                          name="password"
-                          value={korisnikPodaci.password}
-                          onChange={handleKorisnikChange}
-                          required={!isAuthenticated}
-                        />
+                        <div className="password-input-wrapper">
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            autoComplete="new-password"
+                            name="password"
+                            value={korisnikPodaci.password}
+                            onChange={handleKorisnikChange}
+                            required={!isAuthenticated}
+                          />
+
+                          <button
+                            type="button"
+                            className="password-toggle-btn"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                          >
+                            {showPassword ? <FaEyeSlash /> : <FaEye />}
+                          </button>
+                        </div>
                       </div>
 
                       <div className="form-group" ref={confirmPasswordRef}>
                         <label>Potvrda lozinke *</label>
-                        <input
-                          type="password"
-                          autoComplete="new-password"
-                          name="confirmPassword"
-                          value={korisnikPodaci.confirmPassword}
-                          onChange={handleKorisnikChange}
-                          required={!isAuthenticated}
-                        />
+                        <div className="password-input-wrapper">
+                          <input
+                            type={showConfirmPassword ? "text" : "password"}
+                            autoComplete="new-password"
+                            name="confirmPassword"
+                            value={korisnikPodaci.confirmPassword}
+                            onChange={handleKorisnikChange}
+                            required={!isAuthenticated}
+                          />
+
+                          <button
+                            type="button"
+                            className="password-toggle-btn"
+                            onClick={() =>
+                              setShowConfirmPassword((prev) => !prev)
+                            }
+                          >
+                            {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
