@@ -9,6 +9,7 @@ const {
 const {
   sendPlayroomApprovedEmail,
   sendPlayroomRejectedEmail,
+  sendPlayroomVerificationNotification,
 } = require("../utils/emailService");
 
 // @desc    Dohvati sve neverifikovane igraonice
@@ -134,6 +135,42 @@ exports.rejectPlayroom = async (req, res, next) => {
       success: true,
       message: "Igraonica je odbijena.",
       data: playroom,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Ponovo pošalji email za verifikaciju igraonice
+// @route   POST /api/admin/playrooms/:id/resend-verification-email
+// @access  Private (admin)
+exports.resendVerificationEmail = async (req, res, next) => {
+  try {
+    const playroom = await Playroom.findById(req.params.id);
+
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronađena.",
+      });
+    }
+
+    const owner = await User.findById(playroom.vlasnikId).select(
+      "ime prezime email",
+    );
+
+    if (!owner?.email) {
+      return res.status(400).json({
+        success: false,
+        message: "Vlasnik nema email.",
+      });
+    }
+
+    await sendPlayroomVerificationNotification(playroom, owner);
+
+    res.status(200).json({
+      success: true,
+      message: "Email za verifikaciju je ponovo poslat adminu.",
     });
   } catch (error) {
     next(error);

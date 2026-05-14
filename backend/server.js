@@ -34,6 +34,7 @@ const startServer = async () => {
     // Cron (ne u testu)
     if (process.env.NODE_ENV !== "test") {
       require("./jobs/completeBookings");
+      require("./jobs/emailQueueWorker");
     }
 
     server = app.listen(PORT, () => {

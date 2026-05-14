@@ -1,6 +1,35 @@
 const EmailLog = require("../models/EmailLog");
+const EmailQueue = require("../models/EmailQueue");
 
 const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+
+const sendViaBrevo = async ({ to, subject, html }) => {
+  const response = await fetch(BREVO_API_URL, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "api-key": process.env.BREVO_API_KEY,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      sender: {
+        name: "Svet Igraonica",
+        email: process.env.BREVO_SENDER_EMAIL,
+      },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(JSON.stringify(data));
+  }
+
+  return data;
+};
 
 // ==============================
 // 🧠 HTML GENERATOR
@@ -418,79 +447,28 @@ ${
 const sendMail = async (options) => {
   try {
     if (!process.env.BREVO_API_KEY) {
-      console.error("❌ BREVO_API_KEY nije podešen");
-
-      await EmailLog.create({
-        to: options.to,
-        subject: options.subject,
-        type: options.type,
-        status: "failed",
-        error: "BREVO_API_KEY missing",
-        bookingId: options.bookingId || null,
-        playroomId: options.playroomId || null,
-      });
-
-      return false;
+      throw new Error("BREVO_API_KEY missing");
     }
 
-    console.log("📨 SENDING EMAIL TO:", options.to);
-
-    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-      method: "POST",
-      headers: {
-        accept: "application/json",
-        "api-key": process.env.BREVO_API_KEY,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        sender: {
-          name: "Svet Igraonica",
-          email: process.env.BREVO_SENDER_EMAIL,
-        },
-
-        to: [
-          {
-            email: options.to,
-          },
-        ],
-
-        subject: options.subject,
-        htmlContent: options.html,
-      }),
-    });
-
-    const data = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      console.error("❌ BREVO API ERROR:", data);
-
-      await EmailLog.create({
-        to: options.to,
-        subject: options.subject,
-        type: options.type,
-        status: "failed",
-        error: JSON.stringify(data),
-        bookingId: options.bookingId || null,
-        playroomId: options.playroomId || null,
-      });
-
-      return false;
+    if (!process.env.BREVO_SENDER_EMAIL) {
+      throw new Error("BREVO_SENDER_EMAIL missing");
     }
 
-    await EmailLog.create({
+    await EmailQueue.create({
       to: options.to,
       subject: options.subject,
+      html: options.html,
       type: options.type,
-      status: "success",
       bookingId: options.bookingId || null,
       playroomId: options.playroomId || null,
+      status: "pending",
+      nextRetryAt: new Date(),
     });
 
-    console.log("✅ EMAIL SENT");
-
+    console.log("📩 EMAIL QUEUED:", options.to);
     return true;
   } catch (err) {
-    console.error("❌ FULL EMAIL ERROR:", err);
+    console.error("❌ EMAIL QUEUE ERROR:", err.message);
 
     await EmailLog.create({
       to: options.to,
@@ -505,7 +483,6 @@ const sendMail = async (options) => {
     return false;
   }
 };
-
 // ==============================
 // 📧 RODITELJ - POTVRDA
 // ==============================
@@ -762,3 +739,4 @@ exports.sendPlayroomRejectedEmail = async (playroom, owner, reason) => {
 };
 
 exports.sendMail = sendMail;
+exports.sendViaBrevo = sendViaBrevo;
