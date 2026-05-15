@@ -65,6 +65,7 @@ const Navbar = () => {
     setActiveModal(modalName);
     setAccountOpen(false);
     setFormError("");
+    setSubmitting(false);
 
     closeMenu();
   };
@@ -403,7 +404,9 @@ const Navbar = () => {
 
                   <button
                     type="submit"
-                    className={`account-submit-btn ${submitting ? "loading" : ""}`}
+                    className={`account-submit-btn ${
+                      submitting ? "loading" : ""
+                    }`}
                     disabled={submitting}
                   >
                     {submitting ? "Čuvanje..." : "Promeni lozinku"}
@@ -493,7 +496,9 @@ const Navbar = () => {
 
                   <button
                     type="submit"
-                    className={`account-submit-btn ${submitting ? "loading" : ""}`}
+                    className={`account-submit-btn ${
+                      submitting ? "loading" : ""
+                    }`}
                     disabled={submitting}
                   >
                     {submitting ? "Čuvanje..." : "Promeni email"}
@@ -516,12 +521,6 @@ const Navbar = () => {
                   onSubmit={async (e) => {
                     e.preventDefault();
 
-                    const confirmed = window.confirm(
-                      "Da li ste sigurni da želite da obrišete profil?",
-                    );
-
-                    if (!confirmed) return;
-
                     setFormError("");
                     setSubmitting(true);
 
@@ -532,7 +531,8 @@ const Navbar = () => {
                     if (result.success) {
                       showToast("Profil je uspešno obrisan.", "success");
 
-                      setTimeout(() => {
+                      setTimeout(async () => {
+                        await logout();
                         closeAccountModal();
                         navigate("/");
                       }, 1200);

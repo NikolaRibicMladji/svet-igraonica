@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getMyPlayrooms, updatePlayroom } from "../services/playroomService";
+import {
+  getMyPlayrooms,
+  updatePlayroom,
+  deletePlayroom,
+} from "../services/playroomService";
 import { useAuth } from "../context/AuthContext";
 import PlayroomForm from "../components/PlayroomForm";
 import "../styles/ManagePlayroom.css";
@@ -25,6 +29,9 @@ const ManagePlayroom = () => {
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!authLoading) {
@@ -87,6 +94,37 @@ const ManagePlayroom = () => {
           err?.message ||
           "Greška pri ažuriranju.",
       );
+    }
+  };
+
+  const handleDeletePlayroom = async (e) => {
+    e.preventDefault();
+
+    if (!playroom?._id) return;
+
+    if (deleteConfirmText !== "OBRISI") {
+      setError("Morate uneti OBRISI da biste potvrdili brisanje.");
+      return;
+    }
+
+    setDeleting(true);
+    setError("");
+    setMessage("");
+
+    const result = await deletePlayroom(playroom._id);
+
+    setDeleting(false);
+
+    if (result.success) {
+      setMessage(result.message || "Igraonica je obrisana.");
+      setDeleteModalOpen(false);
+      setDeleteConfirmText("");
+
+      setTimeout(() => {
+        navigate("/create-playroom");
+      }, 1200);
+    } else {
+      setError(result.error || "Greška pri brisanju igraonice.");
     }
   };
 
@@ -153,13 +191,27 @@ const ManagePlayroom = () => {
               <h2>{playroom.naziv}</h2>
             </div>
 
-            <button
-              type="button"
-              className="btn-edit"
-              onClick={() => setEditing(true)}
-            >
-              <span>✏️</span> Uredi podatke
-            </button>
+            <div className="playroom-actions">
+              <button
+                type="button"
+                className="btn-edit"
+                onClick={() => setEditing(true)}
+              >
+                <span>✏️</span> Uredi podatke
+              </button>
+
+              <button
+                type="button"
+                className="btn-delete-playroom"
+                onClick={() => {
+                  setDeleteModalOpen(true);
+                  setError("");
+                  setMessage("");
+                }}
+              >
+                <span>🗑️</span> Obriši igraonicu
+              </button>
+            </div>
           </div>
 
           <div className="details-grid">
@@ -426,6 +478,55 @@ const ManagePlayroom = () => {
           onCancel={() => setEditing(false)}
           isEditing={true}
         />
+      )}
+      {deleteModalOpen && (
+        <div
+          className="delete-playroom-overlay"
+          onClick={() => setDeleteModalOpen(false)}
+        >
+          <div
+            className="delete-playroom-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="delete-playroom-close"
+              onClick={() => setDeleteModalOpen(false)}
+            >
+              ✖
+            </button>
+
+            <h2>Brisanje igraonice</h2>
+
+            <p>
+              Ova akcija je trajna. Brisanjem igraonice brišu se i svi njeni
+              termini. Ako postoje aktivne rezervacije, sistem neće dozvoliti
+              brisanje.
+            </p>
+
+            <form onSubmit={handleDeletePlayroom}>
+              <label>
+                Za potvrdu unesite <strong>OBRISI</strong>
+              </label>
+
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="OBRISI"
+                required
+              />
+
+              <button
+                type="submit"
+                className="confirm-delete-playroom-btn"
+                disabled={deleting}
+              >
+                {deleting ? "Brisanje..." : "Trajno obriši igraonicu"}
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
