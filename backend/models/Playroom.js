@@ -352,6 +352,11 @@ const PlayroomSchema = new mongoose.Schema(
       default: null,
     },
 
+    deactivatedAt: {
+      type: Date,
+      default: null,
+    },
+
     drustveneMreze: {
       instagram: { type: String, default: "", trim: true },
       facebook: { type: String, default: "", trim: true },

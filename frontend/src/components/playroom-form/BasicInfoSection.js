@@ -88,7 +88,8 @@ const BasicInfoSection = ({
             className={`locked-email-input ${errors.kontaktEmail ? "input-error" : ""}`}
           />
           <small className="field-hint">
-            Email je preuzet sa vašeg naloga i ne može se menjati.
+            Email je preuzet sa vašeg naloga i ne može se menjati osim ako ne
+            promenite na svom nalogu.
           </small>
           {errors.kontaktEmail && (
             <div className="field-error">{errors.kontaktEmail}</div>

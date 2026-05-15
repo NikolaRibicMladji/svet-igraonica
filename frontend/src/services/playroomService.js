@@ -133,3 +133,25 @@ export const deletePlayroom = async (id) => {
     };
   }
 };
+
+export const deactivatePlayroom = async (id) => {
+  try {
+    const response = await api.put(`/playrooms/${id}/deactivate`);
+
+    return {
+      success: true,
+      data: response.data?.data || null,
+      message:
+        response.data?.message ||
+        "Igraonica je deaktivirana i više nije javno dostupna.",
+    };
+  } catch (error) {
+    console.error("Greška pri deaktivaciji igraonice:", error);
+
+    return {
+      success: false,
+      error:
+        error.response?.data?.message || "Greška pri deaktivaciji igraonice.",
+    };
+  }
+};

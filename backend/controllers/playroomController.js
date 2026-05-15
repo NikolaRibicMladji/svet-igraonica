@@ -221,10 +221,14 @@ exports.getPlayroomById = async (req, res, next) => {
     const isAdmin = req.user?.role === "admin";
     const isOwner = playroom.vlasnikId?.toString() === req.user?.id;
 
-    if (!playroom.verifikovan && !isAdmin && !isOwner) {
+    if (
+      (!playroom.verifikovan || playroom.status !== PLAYROOM_STATUS.AKTIVAN) &&
+      !isAdmin &&
+      !isOwner
+    ) {
       return res.status(403).json({
         success: false,
-        message: "Ova igraonica još nije verifikovana",
+        message: "Ova igraonica nije javno dostupna",
       });
     }
 
@@ -447,9 +451,19 @@ exports.deletePlayroom = async (req, res, next) => {
       });
     }
 
+    if (playroom.status !== PLAYROOM_STATUS.DEAKTIVIRAN) {
+      return res.status(400).json({
+        success: false,
+        message: "Prvo morate deaktivirati igraonicu pre brisanja.",
+      });
+    }
+
     const activeBookings = await Booking.countDocuments({
       playroomId: playroom._id,
-      status: { $ne: BOOKING_STATUS.OTKAZANO },
+      status: {
+        $in: [BOOKING_STATUS.CEKANJE, BOOKING_STATUS.POTVRDJENO],
+      },
+      datum: { $gte: new Date() },
     });
 
     if (activeBookings > 0) {
@@ -465,6 +479,66 @@ exports.deletePlayroom = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Igraonica i svi njeni termini su obrisani",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Deaktiviraj igraonicu
+// @route   PUT /api/playrooms/:id/deactivate
+// @access  Private (vlasnik)
+exports.deactivatePlayroom = async (req, res, next) => {
+  try {
+    const playroom = await Playroom.findById(req.params.id);
+
+    if (!playroom) {
+      return res.status(404).json({
+        success: false,
+        message: "Igraonica nije pronađena",
+      });
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Nemate pravo za ovu akciju",
+      });
+    }
+
+    if (playroom.status === PLAYROOM_STATUS.DEAKTIVIRAN) {
+      return res.status(400).json({
+        success: false,
+        message: "Igraonica je već deaktivirana.",
+      });
+    }
+
+    playroom.status = PLAYROOM_STATUS.DEAKTIVIRAN;
+    playroom.verifikovan = false;
+    playroom.deactivatedAt = new Date();
+
+    await playroom.save();
+
+    // deaktiviraj buduće slobodne slotove
+    await TimeSlot.updateMany(
+      {
+        playroomId: playroom._id,
+        datum: { $gte: new Date() },
+        zauzeto: false,
+      },
+      {
+        $set: {
+          aktivno: false,
+        },
+      },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Igraonica je deaktivirana i više nije javno dostupna.",
     });
   } catch (error) {
     next(error);

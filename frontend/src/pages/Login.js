@@ -101,7 +101,15 @@ const Login = () => {
     const result = await login(email.trim(), password);
 
     if (result?.success) {
-      navigate("/");
+      const role = result?.user?.role;
+
+      if (role === "vlasnik") {
+        navigate("/create-playroom", { replace: true });
+      } else if (role === "admin") {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
     } else {
       const errorMessage = result?.error || "Greška pri prijavi.";
 

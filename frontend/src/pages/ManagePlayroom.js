@@ -4,6 +4,7 @@ import {
   getMyPlayrooms,
   updatePlayroom,
   deletePlayroom,
+  deactivatePlayroom,
 } from "../services/playroomService";
 import { useAuth } from "../context/AuthContext";
 import PlayroomForm from "../components/PlayroomForm";
@@ -32,6 +33,7 @@ const ManagePlayroom = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
 
   useEffect(() => {
     if (!authLoading) {
@@ -94,6 +96,39 @@ const ManagePlayroom = () => {
           err?.message ||
           "Greška pri ažuriranju.",
       );
+    }
+  };
+
+  const handleDeactivatePlayroom = async () => {
+    if (!playroom?._id) return;
+
+    const confirmed = window.confirm(
+      "Da li ste sigurni da želite da deaktivirate igraonicu?\n\nIgraonica više neće biti javno dostupna i neće primati nove rezervacije.",
+    );
+
+    if (!confirmed) return;
+
+    setDeactivating(true);
+    setError("");
+    setMessage("");
+
+    const result = await deactivatePlayroom(playroom._id);
+
+    setDeactivating(false);
+
+    if (result.success) {
+      setMessage(
+        result.message ||
+          "Igraonica je deaktivirana i više nije javno dostupna.",
+      );
+
+      await loadPlayroom();
+
+      setTimeout(() => {
+        setMessage("");
+      }, 4000);
+    } else {
+      setError(result.error || "Greška pri deaktivaciji igraonice.");
     }
   };
 
@@ -170,7 +205,12 @@ const ManagePlayroom = () => {
             playroom.verifikovan ? "verified" : "pending"
           }`}
         >
-          {playroom.verifikovan ? (
+          {playroom.status === "deaktiviran" ? (
+            <>
+              <span className="status-icon">⛔</span>
+              <span>Deaktivirano</span>
+            </>
+          ) : playroom.verifikovan ? (
             <>
               <span className="status-icon">✅</span>
               <span>Verifikovano</span>
@@ -200,17 +240,32 @@ const ManagePlayroom = () => {
                 <span>✏️</span> Uredi podatke
               </button>
 
-              <button
-                type="button"
-                className="btn-delete-playroom"
-                onClick={() => {
-                  setDeleteModalOpen(true);
-                  setError("");
-                  setMessage("");
-                }}
-              >
-                <span>🗑️</span> Obriši igraonicu
-              </button>
+              {playroom.status !== "deaktiviran" && (
+                <button
+                  type="button"
+                  className="btn-delete-playroom"
+                  onClick={handleDeactivatePlayroom}
+                  disabled={deactivating}
+                >
+                  <span>⛔</span>
+
+                  {deactivating ? "Deaktivacija..." : "Deaktiviraj igraonicu"}
+                </button>
+              )}
+
+              {playroom.status === "deaktiviran" && (
+                <button
+                  type="button"
+                  className="btn-delete-playroom"
+                  onClick={() => {
+                    setDeleteModalOpen(true);
+                    setError("");
+                    setMessage("");
+                  }}
+                >
+                  <span>🗑️</span> Obriši igraonicu
+                </button>
+              )}
             </div>
           </div>
 

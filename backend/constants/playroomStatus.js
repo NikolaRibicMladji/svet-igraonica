@@ -3,6 +3,7 @@ const PLAYROOM_STATUS = Object.freeze({
   AKTIVAN: "aktivan",
   NEAKTIVAN: "neaktivan",
   ODBIJEN: "odbijen",
+  DEAKTIVIRAN: "deaktiviran",
 });
 
 module.exports = PLAYROOM_STATUS;

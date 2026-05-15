@@ -17,6 +17,7 @@ const {
   getMyPlayrooms,
   updatePlayroom,
   deletePlayroom,
+  deactivatePlayroom,
   verifyPlayroom,
   regenerateTimeSlots,
   getOwnerStats,
@@ -62,6 +63,14 @@ router.put(
   checkOwner,
   validate(updatePlayroomSchema),
   updatePlayroom,
+);
+
+router.put(
+  "/:id/deactivate",
+  protect,
+  authorize(ROLES.VLASNIK),
+  checkOwner,
+  deactivatePlayroom,
 );
 
 router.delete(
