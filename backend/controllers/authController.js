@@ -320,6 +320,18 @@ exports.changeEmail = async (req, res, next) => {
 
     await user.save();
 
+    // 🔄 Sync email sa igraonicom vlasnika
+    if (user.role === "vlasnik") {
+      await Playroom.updateOne(
+        { vlasnikId: user._id },
+        {
+          $set: {
+            kontaktEmail: newEmail,
+          },
+        },
+      );
+    }
+
     await RefreshSession.deleteMany({
       userId: user._id,
     });

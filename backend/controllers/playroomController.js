@@ -63,6 +63,17 @@ exports.createPlayroom = async (req, res, next) => {
 
     const ownerUser = await User.findById(req.user.id).select("email");
 
+    const existingOwnerPlayroom = await Playroom.findOne({
+      vlasnikId: req.user.id,
+    });
+
+    if (existingOwnerPlayroom) {
+      return res.status(400).json({
+        success: false,
+        message: "Već imate registrovanu igraonicu.",
+      });
+    }
+
     if (!ownerUser?.email) {
       return res.status(401).json({
         success: false,
