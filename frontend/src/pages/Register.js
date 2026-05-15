@@ -22,6 +22,7 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
@@ -169,15 +170,31 @@ const Register = () => {
     });
 
     if (result?.success) {
-      if (formData.role === "vlasnik") {
-        navigate("/create-playroom", {
+      setSuccessMessage(
+        result?.message || "Proverite email adresu radi potvrde naloga.",
+      );
+
+      setFormData({
+        ime: "",
+        prezime: "",
+        email: "",
+        password: "",
+        telefon: "",
+        role: "",
+      });
+
+      setConfirmPassword("");
+      setAcceptedTerms(false);
+
+      setTimeout(() => {
+        navigate("/login", {
           replace: true,
+          state: {
+            registrationSuccess:
+              "Uspešno ste se registrovali. Proverite email adresu radi potvrde naloga.",
+          },
         });
-      } else {
-        navigate("/", {
-          replace: true,
-        });
-      }
+      }, 3500);
     } else {
       setServerError(result?.error || "Greška pri registraciji.");
     }
@@ -191,6 +208,9 @@ const Register = () => {
         <h1>Registracija</h1>
 
         {serverError && <div className="error-message">{serverError}</div>}
+        {successMessage && (
+          <div className="success-message">{successMessage}</div>
+        )}
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="form-group">

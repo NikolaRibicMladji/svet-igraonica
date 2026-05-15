@@ -26,6 +26,7 @@ const emailLogSchema = new mongoose.Schema(
         "playroom_verification",
         "playroom_approved",
         "playroom_rejected",
+        "email_verification",
       ],
     },
 

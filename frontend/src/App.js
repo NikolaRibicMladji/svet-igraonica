@@ -30,6 +30,7 @@ import ResetPassword from "./pages/ResetPassword";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import BookingPolicy from "./pages/BookingPolicy";
+import VerifyEmail from "./pages/VerifyEmail";
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -97,6 +98,7 @@ function AppRoutes() {
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/verify-email/:token" element={<VerifyEmail />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="/booking-policy" element={<BookingPolicy />} />

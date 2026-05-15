@@ -5,7 +5,10 @@ const crypto = require("crypto");
 const generateAccessToken = require("../utils/generateToken");
 const ROLES = require("../constants/roles");
 const RefreshSession = require("../models/RefreshSession");
+const { sendEmailVerificationEmail } = require("../utils/emailService");
 
+const EMAIL_VERIFICATION_EXPIRES_MINUTES = 15;
+const EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS = 60;
 const REFRESH_TOKEN_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
@@ -29,6 +32,23 @@ const hashPassword = async (password) => {
 const hashToken = (token) => {
   return crypto.createHash("sha256").update(token).digest("hex");
 };
+
+const generateEmailVerificationToken = () => {
+  const rawToken = crypto.randomBytes(32).toString("hex");
+
+  const hashedToken = hashToken(rawToken);
+
+  const expiresAt = new Date(
+    Date.now() + EMAIL_VERIFICATION_EXPIRES_MINUTES * 60 * 1000,
+  );
+
+  return {
+    rawToken,
+    hashedToken,
+    expiresAt,
+  };
+};
+
 const getRefreshTokenExpiryDate = () => {
   return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 };
@@ -110,6 +130,8 @@ const createParentUser = async ({
     throw createError("Korisnik sa ovom email adresom već postoji", 400);
   }
 
+  const { hashedToken, expiresAt, rawToken } = generateEmailVerificationToken();
+
   const hashedPassword = await hashPassword(password);
 
   const createdUsers = await User.create(
@@ -123,12 +145,19 @@ const createParentUser = async ({
         role,
         acceptedTerms: acceptedTerms === true,
         acceptedTermsAt: acceptedTerms === true ? new Date() : null,
+        emailVerified: false,
+        emailVerificationToken: hashedToken,
+        emailVerificationExpires: expiresAt,
+        emailVerificationLastSentAt: new Date(),
       },
     ],
     session ? { session } : {},
   );
 
-  return createdUsers[0];
+  return {
+    user: createdUsers[0],
+    emailVerificationToken: rawToken,
+  };
 };
 
 exports.registerUser = async (data, metadata = {}) => {
@@ -145,7 +174,7 @@ exports.registerUser = async (data, metadata = {}) => {
 
   const userRole = role;
 
-  const user = await createParentUser({
+  const { user, emailVerificationToken } = await createParentUser({
     ime,
     prezime,
     email,
@@ -155,9 +184,9 @@ exports.registerUser = async (data, metadata = {}) => {
     acceptedTerms,
   });
 
-  const tokens = await generateAuthResponse(user, null, metadata);
+  await sendEmailVerificationEmail(user, emailVerificationToken);
 
-  return { user, ...tokens };
+  return { user };
 };
 
 exports.loginUser = async (email, password, metadata = {}) => {
@@ -175,6 +204,10 @@ exports.loginUser = async (email, password, metadata = {}) => {
 
   if (!isMatch) {
     throw createError("Pogrešan email ili lozinka", 401);
+  }
+
+  if (!user.emailVerified) {
+    throw createError("Morate potvrditi email adresu.", 403);
   }
 
   const tokens = await generateAuthResponse(user, null, metadata);
@@ -318,7 +351,7 @@ exports.registerGuestParent = async (data, session = null) => {
     );
   }
 
-  const user = await createParentUser({
+  const { user } = await createParentUser({
     ime,
     prezime,
     email: normalizedEmail,

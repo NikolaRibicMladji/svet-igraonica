@@ -1,7 +1,10 @@
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
-const { sendMail } = require("../utils/emailService");
+const {
+  sendMail,
+  sendEmailVerificationEmail,
+} = require("../utils/emailService");
 const authService = require("../services/authService");
 const RefreshSession = require("../models/RefreshSession");
 const Booking = require("../models/Booking");
@@ -22,16 +25,15 @@ const getRequestMetadata = (req) => ({
 // @access  Public
 exports.register = async (req, res, next) => {
   try {
-    const { user, accessToken, refreshToken } = await authService.registerUser(
+    const { user } = await authService.registerUser(
       req.validated.body,
       getRequestMetadata(req),
     );
 
-    res.cookie("refreshToken", refreshToken, authService.cookieOptions);
-
     res.status(201).json({
       success: true,
-      accessToken,
+      message:
+        "Uspešno ste se registrovali. Proverite email adresu radi potvrde naloga.",
       user: {
         id: user._id,
         ime: user.ime,
@@ -39,6 +41,7 @@ exports.register = async (req, res, next) => {
         email: user.email,
         telefon: user.telefon,
         role: user.role,
+        emailVerified: user.emailVerified,
       },
     });
   } catch (error) {
@@ -158,7 +161,11 @@ exports.forgotPassword = async (req, res, next) => {
 
     await user.save({ validateBeforeSave: false });
 
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    const frontendUrl = (
+      process.env.FRONTEND_URL || "http://localhost:3000"
+    ).replace(/\/$/, "");
+
+    const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
     await sendMail({
       from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
@@ -219,6 +226,119 @@ exports.resetPassword = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Lozinka je uspešno promenjena.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Potvrda email adrese
+// @route   GET /api/auth/verify-email/:token
+// @access  Public
+exports.verifyEmail = async (req, res, next) => {
+  try {
+    const { token } = req.validated.params;
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      emailVerificationToken: hashedToken,
+      emailVerificationExpires: { $gt: Date.now() },
+    }).select("+emailVerificationToken +emailVerificationExpires");
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Verifikacioni link nije validan ili je istekao.",
+      });
+    }
+
+    user.emailVerified = true;
+    user.emailVerifiedAt = new Date();
+
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpires = undefined;
+    user.emailVerificationLastSentAt = null;
+
+    await user.save({
+      validateBeforeSave: false,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Email adresa je uspešno potvrđena.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Ponovno slanje verifikacionog emaila
+// @route   POST /api/auth/resend-verification
+// @access  Public
+exports.resendVerificationEmail = async (req, res, next) => {
+  try {
+    const { email } = req.validated.body;
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await User.findOne({
+      email: normalizedEmail,
+    }).select(
+      "+emailVerificationLastSentAt +emailVerificationToken +emailVerificationExpires",
+    );
+
+    // Ne otkrivamo da li korisnik postoji
+    if (!user) {
+      return res.status(200).json({
+        success: true,
+        message: "Ako nalog postoji i nije potvrđen, poslali smo novi email.",
+      });
+    }
+
+    if (user.emailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Email adresa je već potvrđena.",
+      });
+    }
+
+    const lastSentAt = user.emailVerificationLastSentAt;
+
+    if (lastSentAt) {
+      const secondsSinceLastEmail =
+        (Date.now() - new Date(lastSentAt).getTime()) / 1000;
+
+      if (secondsSinceLastEmail < 60) {
+        return res.status(429).json({
+          success: false,
+          message: "Sačekajte malo pre ponovnog slanja emaila.",
+        });
+      }
+    }
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
+
+    user.emailVerificationToken = hashedToken;
+
+    user.emailVerificationExpires = Date.now() + 15 * 60 * 1000;
+
+    user.emailVerificationLastSentAt = new Date();
+
+    await user.save({
+      validateBeforeSave: false,
+    });
+
+    await sendEmailVerificationEmail(user, rawToken);
+
+    return res.status(200).json({
+      success: true,
+      message: "Ako nalog postoji i nije potvrđen, poslali smo novi email.",
     });
   } catch (error) {
     next(error);
@@ -316,9 +436,27 @@ exports.changeEmail = async (req, res, next) => {
       });
     }
 
+    const rawToken = crypto.randomBytes(32).toString("hex");
+
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
+
     user.email = newEmail;
 
+    user.emailVerified = false;
+    user.emailVerifiedAt = null;
+
+    user.emailVerificationToken = hashedToken;
+
+    user.emailVerificationExpires = Date.now() + 15 * 60 * 1000;
+
+    user.emailVerificationLastSentAt = new Date();
+
     await user.save();
+
+    await sendEmailVerificationEmail(user, rawToken);
 
     // 🔄 Sync email sa igraonicom vlasnika
     if (user.role === "vlasnik") {
@@ -344,7 +482,8 @@ exports.changeEmail = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: "Email je uspešno promenjen. Prijavite se ponovo.",
+      message:
+        "Email je uspešno promenjen. Proverite novu email adresu radi potvrde naloga.",
     });
   } catch (error) {
     next(error);

@@ -82,6 +82,30 @@ const resetPasswordSchema = z
     path: ["body", "confirmPassword"],
   });
 
+const verifyEmailSchema = z.object({
+  body: z.object({}).optional(),
+  params: z.object({
+    token: z
+      .string()
+      .min(32, "Token nije validan")
+      .max(128, "Token nije validan")
+      .regex(/^[a-fA-F0-9]+$/, "Token nije validan"),
+  }),
+  query: z.object({}).optional(),
+});
+
+const resendVerificationSchema = z.object({
+  body: z.object({
+    email: z
+      .string()
+      .email("Neispravan format email adrese")
+      .toLowerCase()
+      .trim(),
+  }),
+  params: z.object({}).optional(),
+  query: z.object({}).optional(),
+});
+
 const changePasswordSchema = z
   .object({
     body: z.object({
@@ -131,4 +155,6 @@ module.exports = {
   changePasswordSchema,
   changeEmailSchema,
   deleteAccountSchema,
+  verifyEmailSchema,
+  resendVerificationSchema,
 };

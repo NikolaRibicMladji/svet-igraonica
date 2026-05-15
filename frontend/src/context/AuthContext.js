@@ -117,11 +117,18 @@ export const AuthProvider = ({ children }) => {
       const pendingEmail = userData?.email?.trim().toLowerCase();
 
       if (pendingEmail) {
-        localStorage.setItem("pendingOwnerEmail", pendingEmail);
+        localStorage.setItem("pendingVerificationEmail", pendingEmail);
       }
 
       const response = await api.post("/auth/register", userData);
-      return handleAuthSuccess(response, userData);
+
+      return {
+        success: true,
+        message:
+          response?.data?.message ||
+          "Proverite email adresu radi potvrde naloga.",
+        user: response?.data?.user || null,
+      };
     } catch (err) {
       return handleAuthError(err, "Greška pri registraciji.");
     }

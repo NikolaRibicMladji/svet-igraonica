@@ -39,6 +39,13 @@ const protect = async (req, res, next) => {
       });
     }
 
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        success: false,
+        message: "Morate potvrditi email adresu.",
+      });
+    }
+
     req.user = user;
 
     next();

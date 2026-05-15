@@ -12,6 +12,8 @@ const {
   changePassword,
   changeEmail,
   deleteAccount,
+  verifyEmail,
+  resendVerificationEmail,
 } = require("../controllers/authController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -26,11 +28,20 @@ const {
   changePasswordSchema,
   changeEmailSchema,
   deleteAccountSchema,
+  verifyEmailSchema,
+  resendVerificationSchema,
 } = require("../validations/authValidation");
 
 // 🌐 JAVNE RUTE
 router.post("/register", validate(registerSchema), register);
 router.post("/login", validate(loginSchema), login);
+router.get("/verify-email/:token", validate(verifyEmailSchema), verifyEmail);
+
+router.post(
+  "/resend-verification",
+  validate(resendVerificationSchema),
+  resendVerificationEmail,
+);
 router.post("/logout", logout);
 router.post("/refresh", refreshToken);
 router.post("/forgot-password", validate(forgotPasswordSchema), forgotPassword);

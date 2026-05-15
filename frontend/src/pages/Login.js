@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import api from "../services/api";
 import "../styles/global.css";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
@@ -17,6 +18,8 @@ const Login = () => {
   const [serverError, setServerError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showResendVerification, setShowResendVerification] = useState(false);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -27,10 +30,19 @@ const Login = () => {
   useEffect(() => {
     if (location.state?.resetSuccess) {
       setSuccessMessage(location.state.resetSuccess);
-
-      // očisti state da se ne prikazuje opet
-      window.history.replaceState({}, document.title);
     }
+
+    if (location.state?.registrationSuccess) {
+      setSuccessMessage(location.state.registrationSuccess);
+
+      const pendingEmail = localStorage.getItem("pendingVerificationEmail");
+
+      if (pendingEmail) {
+        setEmail(pendingEmail);
+      }
+    }
+
+    window.history.replaceState({}, document.title);
   }, [location.state]);
 
   const validateEmail = (value) => /^\S+@\S+\.\S+$/.test(value);
@@ -55,6 +67,7 @@ const Login = () => {
   const handleEmailChange = (e) => {
     setEmail(e.target.value);
     setServerError("");
+    setShowResendVerification(false);
 
     setErrors((prev) => {
       if (!prev.email) return prev;
@@ -79,6 +92,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setServerError("");
+    setShowResendVerification(false);
 
     if (!validateForm()) return;
 
@@ -89,10 +103,56 @@ const Login = () => {
     if (result?.success) {
       navigate("/");
     } else {
-      setServerError(result?.error || "Greška pri prijavi.");
+      const errorMessage = result?.error || "Greška pri prijavi.";
+
+      setServerError(errorMessage);
+
+      if (errorMessage.includes("Morate potvrditi email adresu")) {
+        setShowResendVerification(true);
+
+        const pendingEmail = email.trim().toLowerCase();
+
+        if (pendingEmail) {
+          localStorage.setItem("pendingVerificationEmail", pendingEmail);
+        }
+      }
     }
 
     setSubmitting(false);
+  };
+
+  const handleResendVerification = async () => {
+    const normalizedEmail =
+      email.trim().toLowerCase() ||
+      localStorage.getItem("pendingVerificationEmail");
+
+    if (!normalizedEmail || !validateEmail(normalizedEmail)) {
+      setServerError("Unesite validnu email adresu.");
+      return;
+    }
+
+    setResending(true);
+    setServerError("");
+    setSuccessMessage("");
+    setShowResendVerification(false);
+
+    try {
+      const response = await api.post("/auth/resend-verification", {
+        email: normalizedEmail,
+      });
+
+      setSuccessMessage(
+        response?.data?.message ||
+          "Ako nalog postoji i nije potvrđen, poslali smo novi email.",
+      );
+    } catch (err) {
+      setServerError(
+        err?.response?.data?.message ||
+          "Greška pri slanju verifikacionog emaila.",
+      );
+    } finally {
+      setResending(false);
+    }
   };
 
   return (
@@ -104,6 +164,17 @@ const Login = () => {
           <div className="success-message">{successMessage}</div>
         )}
         {serverError && <div className="error-message">{serverError}</div>}
+
+        {showResendVerification && (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleResendVerification}
+            disabled={resending}
+          >
+            {resending ? "Šaljem..." : "Pošalji ponovo verifikacioni email"}
+          </button>
+        )}
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="form-group">

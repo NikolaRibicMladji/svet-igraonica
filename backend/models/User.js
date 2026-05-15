@@ -91,6 +91,35 @@ const UserSchema = new mongoose.Schema(
       default: undefined,
       select: false,
     },
+
+    emailVerified: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    emailVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+
+    emailVerificationToken: {
+      type: String,
+      default: undefined,
+      select: false,
+    },
+
+    emailVerificationExpires: {
+      type: Date,
+      default: undefined,
+      select: false,
+    },
+
+    emailVerificationLastSentAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -102,6 +131,7 @@ UserSchema.index({ email: 1 });
 
 // Brži lookup za role-based upite
 UserSchema.index({ role: 1 });
+UserSchema.index({ emailVerificationToken: 1 });
 
 // Uklanja sensitive podatke kad se šalje JSON
 UserSchema.methods.toJSON = function () {
@@ -110,6 +140,9 @@ UserSchema.methods.toJSON = function () {
 
   delete obj.passwordResetToken;
   delete obj.passwordResetExpires;
+  delete obj.emailVerificationToken;
+  delete obj.emailVerificationExpires;
+  delete obj.emailVerificationLastSentAt;
   delete obj.__v;
   return obj;
 };
