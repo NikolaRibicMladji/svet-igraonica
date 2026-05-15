@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "../styles/Navbar.css";
 
 const Navbar = () => {
@@ -21,6 +22,14 @@ const Navbar = () => {
   const [formError, setFormError] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
+  const accountDropdownRef = useRef(null);
+  const [showPasswordFields, setShowPasswordFields] = useState({
+    currentPassword: false,
+    newPassword: false,
+    confirmNewPassword: false,
+    emailCurrentPassword: false,
+    deleteCurrentPassword: false,
+  });
 
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
@@ -43,6 +52,13 @@ const Navbar = () => {
 
   const toggleMenu = () => {
     setMenuOpen((prev) => !prev);
+  };
+
+  const togglePasswordVisibility = (field) => {
+    setShowPasswordFields((prev) => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
   };
 
   const openAccountModal = (modalName) => {
@@ -68,6 +84,13 @@ const Navbar = () => {
     setDeleteForm({
       currentPassword: "",
     });
+    setShowPasswordFields({
+      currentPassword: false,
+      newPassword: false,
+      confirmNewPassword: false,
+      emailCurrentPassword: false,
+      deleteCurrentPassword: false,
+    });
   };
 
   const handleLogout = async () => {
@@ -87,6 +110,23 @@ const Navbar = () => {
       document.body.style.overflow = "";
     };
   }, [menuOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        accountDropdownRef.current &&
+        !accountDropdownRef.current.contains(event.target)
+      ) {
+        setAccountOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const renderAuthenticatedLinks = () => {
     if (user?.role === "roditelj") {
@@ -172,7 +212,7 @@ const Navbar = () => {
               <>
                 {renderAuthenticatedLinks()}
 
-                <div className="navbar-user">
+                <div className="navbar-user" ref={accountDropdownRef}>
                   <button
                     type="button"
                     className="navbar-user-name"
@@ -264,44 +304,98 @@ const Navbar = () => {
                     }
                   }}
                 >
-                  <input
-                    type="password"
-                    placeholder="Trenutna lozinka"
-                    value={passwordForm.currentPassword}
-                    onChange={(e) =>
-                      setPasswordForm((prev) => ({
-                        ...prev,
-                        currentPassword: e.target.value,
-                      }))
-                    }
-                    required
-                  />
+                  <div className="account-password-field">
+                    <input
+                      type={
+                        showPasswordFields.currentPassword ? "text" : "password"
+                      }
+                      placeholder="Trenutna lozinka"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) =>
+                        setPasswordForm((prev) => ({
+                          ...prev,
+                          currentPassword: e.target.value,
+                        }))
+                      }
+                      required
+                    />
 
-                  <input
-                    type="password"
-                    placeholder="Nova lozinka"
-                    value={passwordForm.newPassword}
-                    onChange={(e) =>
-                      setPasswordForm((prev) => ({
-                        ...prev,
-                        newPassword: e.target.value,
-                      }))
-                    }
-                    required
-                  />
+                    <button
+                      type="button"
+                      className="account-eye-btn"
+                      onClick={() =>
+                        togglePasswordVisibility("currentPassword")
+                      }
+                    >
+                      {showPasswordFields.currentPassword ? (
+                        <FaEyeSlash />
+                      ) : (
+                        <FaEye />
+                      )}
+                    </button>
+                  </div>
 
-                  <input
-                    type="password"
-                    placeholder="Potvrda nove lozinke"
-                    value={passwordForm.confirmNewPassword}
-                    onChange={(e) =>
-                      setPasswordForm((prev) => ({
-                        ...prev,
-                        confirmNewPassword: e.target.value,
-                      }))
-                    }
-                    required
-                  />
+                  <div className="account-password-field">
+                    <input
+                      type={
+                        showPasswordFields.newPassword ? "text" : "password"
+                      }
+                      placeholder="Nova lozinka"
+                      value={passwordForm.newPassword}
+                      onChange={(e) =>
+                        setPasswordForm((prev) => ({
+                          ...prev,
+                          newPassword: e.target.value,
+                        }))
+                      }
+                      required
+                    />
+
+                    <button
+                      type="button"
+                      className="account-eye-btn"
+                      onClick={() => togglePasswordVisibility("newPassword")}
+                    >
+                      {showPasswordFields.newPassword ? (
+                        <FaEyeSlash />
+                      ) : (
+                        <FaEye />
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="account-password-field">
+                    <input
+                      type={
+                        showPasswordFields.confirmNewPassword
+                          ? "text"
+                          : "password"
+                      }
+                      placeholder="Potvrda nove lozinke"
+                      value={passwordForm.confirmNewPassword}
+                      onChange={(e) =>
+                        setPasswordForm((prev) => ({
+                          ...prev,
+                          confirmNewPassword: e.target.value,
+                        }))
+                      }
+                      required
+                    />
+
+                    <button
+                      type="button"
+                      className="account-eye-btn"
+                      onClick={() =>
+                        togglePasswordVisibility("confirmNewPassword")
+                      }
+                    >
+                      {showPasswordFields.confirmNewPassword ? (
+                        <FaEyeSlash />
+                      ) : (
+                        <FaEye />
+                      )}
+                    </button>
+                  </div>
 
                   {formError && (
                     <div className="account-error">{formError}</div>
@@ -309,7 +403,7 @@ const Navbar = () => {
 
                   <button
                     type="submit"
-                    className="account-submit-btn"
+                    className={`account-submit-btn ${submitting ? "loading" : ""}`}
                     disabled={submitting}
                   >
                     {submitting ? "Čuvanje..." : "Promeni lozinku"}
@@ -360,18 +454,38 @@ const Navbar = () => {
                     required
                   />
 
-                  <input
-                    type="password"
-                    placeholder="Trenutna lozinka"
-                    value={emailForm.currentPassword}
-                    onChange={(e) =>
-                      setEmailForm((prev) => ({
-                        ...prev,
-                        currentPassword: e.target.value,
-                      }))
-                    }
-                    required
-                  />
+                  <div className="account-password-field">
+                    <input
+                      type={
+                        showPasswordFields.emailCurrentPassword
+                          ? "text"
+                          : "password"
+                      }
+                      placeholder="Trenutna lozinka"
+                      value={emailForm.currentPassword}
+                      onChange={(e) =>
+                        setEmailForm((prev) => ({
+                          ...prev,
+                          currentPassword: e.target.value,
+                        }))
+                      }
+                      required
+                    />
+
+                    <button
+                      type="button"
+                      className="account-eye-btn"
+                      onClick={() =>
+                        togglePasswordVisibility("emailCurrentPassword")
+                      }
+                    >
+                      {showPasswordFields.emailCurrentPassword ? (
+                        <FaEyeSlash />
+                      ) : (
+                        <FaEye />
+                      )}
+                    </button>
+                  </div>
 
                   {formError && (
                     <div className="account-error">{formError}</div>
@@ -379,7 +493,7 @@ const Navbar = () => {
 
                   <button
                     type="submit"
-                    className="account-submit-btn"
+                    className={`account-submit-btn ${submitting ? "loading" : ""}`}
                     disabled={submitting}
                   >
                     {submitting ? "Čuvanje..." : "Promeni email"}
@@ -427,17 +541,37 @@ const Navbar = () => {
                     }
                   }}
                 >
-                  <input
-                    type="password"
-                    placeholder="Trenutna lozinka"
-                    value={deleteForm.currentPassword}
-                    onChange={(e) =>
-                      setDeleteForm({
-                        currentPassword: e.target.value,
-                      })
-                    }
-                    required
-                  />
+                  <div className="account-password-field">
+                    <input
+                      type={
+                        showPasswordFields.deleteCurrentPassword
+                          ? "text"
+                          : "password"
+                      }
+                      placeholder="Trenutna lozinka"
+                      value={deleteForm.currentPassword}
+                      onChange={(e) =>
+                        setDeleteForm({
+                          currentPassword: e.target.value,
+                        })
+                      }
+                      required
+                    />
+
+                    <button
+                      type="button"
+                      className="account-eye-btn"
+                      onClick={() =>
+                        togglePasswordVisibility("deleteCurrentPassword")
+                      }
+                    >
+                      {showPasswordFields.deleteCurrentPassword ? (
+                        <FaEyeSlash />
+                      ) : (
+                        <FaEye />
+                      )}
+                    </button>
+                  </div>
 
                   {formError && (
                     <div className="account-error">{formError}</div>
@@ -445,7 +579,7 @@ const Navbar = () => {
 
                   <button
                     type="submit"
-                    className="account-submit-btn danger"
+                    className={`account-submit-btn danger ${submitting ? "loading" : ""}`}
                     disabled={submitting}
                   >
                     {submitting ? "Brisanje..." : "Obriši profil"}
