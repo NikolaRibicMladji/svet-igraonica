@@ -1,6 +1,7 @@
 const Playroom = require("../models/Playroom");
 const Booking = require("../models/Booking");
 const TimeSlot = require("../models/TimeSlot");
+const bcrypt = require("bcryptjs");
 const PLAYROOM_STATUS = require("../constants/playroomStatus");
 const BOOKING_STATUS = require("../constants/bookingStatus");
 const {
@@ -506,6 +507,27 @@ exports.deactivatePlayroom = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "Nemate pravo za ovu akciju",
+      });
+    }
+
+    const user = await User.findById(req.user.id).select("+password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Korisnik nije pronađen",
+      });
+    }
+
+    const passwordMatch = await bcrypt.compare(
+      req.validated.body.password,
+      user.password,
+    );
+
+    if (!passwordMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Lozinka nije tačna",
       });
     }
 

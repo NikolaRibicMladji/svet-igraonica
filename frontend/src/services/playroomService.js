@@ -134,9 +134,11 @@ export const deletePlayroom = async (id) => {
   }
 };
 
-export const deactivatePlayroom = async (id) => {
+export const deactivatePlayroom = async (id, password) => {
   try {
-    const response = await api.put(`/playrooms/${id}/deactivate`);
+    const response = await api.put(`/playrooms/${id}/deactivate`, {
+      password,
+    });
 
     return {
       success: true,

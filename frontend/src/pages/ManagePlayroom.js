@@ -35,6 +35,7 @@ const ManagePlayroom = () => {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
+  const [deactivatePassword, setDeactivatePassword] = useState("");
 
   useEffect(() => {
     if (!authLoading) {
@@ -107,11 +108,13 @@ const ManagePlayroom = () => {
     setError("");
     setMessage("");
 
-    const result = await deactivatePlayroom(playroom._id);
+    const result = await deactivatePlayroom(playroom._id, deactivatePassword);
 
     setDeactivating(false);
 
     if (result.success) {
+      setDeactivatePassword("");
+      setDeactivateModalOpen(false);
       setMessage(
         result.message ||
           "Igraonica je deaktivirana i više nije javno dostupna.",
@@ -559,14 +562,20 @@ const ManagePlayroom = () => {
 
             <p>Postojeće rezervacije ostaju aktivne dok se ne završe.</p>
 
+            <label>Unesite lozinku za potvrdu</label>
+
+            <input
+              type="password"
+              value={deactivatePassword}
+              onChange={(e) => setDeactivatePassword(e.target.value)}
+              placeholder="Lozinka"
+              required
+            />
             <button
               type="button"
               className="confirm-delete-playroom-btn"
-              onClick={async () => {
-                setDeactivateModalOpen(false);
-                await handleDeactivatePlayroom();
-              }}
-              disabled={deactivating}
+              onClick={handleDeactivatePlayroom}
+              disabled={deactivating || !deactivatePassword.trim()}
             >
               {deactivating ? "Deaktivacija..." : "Potvrdi deaktivaciju"}
             </button>

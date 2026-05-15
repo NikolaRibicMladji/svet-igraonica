@@ -4,6 +4,7 @@ const validate = require("../middleware/validate");
 const {
   createPlayroomSchema,
   updatePlayroomSchema,
+  deactivatePlayroomSchema,
 } = require("../validations/playroomValidation");
 const { protect } = require("../middleware/authMiddleware");
 const authorize = require("../middleware/roleMiddleware");
@@ -70,6 +71,7 @@ router.put(
   protect,
   authorize(ROLES.VLASNIK),
   checkOwner,
+  validate(deactivatePlayroomSchema),
   deactivatePlayroom,
 );
 

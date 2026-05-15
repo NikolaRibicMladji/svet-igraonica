@@ -199,7 +199,20 @@ const updatePlayroomSchema = z.object({
   query: z.object({}).optional(),
 });
 
+const deactivatePlayroomSchema = z.object({
+  body: z.object({
+    password: z.string().trim().min(6, "Lozinka je obavezna"),
+  }),
+
+  params: z.object({
+    id: z.string().min(1, "ID igraonice je obavezan"),
+  }),
+
+  query: z.object({}).optional(),
+});
+
 module.exports = {
   createPlayroomSchema,
   updatePlayroomSchema,
+  deactivatePlayroomSchema,
 };
