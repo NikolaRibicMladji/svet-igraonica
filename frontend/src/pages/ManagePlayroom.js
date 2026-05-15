@@ -31,6 +31,7 @@ const ManagePlayroom = () => {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
@@ -101,12 +102,6 @@ const ManagePlayroom = () => {
 
   const handleDeactivatePlayroom = async () => {
     if (!playroom?._id) return;
-
-    const confirmed = window.confirm(
-      "Da li ste sigurni da želite da deaktivirate igraonicu?\n\nIgraonica više neće biti javno dostupna i neće primati nove rezervacije.",
-    );
-
-    if (!confirmed) return;
 
     setDeactivating(true);
     setError("");
@@ -244,7 +239,11 @@ const ManagePlayroom = () => {
                 <button
                   type="button"
                   className="btn-delete-playroom"
-                  onClick={handleDeactivatePlayroom}
+                  onClick={() => {
+                    setDeactivateModalOpen(true);
+                    setError("");
+                    setMessage("");
+                  }}
                   disabled={deactivating}
                 >
                   <span>⛔</span>
@@ -533,6 +532,46 @@ const ManagePlayroom = () => {
           onCancel={() => setEditing(false)}
           isEditing={true}
         />
+      )}
+      {deactivateModalOpen && (
+        <div
+          className="delete-playroom-overlay"
+          onClick={() => setDeactivateModalOpen(false)}
+        >
+          <div
+            className="delete-playroom-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="delete-playroom-close"
+              onClick={() => setDeactivateModalOpen(false)}
+            >
+              ✖
+            </button>
+
+            <h2>Deaktivacija igraonice</h2>
+
+            <p>
+              Igraonica više neće biti javno dostupna i neće primati nove
+              rezervacije.
+            </p>
+
+            <p>Postojeće rezervacije ostaju aktivne dok se ne završe.</p>
+
+            <button
+              type="button"
+              className="confirm-delete-playroom-btn"
+              onClick={async () => {
+                setDeactivateModalOpen(false);
+                await handleDeactivatePlayroom();
+              }}
+              disabled={deactivating}
+            >
+              {deactivating ? "Deaktivacija..." : "Potvrdi deaktivaciju"}
+            </button>
+          </div>
+        </div>
       )}
       {deleteModalOpen && (
         <div
