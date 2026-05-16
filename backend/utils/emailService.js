@@ -1,31 +1,28 @@
 const EmailLog = require("../models/EmailLog");
 const EmailQueue = require("../models/EmailQueue");
 
-const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+const { Resend } = require("resend");
 
-const sendViaBrevo = async ({ to, subject, html }) => {
-  const response = await fetch(BREVO_API_URL, {
-    method: "POST",
-    headers: {
-      accept: "application/json",
-      "api-key": process.env.BREVO_API_KEY,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      sender: {
-        name: "Svet Igraonica",
-        email: process.env.BREVO_SENDER_EMAIL,
-      },
-      to: [{ email: to }],
-      subject,
-      htmlContent: html,
-    }),
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+const getEmailFrom = () => {
+  return process.env.EMAIL_FROM || "onboarding@resend.dev";
+};
+
+const sendViaResend = async ({ to, subject, html }) => {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY missing");
+  }
+
+  const { data, error } = await resend.emails.send({
+    from: `Svet Igraonica <${getEmailFrom()}>`,
+    to,
+    subject,
+    html,
   });
 
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    throw new Error(JSON.stringify(data));
+  if (error) {
+    throw new Error(error.message || JSON.stringify(error));
   }
 
   return data;
@@ -446,12 +443,12 @@ ${
 // ==============================
 const sendMail = async (options) => {
   try {
-    if (!process.env.BREVO_API_KEY) {
-      throw new Error("BREVO_API_KEY missing");
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error("RESEND_API_KEY missing");
     }
 
-    if (!process.env.BREVO_SENDER_EMAIL) {
-      throw new Error("BREVO_SENDER_EMAIL missing");
+    if (!process.env.EMAIL_FROM) {
+      throw new Error("EMAIL_FROM missing");
     }
 
     await EmailQueue.create({
@@ -496,7 +493,7 @@ exports.sendBookingConfirmation = async (
     type: "booking_confirmation",
     bookingId: booking._id,
     playroomId: playroom._id,
-    from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
+    from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
     to: roditelj.email,
     subject: `✅ Potvrda rezervacije - ${playroom.naziv}`,
     html: generateEmailHtml(
@@ -525,7 +522,7 @@ exports.sendBookingConfirmationToOwner = async (
     type: "booking_owner",
     bookingId: booking._id,
     playroomId: playroom._id,
-    from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
+    from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
     to: vlasnik.email,
     subject: `🆕 Nova rezervacija - ${playroom.naziv}`,
     html: generateEmailHtml(
@@ -552,7 +549,7 @@ exports.sendBookingCancellation = async (
     type: "booking_cancellation",
     bookingId: booking._id,
     playroomId: playroom._id,
-    from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
+    from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
     to: roditelj.email,
     subject: `❌ Otkazivanje rezervacije - ${playroom.naziv}`,
     html: generateEmailHtml(
@@ -578,7 +575,7 @@ exports.sendCancellationToOwner = async (
     type: "booking_cancellation_owner",
     bookingId: booking._id,
     playroomId: playroom._id,
-    from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
+    from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
     to: vlasnik.email,
     subject: `❌ Otkazana rezervacija - ${playroom.naziv}`,
     html: generateEmailHtml(
@@ -611,7 +608,7 @@ exports.sendPlayroomVerificationNotification = async (playroom, owner) => {
   return sendMail({
     type: "playroom_verification",
     playroomId: playroom._id,
-    from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
+    from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
     to: adminEmail,
     subject: `🧾 Nova igraonica čeka verifikaciju - ${playroom.naziv}`,
     html: `
@@ -649,7 +646,7 @@ exports.sendPlayroomApprovedEmail = async (playroom, owner) => {
   return sendMail({
     type: "playroom_approved",
     playroomId: playroom._id,
-    from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
+    from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
     to: owner.email,
     subject: `✅ Vaša igraonica je verifikovana - ${playroom.naziv}`,
     html: `
@@ -696,7 +693,7 @@ exports.sendPlayroomRejectedEmail = async (playroom, owner, reason) => {
   return sendMail({
     type: "playroom_rejected",
     playroomId: playroom._id,
-    from: `"Svet Igraonica" <${process.env.BREVO_SENDER_EMAIL}>`,
+    from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
     to: owner.email,
     subject: `❌ Verifikacija igraonice nije odobrena - ${playroom.naziv}`,
     html: `
@@ -820,4 +817,4 @@ exports.sendEmailVerificationEmail = async (user, verificationToken) => {
 };
 
 exports.sendMail = sendMail;
-exports.sendViaBrevo = sendViaBrevo;
+exports.sendViaResend = sendViaResend;

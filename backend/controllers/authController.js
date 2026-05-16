@@ -168,7 +168,7 @@ exports.forgotPassword = async (req, res, next) => {
     const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
     await sendMail({
-      from: `"Svet Igraonica" <${process.env.EMAIL_USER}>`,
+      from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
       to: user.email,
       subject: "Reset lozinke - Svet Igraonica",
       html: `

@@ -1,7 +1,7 @@
 const cron = require("node-cron");
 const EmailQueue = require("../models/EmailQueue");
 const EmailLog = require("../models/EmailLog");
-const { sendViaBrevo } = require("../utils/emailService");
+const { sendViaResend } = require("../utils/emailService");
 
 let isRunning = false;
 
@@ -31,7 +31,7 @@ const processEmailQueue = async () => {
         job.attempts += 1;
         await job.save();
 
-        await sendViaBrevo({
+        await sendViaResend({
           to: job.to,
           subject: job.subject,
           html: job.html,
