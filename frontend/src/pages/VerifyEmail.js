@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api from "../services/api";
 import "../styles/global.css";
+import { useNavigate } from "react-router-dom";
 
 const VerifyEmail = () => {
   const { token } = useParams();
-
+  const navigate = useNavigate();
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("Potvrđujemo vašu email adresu...");
 
@@ -20,6 +21,15 @@ const VerifyEmail = () => {
         );
 
         localStorage.removeItem("pendingVerificationEmail");
+
+        setTimeout(() => {
+          navigate("/login", {
+            replace: true,
+            state: {
+              registrationSuccess: "Email je uspešno potvrđen. Prijavite se.",
+            },
+          });
+        }, 2000);
       } catch (error) {
         setStatus("error");
         setMessage(
