@@ -16,7 +16,7 @@ const VideosSection = ({
 
       <p className="section-hint">
         Dodaj video snimke sa rođendana, događaja ili prikaza igraonice (maks.
-        20 MB po videu).
+        20 MB velicina i 30 sekundi duzina videa).
       </p>
 
       <div className="dynamic-input">
