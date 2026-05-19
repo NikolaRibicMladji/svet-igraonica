@@ -326,18 +326,27 @@ const OwnerDashboard = () => {
   );
 
   const todayBookings = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date().toLocaleDateString("sv-SE", {
+      timeZone: "Europe/Belgrade",
+    });
 
     return filteredBookings.filter((b) => {
       if (!b.datum) return false;
-      return b.datum.slice(0, 10) === today;
+
+      const bookingDate = new Date(b.datum).toLocaleDateString("sv-SE", {
+        timeZone: "Europe/Belgrade",
+      });
+
+      return bookingDate === today;
     });
   }, [filteredBookings]);
 
   const activeBookings = useMemo(() => {
     const now = new Date();
 
-    const today = now.toISOString().slice(0, 10);
+    const today = now.toLocaleDateString("sv-SE", {
+      timeZone: "Europe/Belgrade",
+    });
 
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -350,7 +359,9 @@ const OwnerDashboard = () => {
         return false;
       }
 
-      const bookingDate = booking.datum.slice(0, 10);
+      const bookingDate = new Date(booking.datum).toLocaleDateString("sv-SE", {
+        timeZone: "Europe/Belgrade",
+      });
 
       if (bookingDate !== today) {
         return false;
