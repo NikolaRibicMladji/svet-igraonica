@@ -62,6 +62,16 @@ exports.login = async (req, res, next) => {
       getRequestMetadata(req),
     );
 
+    let hasPlayroom = false;
+
+    if (user.role === "vlasnik") {
+      const existingPlayroom = await Playroom.exists({
+        vlasnikId: user._id,
+      });
+
+      hasPlayroom = Boolean(existingPlayroom);
+    }
+
     res.cookie("refreshToken", refreshToken, authService.cookieOptions);
 
     res.status(200).json({
@@ -74,6 +84,7 @@ exports.login = async (req, res, next) => {
         email: user.email,
         telefon: user.telefon,
         role: user.role,
+        hasPlayroom,
       },
     });
   } catch (error) {

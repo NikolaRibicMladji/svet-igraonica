@@ -25,7 +25,11 @@ const Login = () => {
   useEffect(() => {
     if (!authLoading && isAuthenticated && user) {
       if (user.role === "vlasnik") {
-        navigate("/create-playroom", { replace: true });
+        if (user.hasPlayroom) {
+          navigate("/my-playrooms", { replace: true });
+        } else {
+          navigate("/create-playroom", { replace: true });
+        }
       } else if (user.role === "admin") {
         navigate("/admin", { replace: true });
       } else {
@@ -111,7 +115,11 @@ const Login = () => {
       const role = result?.user?.role;
 
       if (role === "vlasnik") {
-        navigate("/create-playroom", { replace: true });
+        if (result?.user?.hasPlayroom) {
+          navigate("/my-playrooms", { replace: true });
+        } else {
+          navigate("/create-playroom", { replace: true });
+        }
       } else if (role === "admin") {
         navigate("/admin", { replace: true });
       } else {
