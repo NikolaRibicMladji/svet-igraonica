@@ -8,7 +8,6 @@ import { FaEye, FaEyeSlash } from "react-icons/fa";
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated, loading: authLoading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,11 +20,19 @@ const Login = () => {
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [resending, setResending] = useState(false);
 
+  const { login, isAuthenticated, loading: authLoading, user } = useAuth();
+
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      navigate("/");
+    if (!authLoading && isAuthenticated && user) {
+      if (user.role === "vlasnik") {
+        navigate("/create-playroom", { replace: true });
+      } else if (user.role === "admin") {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
     }
-  }, [authLoading, isAuthenticated, navigate]);
+  }, [authLoading, isAuthenticated, user, navigate]);
 
   useEffect(() => {
     if (location.state?.resetSuccess) {
