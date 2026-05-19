@@ -29,6 +29,7 @@ const OwnerDashboard = () => {
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [expandedOwnerBookingId, setExpandedOwnerBookingId] = useState(null);
   const [showTodayBookingsModal, setShowTodayBookingsModal] = useState(false);
+  const [showActiveBookingsModal, setShowActiveBookingsModal] = useState(false);
   const [showReviewsModal, setShowReviewsModal] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
@@ -330,6 +331,38 @@ const OwnerDashboard = () => {
     return filteredBookings.filter((b) => {
       if (!b.datum) return false;
       return b.datum.slice(0, 10) === today;
+    });
+  }, [filteredBookings]);
+
+  const activeBookings = useMemo(() => {
+    const now = new Date();
+
+    const today = now.toISOString().slice(0, 10);
+
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    return filteredBookings.filter((booking) => {
+      if (!booking.datum || !booking.vremeOd || !booking.vremeDo) {
+        return false;
+      }
+
+      if (booking.status !== "potvrdjeno") {
+        return false;
+      }
+
+      const bookingDate = booking.datum.slice(0, 10);
+
+      if (bookingDate !== today) {
+        return false;
+      }
+
+      const [startH, startM] = booking.vremeOd.split(":").map(Number);
+      const [endH, endM] = booking.vremeDo.split(":").map(Number);
+
+      const startMinutes = startH * 60 + startM;
+      const endMinutes = endH * 60 + endM;
+
+      return currentMinutes >= startMinutes && currentMinutes < endMinutes;
     });
   }, [filteredBookings]);
 
@@ -889,6 +922,17 @@ const OwnerDashboard = () => {
             </div>
           </div>
           <div
+            className="stat-card red clickable"
+            onClick={() => setShowActiveBookingsModal(true)}
+          >
+            <span className="stat-icon">🔥</span>
+
+            <div className="stat-info">
+              <h3>{activeBookings.length}</h3>
+              <p>Rezervacije u toku</p>
+            </div>
+          </div>
+          <div
             className="stat-card dark clickable"
             onClick={() => setShowStatsModal(true)}
           >
@@ -935,6 +979,34 @@ const OwnerDashboard = () => {
             </div>
 
             {renderOwnerBookingsAccordion(allOwnerBookings)}
+          </div>
+        </div>
+      )}
+      {showActiveBookingsModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setShowActiveBookingsModal(false);
+            setExpandedOwnerBookingId(null);
+          }}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header sticky-modal-header">
+              <h3>🔥 Rezervacije u toku</h3>
+
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => {
+                  setShowActiveBookingsModal(false);
+                  setExpandedOwnerBookingId(null);
+                }}
+              >
+                ✖
+              </button>
+            </div>
+
+            {renderOwnerBookingsAccordion(activeBookings)}
           </div>
         </div>
       )}
