@@ -299,7 +299,7 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
       try {
         const duration = await getVideoDuration(file);
 
-        if (duration > VIDEO_MAX_DURATION) {
+        if (duration > VIDEO_MAX_DURATION_SECONDS) {
           tooLongFiles.push(file.name);
           continue;
         }
