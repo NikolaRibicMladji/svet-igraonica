@@ -28,7 +28,7 @@ router.post(
         resourceType: "image",
         transformation: [
           { width: 1200, height: 900, crop: "limit" },
-          { quality: "auto" },
+          { quality: "auto:good" },
           { fetch_format: "auto" },
         ],
       });

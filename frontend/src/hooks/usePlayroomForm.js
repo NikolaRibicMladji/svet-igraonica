@@ -44,8 +44,9 @@ export const DEFAULT_DANI = [
   { key: "nedelja", naziv: "Nedelja" },
 ];
 
-const IMAGE_MAX_SIZE = 10 * 1024 * 1024;
-const VIDEO_MAX_SIZE = 50 * 1024 * 1024;
+const IMAGE_MAX_SIZE = 5 * 1024 * 1024;
+const VIDEO_MAX_SIZE = 20 * 1024 * 1024;
+const VIDEO_MAX_DURATION_SECONDS = 30;
 
 const toNumberOrZero = (value) => {
   const num = Number(value);
@@ -53,6 +54,26 @@ const toNumberOrZero = (value) => {
 };
 
 const sanitizeText = (value) => (typeof value === "string" ? value.trim() : "");
+
+const getVideoDuration = (file) =>
+  new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    const url = URL.createObjectURL(file);
+
+    video.preload = "metadata";
+
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      resolve(video.duration);
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Nije moguće proveriti trajanje videa."));
+    };
+
+    video.src = url;
+  });
 
 export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
   const initialFormData = useMemo(
@@ -251,7 +272,7 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
     setDrustveneMreze((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleVideoChange = (e) => {
+  const handleVideoChange = async (e) => {
     const files = Array.from(e.target.files || []);
 
     if (!files.length) return;
@@ -267,18 +288,35 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
     const selectedFiles = files.slice(0, remainingSlots);
     const validFiles = [];
     const oversizedFiles = [];
+    const tooLongFiles = [];
 
     for (const file of selectedFiles) {
       if (file.size > VIDEO_MAX_SIZE) {
         oversizedFiles.push(file.name);
-      } else {
+        continue;
+      }
+
+      try {
+        const duration = await getVideoDuration(file);
+
+        if (duration > VIDEO_MAX_DURATION) {
+          tooLongFiles.push(file.name);
+          continue;
+        }
+
         validFiles.push(file);
+      } catch {
+        tooLongFiles.push(file.name);
       }
     }
 
     if (oversizedFiles.length > 0) {
       setError(
-        `Ovi video fajlovi prelaze 25 MB: ${oversizedFiles.join(", ")}.`,
+        `Ovi video fajlovi prelaze 20 MB: ${oversizedFiles.join(", ")}.`,
+      );
+    } else if (tooLongFiles.length > 0) {
+      setError(
+        `Ovi video fajlovi su duži od 30 sekundi: ${tooLongFiles.join(", ")}.`,
       );
     } else if (files.length > remainingSlots) {
       setError(`Možete dodati još samo ${remainingSlots} video snimka.`);
@@ -537,7 +575,7 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
       const file = files[0];
 
       if (file.size > IMAGE_MAX_SIZE) {
-        setError("Profilna slika ne sme biti veća od 8 MB.");
+        setError("Profilna slika ne sme biti veća od 5 MB.");
         e.target.value = "";
         return;
       }
@@ -576,7 +614,7 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
     try {
       for (const file of filesToUpload) {
         if (file.size > IMAGE_MAX_SIZE) {
-          setError(`Slika "${file.name}" je veća od 8 MB.`);
+          setError(`Slika "${file.name}" je veća od 5 MB.`);
           continue;
         }
 

@@ -37,8 +37,8 @@ exports.uploadPlayroomImage = async (req, res, next) => {
       folder: "svet-igraonica",
       resourceType: "image",
       transformation: [
-        { width: 1600, height: 1200, crop: "limit" },
-        { quality: "auto" },
+        { width: 1200, height: 900, crop: "limit" },
+        { quality: "auto:good" },
         { fetch_format: "auto" },
       ],
     });

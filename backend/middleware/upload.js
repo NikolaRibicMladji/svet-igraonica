@@ -26,39 +26,25 @@ const storage = multer.diskStorage({
   },
 });
 
-const IMAGE_MAX_SIZE = 10 * 1024 * 1024; // 10MB
-const VIDEO_MAX_SIZE = 25 * 1024 * 1024; // 25MB za sigurniji production start
+const IMAGE_MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const VIDEO_MAX_SIZE = 20 * 1024 * 1024; // 20MB
 
 const allowedImageExtensions = new Set([
   ".jpg",
   ".jpeg",
   ".png",
-  ".gif",
   ".webp",
-  ".bmp",
-  ".svg",
   ".avif",
-
-  ".tif",
-  ".tiff",
-  ".ico",
 ]);
 
-const allowedVideoExtensions = new Set([
-  ".mp4",
-  ".mov",
-  ".avi",
-  ".mkv",
-  ".webm",
-]);
-
+const allowedVideoExtensions = new Set([".mp4", ".mov", ".webm"]);
 const imageFileFilter = (req, file, cb) => {
   try {
     const ext = path.extname(file.originalname || "").toLowerCase();
     const mime = (file.mimetype || "").toLowerCase();
 
     const isImageMime = mime.startsWith("image/");
-    const isAllowedImage = isImageMime || allowedImageExtensions.has(ext);
+    const isAllowedImage = isImageMime && allowedImageExtensions.has(ext);
 
     if (isAllowedImage) {
       return cb(null, true);
@@ -81,7 +67,7 @@ const videoFileFilter = (req, file, cb) => {
     const mime = (file.mimetype || "").toLowerCase();
 
     const isVideoMime = mime.startsWith("video/");
-    const isAllowedVideo = isVideoMime || allowedVideoExtensions.has(ext);
+    const isAllowedVideo = isVideoMime && allowedVideoExtensions.has(ext);
 
     if (isAllowedVideo) {
       return cb(null, true);
