@@ -1,4 +1,5 @@
 const Booking = require("../models/Booking");
+const ROLES = require("../constants/roles");
 const Playroom = require("../models/Playroom");
 const {
   parseDateOnlyInAppTimezone,
@@ -8,6 +9,8 @@ const {
 const bookingService = require("../services/bookingService");
 const authService = require("../services/authService");
 const mongoose = require("mongoose");
+const logger = require("../utils/logger");
+const { queueBookingEmails } = require("../services/emailQueueService");
 
 // @desc    Kreiraj novu rezervaciju (ulogovan korisnik)
 // @route   POST /api/bookings
@@ -128,8 +131,8 @@ exports.createGuestBooking = async (req, res, next) => {
 
     await session.commitTransaction();
 
-    setImmediate(() => {
-      bookingService.handleBookingEmails(createdBooking._id);
+    queueBookingEmails(createdBooking._id).catch((err) => {
+      logger.error("QUEUE EMAIL ERROR:", err.message);
     });
 
     res.cookie("refreshToken", refreshToken, authService.cookieOptions);
@@ -149,7 +152,9 @@ exports.createGuestBooking = async (req, res, next) => {
       data: createdBooking,
     });
   } catch (error) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     next(error);
   } finally {
     session.endSession();
@@ -333,7 +338,7 @@ exports.cancelBooking = async (req, res, next) => {
   try {
     const { id } = req.validated.params;
 
-    const canceledBooking = await bookingService.cancelBookingById({
+    await bookingService.cancelBookingById({
       bookingId: id,
       currentUser: req.user,
     });
@@ -370,7 +375,7 @@ exports.getBookingById = async (req, res, next) => {
       });
     }
 
-    const isAdmin = req.user.role === "admin";
+    const isAdmin = req.user.role === ROLES.ADMIN;
     const isOwnerOfBooking =
       booking.roditeljId &&
       booking.roditeljId._id &&

@@ -201,7 +201,7 @@ const updatePlayroomSchema = z.object({
 
 const deactivatePlayroomSchema = z.object({
   body: z.object({
-    password: z.string().trim().min(6, "Lozinka je obavezna"),
+    password: z.string().trim().min(8, "Lozinka je obavezna"),
   }),
 
   params: z.object({

@@ -11,7 +11,7 @@ const registerSchema = z.object({
       .trim(),
     password: z
       .string()
-      .min(6, "Lozinka mora imati bar 6 karaktera")
+      .min(8, "Lozinka mora imati najmanje 8 karaktera")
       .max(50, "Lozinka je preduga"),
     telefon: z
       .string()
@@ -66,11 +66,11 @@ const resetPasswordSchema = z
     body: z.object({
       password: z
         .string()
-        .min(6, "Lozinka mora imati bar 6 karaktera")
+        .min(8, "Lozinka mora imati najmanje 8 karaktera")
         .max(50, "Lozinka je preduga"),
       confirmPassword: z
         .string()
-        .min(6, "Potvrda lozinke mora imati bar 6 karaktera"),
+        .min(8, "Potvrda lozinke mora imati bar 8 karaktera"),
     }),
     params: z.object({
       token: z.string().min(1, "Token je obavezan"),
@@ -112,11 +112,11 @@ const changePasswordSchema = z
       currentPassword: z.string().min(1, "Trenutna lozinka je obavezna"),
       newPassword: z
         .string()
-        .min(6, "Nova lozinka mora imati bar 6 karaktera")
+        .min(8, "Nova lozinka mora imati bar 8 karaktera")
         .max(50, "Nova lozinka je preduga"),
       confirmNewPassword: z
         .string()
-        .min(6, "Potvrda nove lozinke mora imati bar 6 karaktera"),
+        .min(8, "Potvrda nove lozinke mora imati bar 8 karaktera"),
     }),
     params: z.object({}).optional(),
     query: z.object({}).optional(),

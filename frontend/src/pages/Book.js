@@ -871,8 +871,8 @@ const Book = () => {
         return;
       }
 
-      if (korisnikPodaci.password.trim().length < 6) {
-        setError("Lozinka mora imati najmanje 6 karaktera.");
+      if (korisnikPodaci.password.trim().length < 8) {
+        setError("Lozinka mora imati najmanje 8 karaktera.");
         scrollToField(passwordRef);
         return;
       }

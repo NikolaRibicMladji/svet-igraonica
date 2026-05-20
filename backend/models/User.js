@@ -32,7 +32,7 @@ const UserSchema = new mongoose.Schema(
     password: {
       type: String,
       required: [true, "Lozinka je obavezna"],
-      minlength: 6,
+      minlength: 8,
       select: false,
     },
 

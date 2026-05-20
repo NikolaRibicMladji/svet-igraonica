@@ -24,8 +24,8 @@ const ResetPassword = () => {
 
     if (!formData.password) {
       newErrors.password = "Lozinka je obavezna.";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Lozinka mora imati najmanje 6 karaktera.";
+    } else if (formData.password.length < 8) {
+      newErrors.password = "Lozinka mora imati najmanje 8 karaktera.";
     }
 
     if (!formData.confirmPassword) {

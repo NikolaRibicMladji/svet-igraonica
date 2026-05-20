@@ -1,7 +1,7 @@
 const { z } = require("zod");
-
+const { parseDateOnlyInAppTimezone } = require("../utils/dateTime");
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, "ID nije validan");
-
+const BOOKING_STATUS = require("../constants/bookingStatus");
 const timeToMinutes = (time) => {
   const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
@@ -26,9 +26,19 @@ const createBookingSchema = z
       datum: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
-        .refine((val) => !isNaN(new Date(val).getTime()), {
-          message: "Datum nije validan",
-        }),
+        .refine(
+          (val) => {
+            try {
+              parseDateOnlyInAppTimezone(val);
+              return true;
+            } catch {
+              return false;
+            }
+          },
+          {
+            message: "Datum nije validan",
+          },
+        ),
       vremeOd: z
         .string()
         .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
@@ -41,8 +51,14 @@ const createBookingSchema = z
       cenaIds: z.array(objectId).optional().default([]),
       paketId: objectId.nullable().optional().default(null),
       usluge: z.array(objectId).optional().default([]),
-      brojDece: z.coerce.number().min(0).optional().default(0),
-      brojRoditelja: z.coerce.number().min(0).optional().default(0),
+      brojDece: z.coerce.number().int().min(0).max(150).optional().default(0),
+      brojRoditelja: z.coerce
+        .number()
+        .int()
+        .min(0)
+        .max(100)
+        .optional()
+        .default(0),
       imeRoditelja: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
       prezimeRoditelja: z
         .string()
@@ -56,6 +72,7 @@ const createBookingSchema = z
         .trim(),
       napomena: z
         .string()
+        .trim()
         .max(500, "Napomena može imati najviše 500 karaktera")
         .optional()
         .default(""),
@@ -80,9 +97,19 @@ const createGuestBookingSchema = z
       datum: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
-        .refine((val) => !isNaN(new Date(val).getTime()), {
-          message: "Datum nije validan",
-        }),
+        .refine(
+          (val) => {
+            try {
+              parseDateOnlyInAppTimezone(val);
+              return true;
+            } catch {
+              return false;
+            }
+          },
+          {
+            message: "Datum nije validan",
+          },
+        ),
       vremeOd: z
         .string()
         .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
@@ -95,8 +122,14 @@ const createGuestBookingSchema = z
       cenaIds: z.array(objectId).optional().default([]),
       paketId: objectId.nullable().optional().default(null),
       usluge: z.array(objectId).optional().default([]),
-      brojDece: z.coerce.number().min(0).optional().default(0),
-      brojRoditelja: z.coerce.number().min(0).optional().default(0),
+      brojDece: z.coerce.number().int().min(0).max(150).optional().default(0),
+      brojRoditelja: z.coerce
+        .number()
+        .int()
+        .min(0)
+        .max(100)
+        .optional()
+        .default(0),
       ime: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
       prezime: z.string().min(2, "Prezime mora imati bar 2 karaktera").trim(),
       email: z.string().email("Neispravan email").toLowerCase().trim(),
@@ -105,12 +138,13 @@ const createGuestBookingSchema = z
         .min(6, "Telefon mora imati bar 6 cifara")
         .regex(/^\+?[0-9]+$/, "Telefon sadrži nedozvoljene karaktere")
         .trim(),
-      password: z.string().min(6, "Lozinka mora imati bar 6 karaktera"),
+      password: z.string().min(8, "Lozinka mora imati najmanje 8 karaktera"),
       confirmPassword: z
         .string()
-        .min(6, "Potvrda lozinke mora imati bar 6 karaktera"),
+        .min(8, "Lozinka mora imati najmanje 8 karaktera"),
       napomena: z
         .string()
+        .trim()
         .max(500, "Napomena može imati najviše 500 karaktera")
         .optional()
         .default(""),
@@ -148,7 +182,22 @@ const manualBookingSchema = z
   .object({
     body: z.object({
       playroomId: objectId,
-      datum: z.string().min(1),
+      datum: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
+        .refine(
+          (val) => {
+            try {
+              parseDateOnlyInAppTimezone(val);
+              return true;
+            } catch {
+              return false;
+            }
+          },
+          {
+            message: "Datum nije validan",
+          },
+        ),
       vremeOd: z
         .string()
         .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
@@ -160,8 +209,14 @@ const manualBookingSchema = z
       cenaIds: z.array(objectId).optional().default([]),
       paketId: objectId.nullable().optional().default(null),
       usluge: z.array(objectId).optional().default([]),
-      brojDece: z.coerce.number().min(0).optional().default(0),
-      brojRoditelja: z.coerce.number().min(0).optional().default(0),
+      brojDece: z.coerce.number().int().min(0).max(150).optional().default(0),
+      brojRoditelja: z.coerce
+        .number()
+        .int()
+        .min(0)
+        .max(100)
+        .optional()
+        .default(0),
       imeRoditelja: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
       prezimeRoditelja: z
         .string()
@@ -175,6 +230,7 @@ const manualBookingSchema = z
         .trim(),
       napomena: z
         .string()
+        .trim()
         .max(500, "Napomena može imati najviše 500 karaktera")
         .optional()
         .default(""),
@@ -199,20 +255,44 @@ const bookingListQuerySchema = z.object({
   query: z.object({
     page: z.coerce.number().int().min(1).optional().default(1),
 
-    limit: z.coerce.number().int().min(1).max(50).optional().default(10),
+    limit: z.coerce.number().int().min(1).max(100).optional().default(10),
 
-    status: z
-      .enum(["cekanje", "potvrdjeno", "otkazano", "zavrseno"])
-      .optional(),
+    status: z.enum(Object.values(BOOKING_STATUS)).optional(),
 
     datumOd: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .refine(
+        (val) => {
+          try {
+            parseDateOnlyInAppTimezone(val);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        {
+          message: "datumOd nije validan",
+        },
+      )
       .optional(),
 
     datumDo: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .refine(
+        (val) => {
+          try {
+            parseDateOnlyInAppTimezone(val);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        {
+          message: "datumDo nije validan",
+        },
+      )
       .optional(),
 
     playroomId: objectId.optional(),

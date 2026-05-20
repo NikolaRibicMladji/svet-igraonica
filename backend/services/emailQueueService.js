@@ -1,4 +1,5 @@
 const Booking = require("../models/Booking");
+const logger = require("../utils/logger");
 
 const {
   sendBookingConfirmation,
@@ -8,57 +9,61 @@ const {
 } = require("../utils/emailService");
 
 const queueBookingEmails = async (bookingId) => {
-  const booking = await Booking.findById(bookingId)
-    .populate({
-      path: "playroomId",
-      populate: {
-        path: "vlasnikId",
-        select: "ime prezime email",
-      },
-    })
-    .populate("roditeljId")
-    .populate("timeSlotId")
-    .lean();
+  try {
+    const booking = await Booking.findById(bookingId)
+      .populate({
+        path: "playroomId",
+        populate: {
+          path: "vlasnikId",
+          select: "ime prezime email",
+        },
+      })
+      .populate("roditeljId")
+      .populate("timeSlotId")
+      .lean();
 
-  if (!booking) {
-    return;
-  }
+    if (!booking) {
+      return;
+    }
 
-  const playroom = booking.playroomId;
-  const roditelj = booking.roditeljId || {
-    ime: booking.imeRoditelja,
-    prezime: booking.prezimeRoditelja,
-    email: booking.emailRoditelja,
-    telefon: booking.telefonRoditelja,
-  };
+    const playroom = booking.playroomId;
+    const roditelj = booking.roditeljId || {
+      ime: booking.imeRoditelja,
+      prezime: booking.prezimeRoditelja,
+      email: booking.emailRoditelja,
+      telefon: booking.telefonRoditelja,
+    };
 
-  const vlasnik = playroom?.vlasnikId;
-  const timeSlot = booking.timeSlotId || booking;
+    const vlasnik = playroom?.vlasnikId;
+    const timeSlot = booking.timeSlotId || booking;
 
-  if (!playroom || !vlasnik) {
-    return;
-  }
+    if (!playroom || !vlasnik) {
+      return;
+    }
 
-  if (booking.status === "CEKANJE") {
-    await Promise.all([
-      sendBookingConfirmation(booking, roditelj, playroom, timeSlot),
+    if (booking.status === "CEKANJE") {
+      await Promise.all([
+        sendBookingConfirmation(booking, roditelj, playroom, timeSlot),
 
-      sendBookingConfirmationToOwner(
-        booking,
-        roditelj,
-        playroom,
-        timeSlot,
-        vlasnik,
-      ),
-    ]);
-  }
+        sendBookingConfirmationToOwner(
+          booking,
+          roditelj,
+          playroom,
+          timeSlot,
+          vlasnik,
+        ),
+      ]);
+    }
 
-  if (booking.status === "OTKAZANO") {
-    await Promise.all([
-      sendBookingCancellation(booking, roditelj, playroom, timeSlot),
+    if (booking.status === "OTKAZANO") {
+      await Promise.all([
+        sendBookingCancellation(booking, roditelj, playroom, timeSlot),
 
-      sendCancellationToOwner(booking, roditelj, playroom, timeSlot, vlasnik),
-    ]);
+        sendCancellationToOwner(booking, roditelj, playroom, timeSlot, vlasnik),
+      ]);
+    }
+  } catch (error) {
+    logger.error("QUEUE BOOKING EMAIL ERROR:", error.message);
   }
 };
 
