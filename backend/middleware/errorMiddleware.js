@@ -13,9 +13,9 @@ const errorHandler = (err, req, res, next) => {
   let message = err.message || "Greška na serveru";
 
   if (err.code === 11000) {
-    statusCode = 400;
+    statusCode = 409;
     const field = Object.keys(err.keyValue || {})[0];
-    message = `${field} već postoji`;
+    message = field ? `${field} već postoji` : "Duplikat već postoji";
   }
 
   if (err.name === "CastError") {
@@ -28,6 +28,11 @@ const errorHandler = (err, req, res, next) => {
     message = Object.values(err.errors)
       .map((val) => val.message)
       .join(", ");
+  }
+
+  if (err.name === "ZodError") {
+    statusCode = 422;
+    message = err.errors.map((e) => e.message).join(", ");
   }
 
   if (err.name === "JsonWebTokenError") {
@@ -45,6 +50,7 @@ const errorHandler = (err, req, res, next) => {
     message,
     ...(process.env.NODE_ENV === "development" && {
       stack: err.stack,
+      error: err,
     }),
   });
 };

@@ -75,6 +75,22 @@ const EmailQueueSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-EmailQueueSchema.index({ status: 1, nextRetryAt: 1 });
+EmailQueueSchema.index({
+  status: 1,
+  nextRetryAt: 1,
+  attempts: 1,
+  createdAt: 1,
+});
+
+EmailQueueSchema.index(
+  { sentAt: 1 },
+  {
+    expireAfterSeconds: 60 * 60 * 24 * 30,
+    partialFilterExpression: {
+      status: "sent",
+      sentAt: { $type: "date" },
+    },
+  },
+);
 
 module.exports = mongoose.model("EmailQueue", EmailQueueSchema);

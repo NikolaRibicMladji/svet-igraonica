@@ -1,3 +1,4 @@
+const { ZodError } = require("zod");
 const validate = (schema) => {
   return (req, res, next) => {
     try {
@@ -8,14 +9,7 @@ const validate = (schema) => {
       });
 
       if (!result.success) {
-        return res.status(400).json({
-          success: false,
-          message: result.error.issues.map((issue) => issue.message).join(", "),
-          errors: result.error.issues.map((issue) => ({
-            path: issue.path.join("."),
-            message: issue.message,
-          })),
-        });
+        return next(new ZodError(result.error.issues));
       }
 
       req.validated = result.data;

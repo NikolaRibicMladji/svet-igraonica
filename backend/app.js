@@ -81,16 +81,24 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? process.env.FRONTEND_URL
-        : "http://localhost:3000",
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        process.env.FRONTEND_URL,
+        "http://localhost:3000",
+      ].filter(Boolean);
+
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("CORS nije dozvoljen"));
+    },
     credentials: true,
   }),
 );
 
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 // Static files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -127,6 +135,12 @@ app.get("/", (req, res) => {
 });
 
 // Error handler mora poslednji
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    message: "Ruta nije pronađena",
+  });
+});
 app.use(errorHandler);
 
 module.exports = app;

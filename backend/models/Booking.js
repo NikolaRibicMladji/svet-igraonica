@@ -163,6 +163,11 @@ const BookingSchema = new mongoose.Schema(
       default: null,
     },
 
+    zavrsenoAt: {
+      type: Date,
+      default: null,
+    },
+
     otkazaoId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

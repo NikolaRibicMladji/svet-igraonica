@@ -58,4 +58,8 @@ const emailLogSchema = new mongoose.Schema(
   },
 );
 
+emailLogSchema.index({ type: 1, status: 1, createdAt: -1 });
+emailLogSchema.index({ bookingId: 1, createdAt: -1 });
+emailLogSchema.index({ playroomId: 1, createdAt: -1 });
+
 module.exports = mongoose.model("EmailLog", emailLogSchema);

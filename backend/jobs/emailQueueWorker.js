@@ -4,6 +4,7 @@ const EmailLog = require("../models/EmailLog");
 const { sendViaResend } = require("../utils/emailService");
 
 let isRunning = false;
+let lastRunStartedAt = null;
 
 const getNextRetryDate = (attempts) => {
   const delays = [1, 5, 15, 30, 60];
@@ -12,9 +13,17 @@ const getNextRetryDate = (attempts) => {
 };
 
 const processEmailQueue = async () => {
+  if (
+    isRunning &&
+    lastRunStartedAt &&
+    Date.now() - lastRunStartedAt < 5 * 60 * 1000
+  ) {
+    return;
+  }
   if (isRunning) return;
 
   isRunning = true;
+  lastRunStartedAt = Date.now();
 
   try {
     const jobs = await EmailQueue.find({
@@ -23,13 +32,34 @@ const processEmailQueue = async () => {
       attempts: { $lt: 5 },
     })
       .sort({ createdAt: 1 })
-      .limit(10);
+      .limit(10)
+      .lean();
 
-    for (const job of jobs) {
+    for (const queueJob of jobs) {
+      let job = null;
+
       try {
-        job.status = "processing";
-        job.attempts += 1;
-        await job.save();
+        job = await EmailQueue.findOneAndUpdate(
+          {
+            _id: queueJob._id,
+            status: { $in: ["pending", "failed"] },
+          },
+          {
+            $set: {
+              status: "processing",
+            },
+            $inc: {
+              attempts: 1,
+            },
+          },
+          {
+            new: true,
+          },
+        );
+
+        if (!job) {
+          continue;
+        }
 
         await sendViaResend({
           to: job.to,
@@ -54,7 +84,7 @@ const processEmailQueue = async () => {
         console.log("✅ QUEUED EMAIL SENT:", job.to);
       } catch (err) {
         job.lastError = err.message;
-        job.status = job.attempts >= job.maxAttempts ? "failed" : "failed";
+        job.status = job.attempts >= job.maxAttempts ? "failed" : "pending";
         job.nextRetryAt = getNextRetryDate(job.attempts);
         await job.save();
 
@@ -75,6 +105,7 @@ const processEmailQueue = async () => {
     console.error("❌ EMAIL QUEUE WORKER ERROR:", error.message);
   } finally {
     isRunning = false;
+    lastRunStartedAt = null;
   }
 };
 

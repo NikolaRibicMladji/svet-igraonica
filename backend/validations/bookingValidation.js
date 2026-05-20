@@ -2,6 +2,11 @@ const { z } = require("zod");
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, "ID nije validan");
 
+const timeToMinutes = (time) => {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
 const isQuarterHour = (value) => {
   if (!/^\d{2}:\d{2}$/.test(value)) return false;
 
@@ -14,49 +19,58 @@ const isQuarterHour = (value) => {
   return [0, 15, 30, 45].includes(minutes);
 };
 
-const createBookingSchema = z.object({
-  body: z.object({
-    playroomId: objectId,
-    datum: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
-      .refine((val) => !isNaN(new Date(val).getTime()), {
-        message: "Datum nije validan",
-      }),
-    vremeOd: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
-      .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
+const createBookingSchema = z
+  .object({
+    body: z.object({
+      playroomId: objectId,
+      datum: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
+        .refine((val) => !isNaN(new Date(val).getTime()), {
+          message: "Datum nije validan",
+        }),
+      vremeOd: z
+        .string()
+        .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
+        .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
 
-    vremeDo: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
-      .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
-    cenaIds: z.array(objectId).optional().default([]),
-    paketId: objectId.nullable().optional().default(null),
-    usluge: z.array(objectId).optional().default([]),
-    brojDece: z.coerce.number().min(0).optional().default(0),
-    brojRoditelja: z.coerce.number().min(0).optional().default(0),
-    imeRoditelja: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
-    prezimeRoditelja: z
-      .string()
-      .min(2, "Prezime mora imati bar 2 karaktera")
-      .trim(),
-    emailRoditelja: z.string().email("Neispravan email").toLowerCase().trim(),
-    telefonRoditelja: z
-      .string()
-      .min(6, "Telefon mora imati bar 6 cifara")
-      .regex(/^\+?[0-9]+$/, "Telefon sadrži nedozvoljene karaktere")
-      .trim(),
-    napomena: z
-      .string()
-      .max(500, "Napomena može imati najviše 500 karaktera")
-      .optional()
-      .default(""),
-  }),
-  params: z.object({}).optional(),
-  query: z.object({}).optional(),
-});
+      vremeDo: z
+        .string()
+        .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
+        .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
+      cenaIds: z.array(objectId).optional().default([]),
+      paketId: objectId.nullable().optional().default(null),
+      usluge: z.array(objectId).optional().default([]),
+      brojDece: z.coerce.number().min(0).optional().default(0),
+      brojRoditelja: z.coerce.number().min(0).optional().default(0),
+      imeRoditelja: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
+      prezimeRoditelja: z
+        .string()
+        .min(2, "Prezime mora imati bar 2 karaktera")
+        .trim(),
+      emailRoditelja: z.string().email("Neispravan email").toLowerCase().trim(),
+      telefonRoditelja: z
+        .string()
+        .min(6, "Telefon mora imati bar 6 cifara")
+        .regex(/^\+?[0-9]+$/, "Telefon sadrži nedozvoljene karaktere")
+        .trim(),
+      napomena: z
+        .string()
+        .max(500, "Napomena može imati najviše 500 karaktera")
+        .optional()
+        .default(""),
+    }),
+    params: z.object({}).optional(),
+    query: z.object({}).optional(),
+  })
+  .refine(
+    (data) =>
+      timeToMinutes(data.body.vremeDo) > timeToMinutes(data.body.vremeOd),
+    {
+      message: "Vreme završetka mora biti posle vremena početka",
+      path: ["body", "vremeDo"],
+    },
+  );
 
 const createGuestBookingSchema = z
   .object({
@@ -113,8 +127,15 @@ const createGuestBookingSchema = z
   .refine((data) => data.body.password === data.body.confirmPassword, {
     message: "Lozinke se ne poklapaju",
     path: ["body", "confirmPassword"],
-  });
-
+  })
+  .refine(
+    (data) =>
+      timeToMinutes(data.body.vremeDo) > timeToMinutes(data.body.vremeOd),
+    {
+      message: "Vreme završetka mora biti posle vremena početka",
+      path: ["body", "vremeDo"],
+    },
+  );
 const bookingIdParamSchema = z.object({
   body: z.object({}).optional(),
   params: z.object({
@@ -123,43 +144,52 @@ const bookingIdParamSchema = z.object({
   query: z.object({}).optional(),
 });
 
-const manualBookingSchema = z.object({
-  body: z.object({
-    playroomId: objectId,
-    datum: z.string().min(1),
-    vremeOd: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
-      .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
-    vremeDo: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
-      .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
-    cenaIds: z.array(objectId).optional().default([]),
-    paketId: objectId.nullable().optional().default(null),
-    usluge: z.array(objectId).optional().default([]),
-    brojDece: z.coerce.number().min(0).optional().default(0),
-    brojRoditelja: z.coerce.number().min(0).optional().default(0),
-    imeRoditelja: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
-    prezimeRoditelja: z
-      .string()
-      .min(2, "Prezime mora imati bar 2 karaktera")
-      .trim(),
-    emailRoditelja: z.string().email("Neispravan email").trim().toLowerCase(),
-    telefonRoditelja: z
-      .string()
-      .min(6, "Telefon mora imati bar 6 cifara")
-      .regex(/^\+?[0-9]+$/, "Telefon sadrži nedozvoljene karaktere")
-      .trim(),
-    napomena: z
-      .string()
-      .max(500, "Napomena može imati najviše 500 karaktera")
-      .optional()
-      .default(""),
-  }),
-  params: z.object({}).optional(),
-  query: z.object({}).optional(),
-});
+const manualBookingSchema = z
+  .object({
+    body: z.object({
+      playroomId: objectId,
+      datum: z.string().min(1),
+      vremeOd: z
+        .string()
+        .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
+        .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
+      vremeDo: z
+        .string()
+        .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
+        .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
+      cenaIds: z.array(objectId).optional().default([]),
+      paketId: objectId.nullable().optional().default(null),
+      usluge: z.array(objectId).optional().default([]),
+      brojDece: z.coerce.number().min(0).optional().default(0),
+      brojRoditelja: z.coerce.number().min(0).optional().default(0),
+      imeRoditelja: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
+      prezimeRoditelja: z
+        .string()
+        .min(2, "Prezime mora imati bar 2 karaktera")
+        .trim(),
+      emailRoditelja: z.string().email("Neispravan email").trim().toLowerCase(),
+      telefonRoditelja: z
+        .string()
+        .min(6, "Telefon mora imati bar 6 cifara")
+        .regex(/^\+?[0-9]+$/, "Telefon sadrži nedozvoljene karaktere")
+        .trim(),
+      napomena: z
+        .string()
+        .max(500, "Napomena može imati najviše 500 karaktera")
+        .optional()
+        .default(""),
+    }),
+    params: z.object({}).optional(),
+    query: z.object({}).optional(),
+  })
+  .refine(
+    (data) =>
+      timeToMinutes(data.body.vremeDo) > timeToMinutes(data.body.vremeOd),
+    {
+      message: "Vreme završetka mora biti posle vremena početka",
+      path: ["body", "vremeDo"],
+    },
+  );
 
 const bookingListQuerySchema = z.object({
   body: z.object({}).optional(),
@@ -169,7 +199,7 @@ const bookingListQuerySchema = z.object({
   query: z.object({
     page: z.coerce.number().int().min(1).optional().default(1),
 
-    limit: z.coerce.number().int().min(1).max(100).optional().default(10),
+    limit: z.coerce.number().int().min(1).max(50).optional().default(10),
 
     status: z
       .enum(["cekanje", "potvrdjeno", "otkazano", "zavrseno"])

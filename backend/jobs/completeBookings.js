@@ -1,5 +1,6 @@
 const cron = require("node-cron");
 const Booking = require("../models/Booking");
+const mongoose = require("mongoose");
 const BOOKING_STATUS = require("../constants/bookingStatus");
 const TimeSlot = require("../models/TimeSlot");
 const {
@@ -69,31 +70,51 @@ const completeExpiredBookings = async () => {
       .map((booking) => booking.timeSlotId)
       .filter(Boolean);
 
-    const bookingUpdateResult = await Booking.updateMany(
-      {
-        _id: { $in: bookingIds },
-        status: BOOKING_STATUS.POTVRDJENO,
-      },
-      {
-        $set: { status: BOOKING_STATUS.ZAVRSENO },
-      },
-    );
+    const session = await mongoose.startSession();
 
-    if (slotIds.length > 0) {
-      await TimeSlot.updateMany(
+    try {
+      session.startTransaction();
+
+      const bookingUpdateResult = await Booking.updateMany(
         {
-          _id: { $in: slotIds },
-          zauzeto: true,
+          _id: { $in: bookingIds },
+          status: BOOKING_STATUS.POTVRDJENO,
         },
         {
-          $set: { zauzeto: false },
+          $set: {
+            status: BOOKING_STATUS.ZAVRSENO,
+            zavrsenoAt: now,
+          },
         },
+        { session },
       );
-    }
 
-    console.log(
-      `📊 Završeno ${bookingUpdateResult.modifiedCount || expiredBookings.length} termina`,
-    );
+      if (slotIds.length > 0) {
+        await TimeSlot.updateMany(
+          {
+            _id: { $in: slotIds },
+            zauzeto: true,
+          },
+          {
+            $set: { zauzeto: false },
+          },
+          { session },
+        );
+      }
+
+      await session.commitTransaction();
+
+      console.log(
+        `📊 Završeno ${
+          bookingUpdateResult.modifiedCount || expiredBookings.length
+        } termina`,
+      );
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   } catch (error) {
     console.error("❌ Greška pri završavanju termina:", error.message);
   }
