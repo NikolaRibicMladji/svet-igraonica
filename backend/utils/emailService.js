@@ -1,6 +1,6 @@
 const EmailLog = require("../models/EmailLog");
 const EmailQueue = require("../models/EmailQueue");
-
+const logger = require("./logger");
 const { Resend } = require("resend");
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -13,8 +13,24 @@ const escapeHtml = (unsafe = "") => {
     .replace(/'/g, "&#039;");
 };
 
+const sanitizeEmail = (email = "") => {
+  return String(email)
+    .replace(/[\r\n]/g, "")
+    .trim();
+};
+
 const getEmailFrom = () => {
-  return process.env.EMAIL_FROM || "onboarding@resend.dev";
+  return sanitizeEmail(process.env.EMAIL_FROM || "onboarding@resend.dev");
+};
+
+const isValidEmail = (email = "") => {
+  return /^\S+@\S+\.\S+$/.test(String(email).trim());
+};
+
+const sanitizeHeader = (value = "") => {
+  return String(value)
+    .replace(/[\r\n]/g, "")
+    .trim();
 };
 
 const sendViaResend = async ({ to, subject, html }) => {
@@ -22,10 +38,14 @@ const sendViaResend = async ({ to, subject, html }) => {
     throw new Error("RESEND_API_KEY missing");
   }
 
+  if (!isValidEmail(to)) {
+    throw new Error("Email nije validan");
+  }
+
   const { data, error } = await resend.emails.send({
     from: `Svet Igraonica <${getEmailFrom()}>`,
     to,
-    subject,
+    subject: sanitizeHeader(subject),
     html,
   });
 
@@ -182,42 +202,6 @@ const generateEmailHtml = (
   `;
   };
 
-  const renderList = (items = []) => {
-    if (!Array.isArray(items) || items.length === 0) {
-      return `
-        <tr>
-          <td style="padding:10px 0;color:#667085;font-size:14px;">
-            Nema izabranih stavki
-          </td>
-        </tr>
-      `;
-    }
-
-    return items
-      .map(
-        (item) => `
-          <tr>
-            <td style="padding:10px 0;border-bottom:1px solid #eaecf0;vertical-align:top;width:58%;word-break:break-word;">
-              <div style="font-size:14px;font-weight:600;color:#101828;line-height:1.4;">
-              ${safeValue(item.naziv, "Stavka")}
-              </div>
-              ${
-                item?.opis
-                  ? `<div style="margin-top:4px;font-size:13px;color:#667085;line-height:1.5;">
-                      ${escapeHtml(item.opis)}
-                     </div>`
-                  : ""
-              }
-            </td>
-           <td style="padding:10px 0;border-bottom:1px solid #eaecf0;text-align:right;vertical-align:top;width:42%;max-width:220px;">
-  ${getItemCalculationHtml(item)}
-</td>
-          </tr>
-        `,
-      )
-      .join("");
-  };
-
   const renderPaket = booking?.izabraniPaket
     ? `
     <div>
@@ -247,7 +231,7 @@ const generateEmailHtml = (
           .map(
             (p) => `
               <span style="display:inline-block;margin:4px 6px 0 0;padding:8px 12px;border-radius:999px;background:#f2f4f7;color:#344054;font-size:13px;font-weight:600;">
-                ✓ ${p}
+                ✓ ${escapeHtml(p)}
               </span>
             `,
           )
@@ -301,7 +285,7 @@ const generateEmailHtml = (
                   <tr>
                     <td style="padding:8px 0;color:#667085;font-size:14px;vertical-align:top;">Adresa</td>
                     <td style="padding:8px 0;text-align:right;color:#101828;font-size:14px;font-weight:700;vertical-align:top;">
-                      ${safeValue(playroom?.adresa)}${playroom?.grad ? `, ${playroom.grad}` : ""}
+                    ${safeValue(playroom?.adresa)}${playroom?.grad ? `, ${escapeHtml(playroom.grad)}` : ""}
                     </td>
                   </tr>
                   <tr>
@@ -470,10 +454,10 @@ const sendMail = async (options) => {
       nextRetryAt: new Date(),
     });
 
-    console.log("📩 EMAIL QUEUED:", options.to);
+    logger.info("📩 EMAIL QUEUED:", options.to);
     return true;
   } catch (err) {
-    console.error("❌ EMAIL QUEUE ERROR:", err.message);
+    logger.error("❌ EMAIL QUEUE ERROR:", err.message);
 
     await EmailLog.create({
       to: options.to,
@@ -501,9 +485,8 @@ exports.sendBookingConfirmation = async (
     type: "booking_confirmation",
     bookingId: booking._id,
     playroomId: playroom._id,
-    from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
     to: roditelj.email,
-    subject: `📩 Zahtev za rezervaciju - ${playroom.naziv}`,
+    subject: `📩 Zahtev za rezervaciju - ${escapeHtml(playroom.naziv)}`,
     html: generateEmailHtml(
       "Zahtev za rezervaciju primljen",
       "Vaš zahtev je uspešno poslat i čeka potvrdu vlasnika igraonice.",
@@ -530,9 +513,8 @@ exports.sendBookingConfirmationToOwner = async (
     type: "booking_owner",
     bookingId: booking._id,
     playroomId: playroom._id,
-    from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
     to: vlasnik.email,
-    subject: `🆕 Nova rezervacija - ${playroom.naziv}`,
+    subject: `🆕 Nova rezervacija - ${escapeHtml(playroom.naziv)}`,
     html: generateEmailHtml(
       "Nova rezervacija",
       "",
@@ -557,9 +539,8 @@ exports.sendBookingCancellation = async (
     type: "booking_cancellation",
     bookingId: booking._id,
     playroomId: playroom._id,
-    from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
     to: roditelj.email,
-    subject: `❌ Otkazivanje rezervacije - ${playroom.naziv}`,
+    subject: `❌ Otkazivanje rezervacije - ${escapeHtml(playroom.naziv)}`,
     html: generateEmailHtml(
       "Rezervacija otkazana",
       "Vaša rezervacija je uspešno otkazana.",
@@ -583,9 +564,8 @@ exports.sendCancellationToOwner = async (
     type: "booking_cancellation_owner",
     bookingId: booking._id,
     playroomId: playroom._id,
-    from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
     to: vlasnik.email,
-    subject: `❌ Otkazana rezervacija - ${playroom.naziv}`,
+    subject: `❌ Otkazana rezervacija - ${escapeHtml(playroom.naziv)}`,
     html: generateEmailHtml(
       "Rezervacija otkazana",
       "Jedna rezervacija je otkazana.",
@@ -602,7 +582,7 @@ exports.sendPlayroomVerificationNotification = async (playroom, owner) => {
   const adminEmail = process.env.ADMIN_EMAIL;
 
   if (!adminEmail) {
-    console.warn(
+    logger.error(
       "ADMIN_EMAIL nije podešen. Email za verifikaciju nije poslat.",
     );
     return false;
@@ -616,9 +596,8 @@ exports.sendPlayroomVerificationNotification = async (playroom, owner) => {
   return sendMail({
     type: "playroom_verification",
     playroomId: playroom._id,
-    from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
     to: adminEmail,
-    subject: `🧾 Nova igraonica čeka verifikaciju - ${playroom.naziv}`,
+    subject: `🧾 Nova igraonica čeka verifikaciju - ${escapeHtml(playroom.naziv)}`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;">
         <div style="background:#ff6b4a;color:#ffffff;padding:24px;text-align:center;">
@@ -629,13 +608,13 @@ exports.sendPlayroomVerificationNotification = async (playroom, owner) => {
           <p>Registrovana je nova igraonica na platformi <strong>Svet Igraonica</strong>.</p>
 
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;padding:16px;margin:20px 0;">
-            <p><strong>Naziv:</strong> ${playroom.naziv}</p>
-            <p><strong>Grad:</strong> ${playroom.grad}</p>
-            <p><strong>Adresa:</strong> ${playroom.adresa}</p>
-            <p><strong>Telefon:</strong> ${playroom.kontaktTelefon}</p>
-            <p><strong>Email:</strong> ${playroom.kontaktEmail}</p>
-            <p><strong>Vlasnik:</strong> ${owner?.ime || ""} ${owner?.prezime || ""}</p>
-            <p><strong>Email vlasnika:</strong> ${owner?.email || "Nije dostupno"}</p>
+            <p><strong>Naziv:</strong> ${escapeHtml(playroom.naziv)}</p>
+            <p><strong>Grad:</strong> ${escapeHtml(playroom.grad)}</p>
+            <p><strong>Adresa:</strong> ${escapeHtml(playroom.adresa)}</p>
+            <p><strong>Telefon:</strong> ${escapeHtml(playroom.kontaktTelefon)}</p>
+            <p><strong>Email:</strong> ${escapeHtml(playroom.kontaktEmail)}</p>
+            <p><strong>Vlasnik:</strong> ${escapeHtml(owner?.ime || "")} ${escapeHtml(owner?.prezime || "")}</p>
+            <p><strong>Email vlasnika:</strong> ${escapeHtml(owner?.email || "Nije dostupno")}</p>
           </div>
 
           <a href="${adminUrl}" style="display:inline-block;background:#ff6b4a;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:12px;font-weight:bold;">
@@ -654,9 +633,8 @@ exports.sendPlayroomApprovedEmail = async (playroom, owner) => {
   return sendMail({
     type: "playroom_approved",
     playroomId: playroom._id,
-    from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
     to: owner.email,
-    subject: `✅ Vaša igraonica je verifikovana - ${playroom.naziv}`,
+    subject: `✅ Vaša igraonica je verifikovana - ${escapeHtml(playroom.naziv)}`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;">
         
@@ -668,7 +646,7 @@ exports.sendPlayroomApprovedEmail = async (playroom, owner) => {
 
         <div style="padding:28px;color:#111827;">
           <p style="font-size:16px;line-height:1.7;">
-            Zdravo ${owner?.ime || ""},
+            Zdravo ${escapeHtml(owner?.ime || "")},
           </p>
 
           <p style="font-size:15px;line-height:1.8;color:#374151;">
@@ -676,9 +654,9 @@ exports.sendPlayroomApprovedEmail = async (playroom, owner) => {
           </p>
 
           <div style="margin-top:24px;padding:20px;border:1px solid #e5e7eb;border-radius:14px;background:#f9fafb;">
-            <p><strong>Naziv:</strong> ${playroom.naziv}</p>
-            <p><strong>Grad:</strong> ${playroom.grad}</p>
-            <p><strong>Adresa:</strong> ${playroom.adresa}</p>
+            <p><strong>Naziv:</strong> ${escapeHtml(playroom.naziv)}</p>
+            <p><strong>Grad:</strong> ${escapeHtml(playroom.grad)}</p>
+            <p><strong>Adresa:</strong> ${escapeHtml(playroom.adresa)}</p>
           </div>
 
           <p style="margin-top:24px;font-size:15px;color:#374151;line-height:1.8;">
@@ -701,9 +679,8 @@ exports.sendPlayroomRejectedEmail = async (playroom, owner, reason) => {
   return sendMail({
     type: "playroom_rejected",
     playroomId: playroom._id,
-    from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
     to: owner.email,
-    subject: `❌ Verifikacija igraonice nije odobrena - ${playroom.naziv}`,
+    subject: `❌ Verifikacija igraonice nije odobrena - ${escapeHtml(playroom.naziv)}`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;">
         
@@ -715,11 +692,11 @@ exports.sendPlayroomRejectedEmail = async (playroom, owner, reason) => {
 
         <div style="padding:28px;color:#111827;">
           <p style="font-size:16px;line-height:1.7;">
-            Zdravo ${owner?.ime || ""},
+            Zdravo ${escapeHtml(owner?.ime || "")},
           </p>
 
           <p style="font-size:15px;line-height:1.8;color:#374151;">
-            Verifikacija vaše igraonice <strong>${playroom.naziv}</strong> trenutno nije odobrena.
+            Verifikacija vaše igraonice <strong>${escapeHtml(playroom.naziv)}</strong> trenutno nije odobrena.
           </p>
 
           <div style="margin-top:24px;padding:20px;border:1px solid #fecaca;border-radius:14px;background:#fef2f2;">
@@ -728,7 +705,7 @@ exports.sendPlayroomRejectedEmail = async (playroom, owner, reason) => {
             </div>
 
             <div style="font-size:14px;line-height:1.7;color:#7f1d1d;">
-              ${reason}
+              ${escapeHtml(reason)}
             </div>
           </div>
 
@@ -773,7 +750,7 @@ exports.sendEmailVerificationEmail = async (user, verificationToken) => {
           <div style="padding:32px 24px;color:#111827;">
 
             <p style="font-size:16px;line-height:1.7;">
-              Zdravo ${user.ime},
+              Zdravo ${escapeHtml(user.ime)},
             </p>
 
             <p style="font-size:15px;line-height:1.8;color:#374151;">

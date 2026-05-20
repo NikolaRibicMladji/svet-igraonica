@@ -1,4 +1,4 @@
-const { toZonedTime, fromZonedTime, formatInTimeZone } = require("date-fns-tz");
+const { fromZonedTime, formatInTimeZone } = require("date-fns-tz");
 
 const APP_TIMEZONE = process.env.APP_TIMEZONE || "Europe/Belgrade";
 
