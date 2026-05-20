@@ -572,35 +572,7 @@
 .booking-select:hover {
   border-color: #ff6b4a;
 }
-.day-segments {
-  margin-top: 16px;
-  margin-bottom: 20px;
-}
 
-.day-segments h4 {
-  margin-bottom: 12px;
-  color: #1f2d3d;
-}
-
-.day-segment-item {
-  padding: 12px 14px;
-  border-radius: 12px;
-  margin-bottom: 10px;
-  border: 1px solid transparent;
-  font-weight: 500;
-}
-
-.day-segment-item.free {
-  background: #eefaf0;
-  border-color: #b7e4c7;
-  color: #1f6f43;
-}
-
-.day-segment-item.busy {
-  background: #fff1f1;
-  border-color: #f5b5b5;
-  color: #b42318;
-}
 .input-error {
   border: 2px solid #e53935 !important;
   background-color: #fff5f5;
@@ -812,4 +784,149 @@
 
 .password-toggle-btn:hover {
   color: #ff6b4a;
+}
+
+/* =========================================
+   AVAILABILITY TIMELINE
+========================================= */
+
+.availability-timeline {
+  margin-top: 24px;
+  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timeline-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.timeline-label {
+  min-width: 95px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.timeline-bar {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  border-radius: 999px;
+  height: 18px;
+  background: #e2e8f0;
+}
+
+.timeline-segment {
+  height: 100%;
+}
+
+.timeline-segment.free {
+  background: #22c55e;
+}
+
+.timeline-segment.busy {
+  background: #ef4444;
+}
+
+.timeline-segment.preparation {
+  background: #f59e0b;
+}
+
+/* =========================================
+   MODERN TIME DROPDOWN
+========================================= */
+
+.time-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.time-pill {
+  border: 2px solid #e2e8f0;
+  background: white;
+  border-radius: 14px;
+  padding: 12px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.2s ease;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.time-pill:hover {
+  border-color: #ff6b4a;
+  transform: translateY(-2px);
+}
+
+.time-pill.active {
+  background: #fff1ec;
+  border-color: #ff6b4a;
+  color: #ff6b4a;
+}
+
+.time-pill.disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* =========================================
+   BOOKING LAYOUT
+========================================= */
+
+.booking-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 28px;
+  align-items: start;
+}
+
+.booking-main {
+  min-width: 0;
+}
+
+.booking-sidebar {
+  position: sticky;
+  top: 120px;
+}
+
+@media (max-width: 1100px) {
+  .booking-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-sidebar {
+    position: static;
+  }
+}
+
+/* =========================================
+   MOBILE FIXES
+========================================= */
+
+@media (max-width: 768px) {
+  .book-card {
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  .form-row.time-row {
+    grid-template-columns: 1fr;
+  }
+
+  .time-picker-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .timeline-label {
+    min-width: 72px;
+    font-size: 12px;
+  }
 }

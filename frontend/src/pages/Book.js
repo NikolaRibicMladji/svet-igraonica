@@ -62,8 +62,7 @@ const Book = () => {
   const [selectedCenaIds, setSelectedCenaIds] = useState([]);
   const [selectedPaketId, setSelectedPaketId] = useState("");
   const [selectedUslugeIds, setSelectedUslugeIds] = useState([]);
-  const [openStartDropdown, setOpenStartDropdown] = useState(false);
-  const [openEndDropdown, setOpenEndDropdown] = useState(false);
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -73,8 +72,7 @@ const Book = () => {
   const [availability, setAvailability] = useState(null);
   const [selectedStartTime, setSelectedStartTime] = useState(prefillStart);
   const [selectedEndTime, setSelectedEndTime] = useState(prefillEnd);
-  const startDropdownRef = useRef(null);
-  const endDropdownRef = useRef(null);
+
   const startTimeRef = useRef(null);
   const endTimeRef = useRef(null);
   const brojDeceWrapperRef = useRef(null);
@@ -354,30 +352,6 @@ const Book = () => {
       setSelectedEndTime("");
     }
   }, [playroom?._id, selectedDate, loadTimeSlots]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        startDropdownRef.current &&
-        !startDropdownRef.current.contains(event.target)
-      ) {
-        setOpenStartDropdown(false);
-      }
-
-      if (
-        endDropdownRef.current &&
-        !endDropdownRef.current.contains(event.target)
-      ) {
-        setOpenEndDropdown(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
 
   const scrollToTop = () => {
     setTimeout(() => {
@@ -967,9 +941,6 @@ const Book = () => {
       }
 
       if (result?.success) {
-        setOpenStartDropdown(false);
-        setOpenEndDropdown(false);
-
         if (!isAuthenticated) {
           const authResult = handleAuthSuccess({
             data: {
@@ -1085,8 +1056,7 @@ const Book = () => {
             value={selectedDate}
             onChange={(e) => {
               const value = e.target.value;
-              setOpenStartDropdown(false);
-              setOpenEndDropdown(false);
+
               setSelectedDate(value);
               setSelectedStartTime("");
               setSelectedEndTime("");
@@ -1129,109 +1099,44 @@ const Book = () => {
                       {availability.workingHours.vremeDo}
                     </p>
                   </div>
-                  <div className="day-segments">
-                    <h4>Pregled dostupnosti</h4>
-
-                    {availabilitySegments.map((segment, index) => (
-                      <div
-                        key={`${segment.tip}-${segment.vremeOd}-${segment.vremeDo}-${index}`}
-                        className={`day-segment-item ${
-                          segment.tip === "slobodno" ? "free" : "busy"
-                        }`}
-                      >
-                        {segment.tip === "slobodno"
-                          ? "✅ Slobodno"
-                          : "❌ Zauzeto"}
-                        : {segment.vremeOd} - {segment.vremeDo}
-                        {segment.pripremaOd && segment.pripremaDo && (
-                          <span>
-                            {" "}
-                            · priprema {segment.pripremaOd} -{" "}
-                            {segment.pripremaDo}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
 
                   <div className="form-row time-row">
                     <div className="form-group" ref={startTimeRef}>
                       <label>Vreme od *</label>
-                      <div
-                        className="custom-time-dropdown"
-                        ref={startDropdownRef}
-                      >
-                        <button
-                          type="button"
-                          className="custom-time-trigger"
-                          disabled={loadingSlots}
-                          onClick={() => setOpenStartDropdown((prev) => !prev)}
-                        >
-                          {selectedStartTime || "Izaberi vreme"}
-                        </button>
 
-                        {openStartDropdown && (
-                          <div className="custom-time-menu">
-                            <div
-                              className="custom-time-item clear"
+                      <div className="time-picker-grid">
+                        {startDropdownItems
+                          .filter((item) => item.type === "free")
+                          .map((item) => (
+                            <button
+                              type="button"
+                              key={item.key}
+                              className={`time-pill ${
+                                selectedStartTime === item.value ? "active" : ""
+                              }`}
                               onClick={() => {
-                                setSelectedStartTime("");
-                                setSelectedEndTime("");
                                 setError("");
-                                setOpenStartDropdown(false);
-                                setOpenEndDropdown(false);
+                                setSelectedStartTime(item.value);
+
+                                if (playroom?.rezimRezervacije === "fiksno") {
+                                  const endMinutes =
+                                    timeToMinutes(item.value) + trajanjeTermina;
+                                  setSelectedEndTime(minutesToTime(endMinutes));
+                                } else {
+                                  setSelectedEndTime("");
+                                }
                               }}
                             >
-                              ✖ Reset
-                            </div>
+                              {item.value}
+                            </button>
+                          ))}
 
-                            {startDropdownItems.length > 0 ? (
-                              startDropdownItems.map((item) => (
-                                <div
-                                  key={item.key}
-                                  className={`custom-time-item ${
-                                    item.type === "busy" ? "busy" : "free"
-                                  }`}
-                                  onClick={() => {
-                                    setError("");
-                                    if (item.type !== "free") {
-                                      setError(
-                                        "Ovaj termin nije dostupan za rezervaciju.",
-                                      );
-                                      setOpenStartDropdown(false);
-                                      return;
-                                    }
-
-                                    setSelectedStartTime(item.value);
-                                    setOpenStartDropdown(false);
-                                    setOpenEndDropdown(false);
-
-                                    if (
-                                      playroom?.rezimRezervacije === "fiksno"
-                                    ) {
-                                      const endMinutes =
-                                        timeToMinutes(item.value) +
-                                        trajanjeTermina;
-                                      const endTime = `${String(
-                                        Math.floor(endMinutes / 60),
-                                      ).padStart(2, "0")}:${String(
-                                        endMinutes % 60,
-                                      ).padStart(2, "0")}`;
-                                      setSelectedEndTime(endTime);
-                                    } else {
-                                      setSelectedEndTime("");
-                                    }
-                                  }}
-                                >
-                                  {item.label}
-                                </div>
-                              ))
-                            ) : (
-                              <div className="custom-time-item busy">
-                                Nema dostupnih termina
-                              </div>
-                            )}
-                          </div>
+                        {startDropdownItems.filter(
+                          (item) => item.type === "free",
+                        ).length === 0 && (
+                          <p className="booking-info-box">
+                            Nema dostupnih termina.
+                          </p>
                         )}
                       </div>
                     </div>
@@ -1240,65 +1145,33 @@ const Book = () => {
                       <div className="form-group" ref={endTimeRef}>
                         <label>Vreme do *</label>
 
-                        <div
-                          className="custom-time-dropdown"
-                          ref={endDropdownRef}
-                        >
-                          <button
-                            type="button"
-                            className="custom-time-trigger"
-                            onClick={() => {
-                              if (!selectedStartTime) return;
-                              setOpenEndDropdown((prev) => !prev);
-                            }}
-                            disabled={!selectedStartTime || loadingSlots}
-                          >
-                            {selectedEndTime || "Izaberi vreme"}
-                          </button>
-
-                          {openEndDropdown && (
-                            <div className="custom-time-menu">
-                              <div
-                                className="custom-time-item clear"
+                        <div className="time-picker-grid">
+                          {endDropdownItems
+                            .filter((item) => item.type === "free")
+                            .map((item) => (
+                              <button
+                                type="button"
+                                key={item.key}
+                                className={`time-pill ${
+                                  selectedEndTime === item.value ? "active" : ""
+                                }`}
                                 onClick={() => {
-                                  setSelectedEndTime("");
                                   setError("");
-                                  setOpenEndDropdown(false);
+                                  setSelectedEndTime(item.value);
                                 }}
                               >
-                                ✖ Reset
-                              </div>
-                              {endDropdownItems.length > 0 ? (
-                                endDropdownItems.map((item) => (
-                                  <div
-                                    key={item.key}
-                                    className={`custom-time-item ${
-                                      item.type === "busy" ? "busy" : "free"
-                                    }`}
-                                    onClick={() => {
-                                      setError("");
-                                      if (item.type !== "free") {
-                                        setError(
-                                          "Ovaj termin nije dostupan za rezervaciju.",
-                                        );
-                                        setOpenEndDropdown(false);
-                                        return;
-                                      }
+                                {item.value}
+                              </button>
+                            ))}
 
-                                      setSelectedEndTime(item.value);
-                                      setOpenEndDropdown(false);
-                                    }}
-                                  >
-                                    {item.label}
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="custom-time-item busy">
-                                  Nema dostupnih završetaka termina
-                                </div>
-                              )}
-                            </div>
-                          )}
+                          {selectedStartTime &&
+                            endDropdownItems.filter(
+                              (item) => item.type === "free",
+                            ).length === 0 && (
+                              <p className="booking-info-box">
+                                Nema dostupnih završetaka za izabrani početak.
+                              </p>
+                            )}
                         </div>
                       </div>
                     ) : (
