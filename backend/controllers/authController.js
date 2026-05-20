@@ -2,6 +2,10 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const {
+  getNowInAppTimezone,
+  startOfDayInAppTimezone,
+} = require("../utils/dateTime");
+const {
   sendMail,
   sendEmailVerificationEmail,
 } = require("../utils/emailService");
@@ -186,7 +190,9 @@ exports.forgotPassword = async (req, res, next) => {
       process.env.FRONTEND_URL || "http://localhost:3000"
     ).replace(/\/$/, "");
 
-    const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
+    const resetUrl = `${frontendUrl}/reset-password/${encodeURIComponent(
+      resetToken,
+    )}`;
 
     await sendMail({
       from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
@@ -240,6 +246,10 @@ exports.resetPassword = async (req, res, next) => {
     user.passwordResetExpires = undefined;
 
     await user.save();
+
+    await RefreshSession.deleteMany({
+      userId: user._id,
+    });
 
     return res.status(200).json({
       success: true,
@@ -415,8 +425,10 @@ exports.changeEmail = async (req, res, next) => {
 
     const { currentPassword, newEmail } = req.validated.body;
 
+    const normalizedEmail = newEmail.trim().toLowerCase();
+
     const existingUser = await User.findOne({
-      email: newEmail,
+      email: normalizedEmail,
       _id: { $ne: userId },
     }).lean();
 
@@ -443,7 +455,7 @@ exports.changeEmail = async (req, res, next) => {
       .update(rawToken)
       .digest("hex");
 
-    user.email = newEmail;
+    user.email = normalizedEmail;
 
     user.emailVerified = false;
     user.emailVerifiedAt = null;
@@ -464,7 +476,7 @@ exports.changeEmail = async (req, res, next) => {
         { vlasnikId: user._id },
         {
           $set: {
-            kontaktEmail: newEmail,
+            kontaktEmail: normalizedEmail,
           },
         },
       );
@@ -513,12 +525,14 @@ exports.deleteAccount = async (req, res, next) => {
 
     // RODITELJ — zabrana ako ima buduće rezervacije
     if (user.role === "roditelj") {
+      const now = getNowInAppTimezone();
+      const startOfToday = startOfDayInAppTimezone(now);
       const activeBookings = await Booking.countDocuments({
         roditeljId: user._id,
         status: {
           $in: [BOOKING_STATUS.CEKANJE, BOOKING_STATUS.POTVRDJENO],
         },
-        datum: { $gte: new Date() },
+        datum: { $gte: startOfToday },
       });
 
       if (activeBookings > 0) {
@@ -531,9 +545,9 @@ exports.deleteAccount = async (req, res, next) => {
 
     // VLASNIK — zabrana ako ima igraonicu
     if (user.role === "vlasnik") {
-      const existingPlayroom = await Playroom.findOne({
+      const existingPlayroom = await Playroom.exists({
         vlasnikId: user._id,
-      }).lean();
+      });
 
       if (existingPlayroom) {
         throw new ErrorResponse(

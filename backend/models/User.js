@@ -22,17 +22,16 @@ const UserSchema = new mongoose.Schema(
     email: {
       type: String,
       required: [true, "Email je obavezan"],
-      unique: true,
       lowercase: true,
       trim: true,
       match: [/^\S+@\S+\.\S+$/, "Email nije validan"],
-      index: true,
     },
 
     password: {
       type: String,
       required: [true, "Lozinka je obavezna"],
       minlength: 8,
+      maxlength: 128,
       select: false,
     },
 
@@ -127,11 +126,21 @@ const UserSchema = new mongoose.Schema(
 );
 
 // Brzi lookup za login
-UserSchema.index({ email: 1 });
+UserSchema.index(
+  { email: 1 },
+  {
+    unique: true,
+    collation: {
+      locale: "en",
+      strength: 2,
+    },
+  },
+);
 
 // Brži lookup za role-based upite
 UserSchema.index({ role: 1 });
 UserSchema.index({ emailVerificationToken: 1 });
+UserSchema.index({ passwordResetToken: 1 });
 
 // Uklanja sensitive podatke kad se šalje JSON
 UserSchema.methods.toJSON = function () {

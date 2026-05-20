@@ -727,7 +727,9 @@ exports.sendEmailVerificationEmail = async (user, verificationToken) => {
     process.env.FRONTEND_URL || "http://localhost:3000"
   ).replace(/\/$/, "");
 
-  const verificationUrl = `${frontendUrl}/verify-email/${verificationToken}`;
+  const verificationUrl = `${frontendUrl}/verify-email/${encodeURIComponent(
+    verificationToken,
+  )}`;
 
   return sendMail({
     type: "email_verification",

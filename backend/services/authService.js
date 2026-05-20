@@ -8,7 +8,6 @@ const RefreshSession = require("../models/RefreshSession");
 const { sendEmailVerificationEmail } = require("../utils/emailService");
 
 const EMAIL_VERIFICATION_EXPIRES_MINUTES = 15;
-const EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS = 60;
 const REFRESH_TOKEN_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
@@ -23,7 +22,7 @@ const createError = (message, statusCode = 400) => {
   return error;
 };
 
-const normalizeEmail = (email) => email?.trim().toLowerCase();
+const normalizeEmail = (email = "") => String(email).trim().toLowerCase();
 
 const hashPassword = async (password) => {
   const salt = await bcrypt.genSalt(10);
@@ -63,6 +62,7 @@ const generateRefreshToken = (user, sessionId) => {
     process.env.REFRESH_TOKEN_SECRET,
     {
       expiresIn: "7d",
+      algorithm: "HS256",
     },
   );
 };
@@ -253,10 +253,23 @@ exports.refreshUserToken = async (refreshToken, metadata = {}) => {
     throw createError("Korisnik ne postoji", 401);
   }
 
-  const sessionDoc = await RefreshSession.findById(decoded.sid);
+  const sessionDoc = await RefreshSession.findOneAndUpdate(
+    {
+      _id: decoded.sid,
+      revokedAt: null,
+    },
+    {
+      $set: {
+        revokedAt: new Date(),
+      },
+    },
+    {
+      new: true,
+    },
+  );
 
   if (!sessionDoc) {
-    throw createError("Sesija nije pronađena", 401);
+    throw createError("Sesija više nije aktivna", 401);
   }
 
   if (String(sessionDoc.userId) !== String(user._id)) {
@@ -277,10 +290,6 @@ exports.refreshUserToken = async (refreshToken, metadata = {}) => {
       "Detektovana je sumnjiva sesija. Prijavite se ponovo.",
       401,
     );
-  }
-
-  if (sessionDoc.revokedAt) {
-    throw createError("Sesija više nije aktivna", 401);
   }
 
   if (sessionDoc.expiresAt <= new Date()) {
@@ -309,28 +318,31 @@ exports.refreshUserToken = async (refreshToken, metadata = {}) => {
   ]).then((docs) => docs[0]);
 
   const accessToken = generateAccessToken(user);
+
   const newRefreshToken = generateRefreshToken(user, newSession._id.toString());
+
   const newRefreshTokenHash = hashToken(newRefreshToken);
 
   newSession.tokenHash = newRefreshTokenHash;
+
   await newSession.save();
 
-  // 🔥 cleanup starih sesija (npr starijih od 30 dana)
+  // cleanup starih sesija
   await RefreshSession.updateMany(
     {
       userId: user._id,
       revokedAt: null,
       _id: { $ne: newSession._id },
-      createdAt: { $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+      createdAt: {
+        $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      },
     },
     {
-      $set: { revokedAt: new Date() },
+      $set: {
+        revokedAt: new Date(),
+      },
     },
   );
-
-  sessionDoc.revokedAt = new Date();
-  sessionDoc.replacedByTokenHash = newRefreshTokenHash;
-  await sessionDoc.save();
 
   return {
     accessToken,

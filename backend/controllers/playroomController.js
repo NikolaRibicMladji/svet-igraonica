@@ -4,6 +4,11 @@ const TimeSlot = require("../models/TimeSlot");
 const bcrypt = require("bcryptjs");
 const PLAYROOM_STATUS = require("../constants/playroomStatus");
 const BOOKING_STATUS = require("../constants/bookingStatus");
+const logger = require("../utils/logger");
+const {
+  getNowInAppTimezone,
+  startOfDayInAppTimezone,
+} = require("../utils/dateTime");
 const {
   createPlayroomWithSlots,
   verifyPlayroomAndGenerateSlots,
@@ -19,6 +24,11 @@ const {
   normalizeText,
   normalizeDisplayText,
 } = require("../utils/normalizeText");
+
+const escapeRegex = (value = "") => {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
+
 const normalizeRadnoVreme = (radnoVreme = {}) => {
   const days = [
     "ponedeljak",
@@ -127,9 +137,8 @@ exports.createPlayroom = async (req, res, next) => {
 
     sendPlayroomVerificationNotification(result.playroom, owner).catch(
       (err) => {
-        console.error(
-          "Greška pri slanju emaila za verifikaciju igraonice:",
-          err,
+        logger.error(
+          `Greška pri slanju emaila za verifikaciju igraonice: ${err.message}`,
         );
       },
     );
@@ -154,7 +163,10 @@ exports.getAllPlayrooms = async (req, res, next) => {
   try {
     const { grad, minRating, sortBy, search } = req.query;
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-    const limit = Math.max(parseInt(req.query.limit, 10) || 12, 1);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit, 10) || 12, 1),
+      50,
+    );
     const skip = (page - 1) * limit;
 
     const query = {
@@ -167,12 +179,13 @@ exports.getAllPlayrooms = async (req, res, next) => {
     }
     if (search && search.trim()) {
       const normalizedSearch = normalizeText(search.trim());
+      const escapedSearch = escapeRegex(normalizedSearch);
 
       query.$and = query.$and || [];
       query.$and.push({
         $or: [
-          { nazivNormalized: { $regex: `^${normalizedSearch}` } },
-          { gradNormalized: { $regex: `^${normalizedSearch}` } },
+          { nazivNormalized: { $regex: `^${escapedSearch}` } },
+          { gradNormalized: { $regex: `^${escapedSearch}` } },
         ],
       });
     }
@@ -240,6 +253,15 @@ exports.getPlayroomById = async (req, res, next) => {
     delete data.__v;
     delete data.createdAt;
     delete data.updatedAt;
+    delete data.nazivNormalized;
+    delete data.gradNormalized;
+    delete data.adresaNormalized;
+
+    if (!isAdmin && !isOwner) {
+      delete data.razlogOdbijanja;
+      delete data.odbijenAt;
+      delete data.deactivatedAt;
+    }
 
     // ❌ ukloni email ako NE želiš javno
     // delete data.kontaktEmail;
@@ -338,15 +360,32 @@ exports.updatePlayroom = async (req, res, next) => {
       : oldVremePripremeTermina;
 
     const updateData = {
-      ...body,
-      ...(hasRadnoVremeUpdate ? { radnoVreme: newRadnoVreme } : {}),
-      ...(body.naziv ? { naziv: body.naziv.trim() } : {}),
-      ...(body.grad ? { grad: body.grad.trim() } : {}),
-      ...(body.adresa ? { adresa: body.adresa.trim() } : {}),
-      ...(body.kontaktEmail
-        ? { kontaktEmail: body.kontaktEmail.trim().toLowerCase() }
-        : {}),
+      naziv: body.naziv,
+      adresa: body.adresa,
+      grad: body.grad,
+      opis: body.opis,
+      kontaktTelefon: body.kontaktTelefon,
+      kontaktEmail: body.kontaktEmail,
+      radnoVreme: hasRadnoVremeUpdate ? newRadnoVreme : undefined,
+      rezimRezervacije: body.rezimRezervacije,
+      trajanjeTermina: body.trajanjeTermina,
+      vremePripremeTermina: body.vremePripremeTermina,
+      kapacitet: body.kapacitet,
+      cene: body.cene,
+      paketi: body.paketi,
+      dodatneUsluge: body.dodatneUsluge,
+      besplatnePogodnosti: body.besplatnePogodnosti,
+      profilnaSlika: body.profilnaSlika,
+      slike: body.slike,
+      videoGalerija: body.videoGalerija,
+      drustveneMreze: body.drustveneMreze,
     };
+
+    Object.keys(updateData).forEach((key) => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
 
     if (updateData.naziv) {
       updateData.nazivNormalized = normalizeText(updateData.naziv);
@@ -459,12 +498,15 @@ exports.deletePlayroom = async (req, res, next) => {
       });
     }
 
+    const now = getNowInAppTimezone();
+    const startOfToday = startOfDayInAppTimezone(now);
+
     const activeBookings = await Booking.countDocuments({
       playroomId: playroom._id,
       status: {
         $in: [BOOKING_STATUS.CEKANJE, BOOKING_STATUS.POTVRDJENO],
       },
-      datum: { $gte: new Date() },
+      datum: { $gte: startOfToday },
     });
 
     if (activeBookings > 0) {
@@ -545,10 +587,13 @@ exports.deactivatePlayroom = async (req, res, next) => {
     await playroom.save();
 
     // deaktiviraj buduće slobodne slotove
+    const now = getNowInAppTimezone();
+    const startOfToday = startOfDayInAppTimezone(now);
+
     await TimeSlot.updateMany(
       {
         playroomId: playroom._id,
-        datum: { $gte: new Date() },
+        datum: { $gte: startOfToday },
         zauzeto: false,
       },
       {

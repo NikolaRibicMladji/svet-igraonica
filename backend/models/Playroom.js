@@ -306,11 +306,13 @@ const PlayroomSchema = new mongoose.Schema(
 
     slike: {
       type: [slikaSchema],
+      validate: [(arr) => arr.length <= 30, "Maksimalno 30 slika"],
       default: [],
     },
 
     videoGalerija: {
       type: [videoSchema],
+      validate: [(arr) => arr.length <= 10, "Maksimalno 10 videa"],
       default: [],
     },
 
@@ -358,10 +360,33 @@ const PlayroomSchema = new mongoose.Schema(
     },
 
     drustveneMreze: {
-      instagram: { type: String, default: "", trim: true },
-      facebook: { type: String, default: "", trim: true },
-      tiktok: { type: String, default: "", trim: true },
-      website: { type: String, default: "", trim: true },
+      instagram: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 300,
+      },
+
+      facebook: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 300,
+      },
+
+      tiktok: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 300,
+      },
+
+      website: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 300,
+      },
     },
   },
   {

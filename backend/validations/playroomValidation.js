@@ -5,6 +5,8 @@ const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 
 const REQUIRED_PRICE_MESSAGE = "Morate dodati bar jednu cenu ili jedan paket";
 
+const objectIdSchema = z.string().regex(/^[a-f\d]{24}$/i, "ID nije validan");
+
 const phoneSchema = z
   .string()
   .trim()
@@ -25,15 +27,42 @@ const priceItemSchema = z.object({
   opis: z.string().trim().max(500).optional().default(""),
 });
 
+const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
 const workingDaySchema = z
   .object({
-    od: z.string().trim().optional().default(""),
-    do: z.string().trim().optional().default(""),
+    od: z
+      .union([
+        z.string().trim().regex(TIME_REGEX, "Vreme od nije validno"),
+        z.literal(""),
+      ])
+      .optional()
+      .default(""),
+
+    do: z
+      .union([
+        z.string().trim().regex(TIME_REGEX, "Vreme do nije validno"),
+        z.literal(""),
+      ])
+      .optional()
+      .default(""),
     radi: z.boolean().default(true),
   })
   .refine((data) => !data.radi || (data.od && data.do), {
     message: "Radno vreme mora imati vreme od i do",
-  });
+  })
+  .refine(
+    (data) => {
+      if (!data.radi) {
+        return true;
+      }
+
+      return data.od < data.do;
+    },
+    {
+      message: "Vreme od mora biti pre vremena do",
+    },
+  );
 
 const radnoVremeSchema = z.object({
   ponedeljak: workingDaySchema.optional(),
@@ -48,9 +77,12 @@ const radnoVremeSchema = z.object({
 const imageSchema = z.object({
   url: z.string().trim().url("URL slike nije validan"),
   publicId: z.string().trim().min(1, "Public ID slike je obavezan"),
-  width: z.number().optional(),
-  height: z.number().optional(),
-  size: z.number().optional(),
+  width: z.number().min(1).max(10000).optional(),
+  height: z.number().min(1).max(10000).optional(),
+  size: z
+    .number()
+    .max(10 * 1024 * 1024)
+    .optional(),
   format: z.string().trim().optional(),
 });
 
@@ -72,12 +104,17 @@ const videoSchema = z.object({
   trajanje: z.number().min(0).optional(),
 });
 
+const optionalUrlSchema = z
+  .union([z.string().trim().url("URL nije validan"), z.literal("")])
+  .optional()
+  .default("");
+
 const socialLinksSchema = z
   .object({
-    instagram: z.string().trim().max(300).optional().default(""),
-    facebook: z.string().trim().max(300).optional().default(""),
-    tiktok: z.string().trim().max(300).optional().default(""),
-    website: z.string().trim().max(300).optional().default(""),
+    instagram: optionalUrlSchema,
+    facebook: optionalUrlSchema,
+    tiktok: optionalUrlSchema,
+    website: optionalUrlSchema,
   })
   .optional()
   .default({});
@@ -128,12 +165,15 @@ const basePlayroomBodySchema = z.object({
     })
     .default({ deca: 0, roditelji: 0 }),
 
-  cene: z.array(priceItemSchema).optional().default([]),
-  paketi: z.array(priceItemSchema).optional().default([]),
-  dodatneUsluge: z.array(priceItemSchema).optional().default([]),
+  cene: z.array(priceItemSchema).max(50, "Maksimalno 50 cena"),
+  paketi: z.array(priceItemSchema).max(50, "Maksimalno 50 paketa"),
+  dodatneUsluge: z
+    .array(priceItemSchema)
+    .max(50, "Maksimalno 50 dodatnih usluga"),
 
   besplatnePogodnosti: z
     .array(z.string().trim().min(1).max(100))
+    .max(50, "Maksimalno 50 pogodnosti")
     .optional()
     .default([]),
 
@@ -194,18 +234,22 @@ const createPlayroomSchema = z.object({
 const updatePlayroomSchema = z.object({
   body: updatePlayroomBodySchema,
   params: z.object({
-    id: z.string().min(1, "ID igraonice je obavezan"),
+    id: objectIdSchema,
   }),
   query: z.object({}).optional(),
 });
 
 const deactivatePlayroomSchema = z.object({
   body: z.object({
-    password: z.string().trim().min(8, "Lozinka je obavezna"),
+    password: z
+      .string()
+      .trim()
+      .min(8, "Lozinka je obavezna")
+      .max(128, "Lozinka je predugačka"),
   }),
 
   params: z.object({
-    id: z.string().min(1, "ID igraonice je obavezan"),
+    id: objectIdSchema,
   }),
 
   query: z.object({}).optional(),
