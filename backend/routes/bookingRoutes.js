@@ -1,13 +1,15 @@
 const express = require("express");
 const router = express.Router();
-
+const authorize = require("../middleware/roleMiddleware");
 const { protect } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
+const ROLES = require("../constants/roles");
 
 const {
   createBookingSchema,
   createGuestBookingSchema,
   bookingIdParamSchema,
+  bookingListQuerySchema,
 } = require("../validations/bookingValidation");
 
 const {
@@ -16,7 +18,7 @@ const {
   getMyBookings,
   getOwnerBookings,
   cancelBooking,
-
+  confirmBooking,
   getBookingById,
 } = require("../controllers/bookingController");
 
@@ -29,11 +31,29 @@ router.post("/", protect, validate(createBookingSchema), createBooking);
 // sve ispod traži login
 router.use(protect);
 
-router.get("/my", getMyBookings);
-router.get("/owner", getOwnerBookings);
+router.get(
+  "/my",
+  authorize(ROLES.RODITELJ),
+  validate(bookingListQuerySchema),
+  getMyBookings,
+);
 
-router.get("/:id", validate(bookingIdParamSchema), getBookingById);
+router.get(
+  "/owner",
+  authorize(ROLES.VLASNIK, ROLES.ADMIN),
+  validate(bookingListQuerySchema),
+  getOwnerBookings,
+);
 
 router.put("/:id/cancel", validate(bookingIdParamSchema), cancelBooking);
+
+router.put(
+  "/:id/confirm",
+  authorize(ROLES.VLASNIK, ROLES.ADMIN),
+  validate(bookingIdParamSchema),
+  confirmBooking,
+);
+
+router.get("/:id", validate(bookingIdParamSchema), getBookingById);
 
 module.exports = router;

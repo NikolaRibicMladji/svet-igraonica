@@ -84,4 +84,12 @@ TimeSlotSchema.index({
   zauzeto: 1,
 });
 
+// brzi query za atomic lock/unlock
+TimeSlotSchema.index({
+  _id: 1,
+  zauzeto: 1,
+  aktivno: 1,
+  vanRadnogVremena: 1,
+});
+
 module.exports = mongoose.model("TimeSlot", TimeSlotSchema);

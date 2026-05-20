@@ -161,9 +161,38 @@ const manualBookingSchema = z.object({
   query: z.object({}).optional(),
 });
 
+const bookingListQuerySchema = z.object({
+  body: z.object({}).optional(),
+
+  params: z.object({}).optional(),
+
+  query: z.object({
+    page: z.coerce.number().int().min(1).optional().default(1),
+
+    limit: z.coerce.number().int().min(1).max(100).optional().default(10),
+
+    status: z
+      .enum(["cekanje", "potvrdjeno", "otkazano", "zavrseno"])
+      .optional(),
+
+    datumOd: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+
+    datumDo: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+
+    playroomId: objectId.optional(),
+  }),
+});
+
 module.exports = {
   createBookingSchema,
   createGuestBookingSchema,
   bookingIdParamSchema,
   manualBookingSchema,
+  bookingListQuerySchema,
 };

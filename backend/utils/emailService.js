@@ -4,6 +4,14 @@ const EmailQueue = require("../models/EmailQueue");
 const { Resend } = require("resend");
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const escapeHtml = (unsafe = "") => {
+  return String(unsafe)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
 
 const getEmailFrom = () => {
   return process.env.EMAIL_FROM || "onboarding@resend.dev";
@@ -42,7 +50,7 @@ const generateEmailHtml = (
 ) => {
   const safeValue = (value, fallback = "Nije uneto") => {
     if (value === null || value === undefined || value === "") return fallback;
-    return value;
+    return escapeHtml(value);
   };
 
   const formatDate = (date) => {
@@ -111,13 +119,13 @@ const generateEmailHtml = (
             : ""
         }">
           <div style="font-size:14px;font-weight:700;color:#101828;line-height:1.5;word-break:break-word;">
-            ${safeValue(item.naziv, "Stavka")}
+       ${safeValue(item.naziv, "Stavka")}
           </div>
 
           ${
             item?.opis
               ? `<div style="margin-top:4px;font-size:13px;color:#667085;line-height:1.6;word-break:break-word;">
-                   ${item.opis}
+                   ${escapeHtml(item.opis)}
                  </div>`
               : ""
           }
@@ -191,12 +199,12 @@ const generateEmailHtml = (
           <tr>
             <td style="padding:10px 0;border-bottom:1px solid #eaecf0;vertical-align:top;width:58%;word-break:break-word;">
               <div style="font-size:14px;font-weight:600;color:#101828;line-height:1.4;">
-                ${safeValue(item.naziv, "Stavka")}
+              ${safeValue(item.naziv, "Stavka")}
               </div>
               ${
                 item?.opis
                   ? `<div style="margin-top:4px;font-size:13px;color:#667085;line-height:1.5;">
-                       ${item.opis}
+                      ${escapeHtml(item.opis)}
                      </div>`
                   : ""
               }
@@ -214,13 +222,13 @@ const generateEmailHtml = (
     ? `
     <div>
       <div style="font-size:14px;font-weight:700;color:#101828;line-height:1.5;word-break:break-word;">
-        ${safeValue(booking.izabraniPaket.naziv, "Paket")}
+     ${safeValue(booking.izabraniPaket.naziv, "Paket")}
       </div>
 
       ${
         booking?.izabraniPaket?.opis
           ? `<div style="margin-top:4px;font-size:13px;color:#667085;line-height:1.6;word-break:break-word;">
-               ${booking.izabraniPaket.opis}
+               ${escapeHtml(booking.izabraniPaket.opis)}
              </div>`
           : ""
       }
@@ -409,7 +417,7 @@ ${
     Napomena
   </div>
   <div style="font-size:14px;color:#475467;line-height:1.6;">
-    ${booking.napomena}
+    ${escapeHtml(booking.napomena)}
   </div>
 </div>
 `
@@ -495,10 +503,10 @@ exports.sendBookingConfirmation = async (
     playroomId: playroom._id,
     from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
     to: roditelj.email,
-    subject: `✅ Potvrda rezervacije - ${playroom.naziv}`,
+    subject: `📩 Zahtev za rezervaciju - ${playroom.naziv}`,
     html: generateEmailHtml(
-      "Rezervacija potvrđena",
-      "",
+      "Zahtev za rezervaciju primljen",
+      "Vaš zahtev je uspešno poslat i čeka potvrdu vlasnika igraonice.",
       booking,
       roditelj,
       playroom,

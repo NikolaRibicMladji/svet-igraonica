@@ -143,8 +143,37 @@ const BookingSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: Object.values(BOOKING_STATUS),
-      default: BOOKING_STATUS.POTVRDJENO,
+      default: BOOKING_STATUS.CEKANJE,
       index: true,
+    },
+
+    potvrdjenoAt: {
+      type: Date,
+      default: null,
+    },
+
+    potvrdioId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    otkazanoAt: {
+      type: Date,
+      default: null,
+    },
+
+    otkazaoId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    razlogOtkazivanja: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 300,
     },
 
     napomena: {

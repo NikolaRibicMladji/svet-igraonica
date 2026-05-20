@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const ErrorResponse = require("../utils/errorResponse");
 
 const protect = async (req, res, next) => {
   try {
@@ -13,40 +14,31 @@ const protect = async (req, res, next) => {
     }
 
     if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: "Niste autorizovani (nema tokena)",
-      });
+      throw new ErrorResponse("Niste autorizovani (nema tokena)", 401);
     }
 
     let decoded;
 
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (err) {
-      return res.status(401).json({
-        success: false,
-        message: "Token nije validan",
+      decoded = jwt.verify(token, process.env.JWT_SECRET, {
+        algorithms: ["HS256"],
       });
+    } catch (err) {
+      throw new ErrorResponse("Token nije validan", 401);
     }
 
-    const user = await User.findById(decoded.id).select("-password");
+    const user = await User.findById(decoded.id).select("-password").lean();
 
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Korisnik ne postoji",
-      });
+      throw new ErrorResponse("Korisnik ne postoji", 401);
     }
 
     if (!user.emailVerified) {
-      return res.status(403).json({
-        success: false,
-        message: "Morate potvrditi email adresu.",
-      });
+      throw new ErrorResponse("Morate potvrditi email adresu.", 403);
     }
 
     req.user = user;
+    req.user.id = String(user._id);
 
     next();
   } catch (error) {
