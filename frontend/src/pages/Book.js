@@ -679,12 +679,14 @@ const Book = () => {
         if (isValid) {
           const isPast = isPastTime(time);
 
-          items.push({
-            type: isPast ? "busy" : "free",
-            key: `free-${index}-${time}`,
-            value: time,
-            label: isPast ? `❌ Prošlo: ${time}` : `✅ ${time}`,
-          });
+          if (!isPast) {
+            items.push({
+              type: "free",
+              key: `free-${index}-${time}`,
+              value: time,
+              label: `✅ ${time}`,
+            });
+          }
         }
       });
     });
@@ -727,12 +729,14 @@ const Book = () => {
         if (!doesOverlapBusyInterval(selectedStartTime, time)) {
           const isPast = isPastTime(time);
 
-          items.push({
-            type: isPast ? "busy" : "free",
-            key: `end-free-${index}-${time}`,
-            value: time,
-            label: isPast ? `❌ Prošlo: ${time}` : `✅ ${time}`,
-          });
+          if (!isPast) {
+            items.push({
+              type: "free",
+              key: `end-free-${index}-${time}`,
+              value: time,
+              label: `✅ ${time}`,
+            });
+          }
         }
       });
     });
