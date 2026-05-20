@@ -12,7 +12,8 @@ const EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS = 60;
 const REFRESH_TOKEN_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: "strict",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+  path: "/api/auth",
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
@@ -124,6 +125,8 @@ const createParentUser = async ({
     existingQuery.session(session);
   }
 
+  existingQuery.lean();
+
   const userExists = await existingQuery;
 
   if (userExists) {
@@ -170,6 +173,12 @@ exports.registerUser = async (data, metadata = {}) => {
   }
   if (!role) {
     throw createError("Tip korisnika je obavezan", 400);
+  }
+
+  const allowedRoles = [ROLES.RODITELJ, ROLES.VLASNIK];
+
+  if (!allowedRoles.includes(role)) {
+    throw createError("Nevalidna korisnička rola", 400);
   }
 
   const userRole = role;
@@ -223,7 +232,9 @@ exports.refreshUserToken = async (refreshToken, metadata = {}) => {
   let decoded;
 
   try {
-    decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, {
+      algorithms: ["HS256"],
+    });
   } catch (error) {
     if (error.name === "TokenExpiredError") {
       throw createError("Refresh token je istekao", 401);
@@ -250,6 +261,22 @@ exports.refreshUserToken = async (refreshToken, metadata = {}) => {
 
   if (String(sessionDoc.userId) !== String(user._id)) {
     throw createError("Sesija ne pripada korisniku", 401);
+  }
+
+  if (
+    sessionDoc.userAgent &&
+    metadata.userAgent &&
+    sessionDoc.userAgent !== metadata.userAgent
+  ) {
+    await RefreshSession.updateMany(
+      { userId: user._id, revokedAt: null },
+      { $set: { revokedAt: new Date() } },
+    );
+
+    throw createError(
+      "Detektovana je sumnjiva sesija. Prijavite se ponovo.",
+      401,
+    );
   }
 
   if (sessionDoc.revokedAt) {
@@ -315,7 +342,9 @@ exports.logoutUser = async (refreshToken) => {
   if (!refreshToken) return;
 
   try {
-    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, {
+      algorithms: ["HS256"],
+    });
 
     if (!decoded?.sid) return;
 
@@ -341,6 +370,8 @@ exports.registerGuestParent = async (data, session = null) => {
   if (session) {
     existingQuery.session(session);
   }
+
+  existingQuery.lean();
 
   const userExists = await existingQuery;
 

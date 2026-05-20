@@ -9,6 +9,7 @@ const authService = require("../services/authService");
 const RefreshSession = require("../models/RefreshSession");
 const Booking = require("../models/Booking");
 const Playroom = require("../models/Playroom");
+const ErrorResponse = require("../utils/errorResponse");
 const BOOKING_STATUS = require("../constants/bookingStatus");
 
 const getRequestMetadata = (req) => ({
@@ -84,6 +85,7 @@ exports.login = async (req, res, next) => {
         email: user.email,
         telefon: user.telefon,
         role: user.role,
+        emailVerified: user.emailVerified,
         hasPlayroom,
       },
     });
@@ -141,7 +143,15 @@ exports.refreshToken = async (req, res, next) => {
 exports.getMe = async (req, res) => {
   res.status(200).json({
     success: true,
-    user: req.user,
+    user: {
+      id: req.user._id,
+      ime: req.user.ime,
+      prezime: req.user.prezime,
+      email: req.user.email,
+      telefon: req.user.telefon,
+      role: req.user.role,
+      emailVerified: req.user.emailVerified,
+    },
   });
 };
 
@@ -149,7 +159,7 @@ exports.forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.validated.body;
 
-    const normalizedEmail = email;
+    const normalizedEmail = email.trim().toLowerCase();
     const user = await User.findOne({ email: normalizedEmail });
 
     // Ne otkrivamo da li korisnik postoji
@@ -221,10 +231,7 @@ exports.resetPassword = async (req, res, next) => {
     }).select("+password");
 
     if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: "Token nije validan ili je istekao.",
-      });
+      throw new ErrorResponse("Token nije validan ili je istekao.", 400);
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -258,10 +265,10 @@ exports.verifyEmail = async (req, res, next) => {
     }).select("+emailVerificationToken +emailVerificationExpires");
 
     if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: "Verifikacioni link nije validan ili je istekao.",
-      });
+      throw new ErrorResponse(
+        "Verifikacioni link nije validan ili je istekao.",
+        400,
+      );
     }
 
     user.emailVerified = true;
@@ -308,10 +315,7 @@ exports.resendVerificationEmail = async (req, res, next) => {
     }
 
     if (user.emailVerified) {
-      return res.status(400).json({
-        success: false,
-        message: "Email adresa je već potvrđena.",
-      });
+      throw new ErrorResponse("Email adresa je već potvrđena.", 400);
     }
 
     const lastSentAt = user.emailVerificationLastSentAt;
@@ -321,10 +325,10 @@ exports.resendVerificationEmail = async (req, res, next) => {
         (Date.now() - new Date(lastSentAt).getTime()) / 1000;
 
       if (secondsSinceLastEmail < 60) {
-        return res.status(429).json({
-          success: false,
-          message: "Sačekajte malo pre ponovnog slanja emaila.",
-        });
+        throw new ErrorResponse(
+          "Sačekajte malo pre ponovnog slanja emaila.",
+          429,
+        );
       }
     }
 
@@ -368,19 +372,13 @@ exports.changePassword = async (req, res, next) => {
     const user = await User.findById(userId).select("+password");
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "Korisnik nije pronađen.",
-      });
+      throw new ErrorResponse("Korisnik nije pronađen.", 404);
     }
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
 
     if (!isMatch) {
-      return res.status(400).json({
-        success: false,
-        message: "Trenutna lozinka nije tačna.",
-      });
+      throw new ErrorResponse("Trenutna lozinka nije tačna.", 400);
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -420,31 +418,22 @@ exports.changeEmail = async (req, res, next) => {
     const existingUser = await User.findOne({
       email: newEmail,
       _id: { $ne: userId },
-    });
+    }).lean();
 
     if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "Email je već zauzet.",
-      });
+      throw new ErrorResponse("Email je već zauzet.", 409);
     }
 
     const user = await User.findById(userId).select("+password");
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "Korisnik nije pronađen.",
-      });
+      throw new ErrorResponse("Korisnik nije pronađen.", 404);
     }
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
 
     if (!isMatch) {
-      return res.status(400).json({
-        success: false,
-        message: "Trenutna lozinka nije tačna.",
-      });
+      throw new ErrorResponse("Trenutna lozinka nije tačna.", 400);
     }
 
     const rawToken = crypto.randomBytes(32).toString("hex");
@@ -513,19 +502,13 @@ exports.deleteAccount = async (req, res, next) => {
     const user = await User.findById(userId).select("+password");
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "Korisnik nije pronađen.",
-      });
+      throw new ErrorResponse("Korisnik nije pronađen.", 404);
     }
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
 
     if (!isMatch) {
-      return res.status(400).json({
-        success: false,
-        message: "Trenutna lozinka nije tačna.",
-      });
+      throw new ErrorResponse("Trenutna lozinka nije tačna.", 400);
     }
 
     // RODITELJ — zabrana ako ima buduće rezervacije
@@ -539,10 +522,10 @@ exports.deleteAccount = async (req, res, next) => {
       });
 
       if (activeBookings > 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Ne možete obrisati nalog dok imate aktivne rezervacije.",
-        });
+        throw new ErrorResponse(
+          "Ne možete obrisati nalog dok imate aktivne rezervacije.",
+          400,
+        );
       }
     }
 
@@ -550,13 +533,13 @@ exports.deleteAccount = async (req, res, next) => {
     if (user.role === "vlasnik") {
       const existingPlayroom = await Playroom.findOne({
         vlasnikId: user._id,
-      });
+      }).lean();
 
       if (existingPlayroom) {
-        return res.status(400).json({
-          success: false,
-          message: "Ne možete obrisati nalog dok imate registrovanu igraonicu.",
-        });
+        throw new ErrorResponse(
+          "Ne možete obrisati nalog dok imate registrovanu igraonicu.",
+          400,
+        );
       }
     }
 

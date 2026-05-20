@@ -4,6 +4,8 @@ const BOOKING_STATUS = require("../constants/bookingStatus");
 const ErrorResponse = require("../utils/errorResponse");
 const mongoose = require("mongoose");
 const Playroom = require("../models/Playroom");
+const { queueBookingEmails } = require("./emailQueueService");
+const logger = require("../utils/logger");
 
 const {
   APP_TIMEZONE,
@@ -331,7 +333,7 @@ const reserveSlot = async ({
   let booking = null;
 
   try {
-    console.log("📌 RESERVE SLOT:", {
+    logger.info("📌 RESERVE SLOT:", {
       slotId,
       user: user?._id || null,
       time: new Date().toISOString(),
@@ -378,12 +380,6 @@ const reserveSlot = async ({
     const slotStart = buildDateTime(slot.datum, slot.vremeOd);
 
     if (slotStart <= getNowInAppTimezone()) {
-      await TimeSlot.findByIdAndUpdate(
-        slot._id,
-        { $set: { zauzeto: false } },
-        { session },
-      );
-
       throw new ErrorResponse("Ne možeš rezervisati prošli termin", 400);
     }
 
@@ -401,12 +397,6 @@ const reserveSlot = async ({
     });
 
     if (overlapBooking) {
-      await TimeSlot.findByIdAndUpdate(
-        slot._id,
-        { $set: { zauzeto: false } },
-        { session },
-      );
-
       throw new ErrorResponse(
         "Termin nije dostupan zbog vremena za pripremu između rezervacija",
         400,
@@ -414,12 +404,6 @@ const reserveSlot = async ({
     }
 
     if (!playroom) {
-      await TimeSlot.findByIdAndUpdate(
-        slot._id,
-        { $set: { zauzeto: false } },
-        { session },
-      );
-
       throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
@@ -446,12 +430,6 @@ const reserveSlot = async ({
         : null;
 
       if (!selectedPaket) {
-        await TimeSlot.findByIdAndUpdate(
-          slot._id,
-          { $set: { zauzeto: false } },
-          { session },
-        );
-
         throw new ErrorResponse("Izabrani paket nije pronađen", 400);
       }
     }
@@ -460,12 +438,6 @@ const reserveSlot = async ({
     const hasValidPaket = !!selectedPaket;
 
     if (!hasValidCene && !hasValidPaket) {
-      await TimeSlot.findByIdAndUpdate(
-        slot._id,
-        { $set: { zauzeto: false } },
-        { session },
-      );
-
       throw new ErrorResponse(
         "Izaberi validnu stavku iz cenovnika ili paket",
         400,
@@ -518,12 +490,6 @@ const reserveSlot = async ({
         const usluga = dodatneUslugeMap.get(String(uslugaId)) || null;
 
         if (!usluga) {
-          await TimeSlot.findByIdAndUpdate(
-            slot._id,
-            { $set: { zauzeto: false } },
-            { session },
-          );
-
           throw new ErrorResponse(
             "Jedna od izabranih usluga nije pronađena",
             400,
@@ -558,12 +524,6 @@ const reserveSlot = async ({
     ].some((item) => item?.tip === "po_osobi");
 
     if (hasPerPerson && (!brojDece || brojDece < 1)) {
-      await TimeSlot.findByIdAndUpdate(
-        slot._id,
-        { $set: { zauzeto: false } },
-        { session },
-      );
-
       throw new ErrorResponse(
         "Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po osobi",
         400,
@@ -612,12 +572,6 @@ const reserveSlot = async ({
       );
     } catch (err) {
       if (err?.code === 11000) {
-        await TimeSlot.findByIdAndUpdate(
-          slot._id,
-          { $set: { zauzeto: false } },
-          { session },
-        );
-
         throw new ErrorResponse("Termin je upravo zauzet, pokušaj ponovo", 409);
       }
 
@@ -630,12 +584,12 @@ const reserveSlot = async ({
       await session.commitTransaction();
     }
     if (ownSession) {
-      setImmediate(() => {
-        handleBookingEmails(booking._id);
+      queueBookingEmails(booking._id).catch((err) => {
+        logger.error("QUEUE EMAIL ERROR:", err.message);
       });
     }
 
-    console.log("✅ BOOKING CREATED:", {
+    logger.info("✅ BOOKING CREATED:", {
       bookingId: booking._id,
       slotId,
       user: user?._id || null,
@@ -645,7 +599,9 @@ const reserveSlot = async ({
     return booking;
   } catch (err) {
     if (ownSession) {
-      await session.abortTransaction();
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
     }
     throw err;
   } finally {
@@ -797,12 +753,6 @@ const reserveCustomInterval = async ({
     });
 
     if (overlappingAfterLock) {
-      await TimeSlot.findByIdAndUpdate(
-        lockedSlot._id,
-        { $set: { zauzeto: false } },
-        { session },
-      );
-
       throw new ErrorResponse(
         "Izabrani termin je upravo zauzet, pokušaj ponovo",
         409,
@@ -826,12 +776,6 @@ const reserveCustomInterval = async ({
         : null;
 
       if (!selectedPaket) {
-        await TimeSlot.findByIdAndUpdate(
-          lockedSlot._id,
-          { $set: { zauzeto: false } },
-          { session },
-        );
-
         throw new ErrorResponse("Izabrani paket nije pronađen", 400);
       }
     }
@@ -840,12 +784,6 @@ const reserveCustomInterval = async ({
     const hasValidPaket = !!selectedPaket;
 
     if (!hasValidCene && !hasValidPaket) {
-      await TimeSlot.findByIdAndUpdate(
-        lockedSlot._id,
-        { $set: { zauzeto: false } },
-        { session },
-      );
-
       throw new ErrorResponse(
         "Izaberi validnu stavku iz cenovnika ili paket",
         400,
@@ -895,12 +833,6 @@ const reserveCustomInterval = async ({
       const usluga = dodatneUslugeMap.get(String(uslugaId)) || null;
 
       if (!usluga) {
-        await TimeSlot.findByIdAndUpdate(
-          lockedSlot._id,
-          { $set: { zauzeto: false } },
-          { session },
-        );
-
         throw new ErrorResponse(
           "Jedna od izabranih usluga nije pronađena",
           400,
@@ -932,12 +864,6 @@ const reserveCustomInterval = async ({
     ].some((item) => item?.tip === "po_osobi");
 
     if (hasPerPerson && (!brojDece || brojDece < 1)) {
-      await TimeSlot.findByIdAndUpdate(
-        lockedSlot._id,
-        { $set: { zauzeto: false } },
-        { session },
-      );
-
       throw new ErrorResponse(
         "Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po osobi",
         400,
@@ -986,12 +912,6 @@ const reserveCustomInterval = async ({
       );
     } catch (err) {
       if (err?.code === 11000) {
-        await TimeSlot.findByIdAndUpdate(
-          lockedSlot._id,
-          { $set: { zauzeto: false } },
-          { session },
-        );
-
         throw new ErrorResponse("Termin je upravo zauzet, pokušaj ponovo", 409);
       }
 
@@ -1004,15 +924,17 @@ const reserveCustomInterval = async ({
       await session.commitTransaction();
     }
     if (ownSession) {
-      setImmediate(() => {
-        handleBookingEmails(booking._id);
+      queueBookingEmails(booking._id).catch((err) => {
+        logger.error("QUEUE EMAIL ERROR:", err.message);
       });
     }
 
     return booking;
   } catch (err) {
     if (ownSession) {
-      await session.abortTransaction();
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
     }
     throw err;
   } finally {
@@ -1020,130 +942,6 @@ const reserveCustomInterval = async ({
       session.endSession();
     }
   }
-};
-
-const {
-  sendBookingConfirmation,
-  sendBookingCancellation,
-  sendBookingConfirmationToOwner,
-} = require("../utils/emailService");
-
-// 🔥 CENTRALIZOVANO SLANJE EMAILOVA
-const handleBookingEmails = async (bookingId) => {
-  try {
-    console.log("📧 EMAIL FLOW START:", bookingId);
-    const booking = await Booking.findById(bookingId)
-      .populate({
-        path: "playroomId",
-        select: "naziv adresa grad vlasnikId besplatnePogodnosti",
-        populate: {
-          path: "vlasnikId",
-          select: "ime prezime email",
-        },
-      })
-      .populate("roditeljId", "ime prezime email telefon")
-      .populate("timeSlotId", "datum vremeOd vremeDo");
-
-    if (!booking) return;
-    console.log("📧 EMAIL BOOKING FOUND:", {
-      bookingId: booking._id,
-      emailRoditelja: booking.emailRoditelja,
-      roditeljIdEmail: booking.roditeljId?.email,
-      ownerEmail: booking.playroomId?.vlasnikId?.email,
-    });
-    const userForEmail = {
-      ime: booking.imeRoditelja || booking.roditeljId?.ime || "",
-      prezime: booking.prezimeRoditelja || booking.roditeljId?.prezime || "",
-      email: booking.emailRoditelja || booking.roditeljId?.email || "",
-      telefon: booking.telefonRoditelja || booking.roditeljId?.telefon || "",
-    };
-
-    const playroom = booking.playroomId;
-
-    const timeSlot = {
-      datum: booking.datum,
-      vremeOd: booking.vremeOd,
-      vremeDo: booking.vremeDo,
-    };
-
-    if (userForEmail.email) {
-      sendBookingConfirmation(booking, userForEmail, playroom, timeSlot).catch(
-        (err) => console.error("MAIL USER ERROR:", err.message),
-      );
-    }
-
-    if (playroom?.vlasnikId?.email) {
-      sendBookingConfirmationToOwner(
-        booking,
-        userForEmail,
-        playroom,
-        timeSlot,
-        playroom.vlasnikId,
-      ).catch((err) => console.error("MAIL OWNER ERROR:", err.message));
-    }
-  } catch (err) {
-    console.error("EMAIL ERROR:", err.message);
-  }
-};
-
-const sendCancellationEmailById = async (bookingId) => {
-  try {
-    const booking = await Booking.findById(bookingId)
-      .populate({
-        path: "playroomId",
-        select: "naziv adresa grad vlasnikId besplatnePogodnosti",
-        populate: {
-          path: "vlasnikId",
-          select: "ime prezime email",
-        },
-      })
-      .populate("roditeljId", "ime prezime email telefon")
-      .populate("timeSlotId", "datum vremeOd vremeDo");
-
-    if (!booking) return;
-
-    const { sendCancellationToOwner } = require("../utils/emailService");
-
-    const userForEmail = {
-      ime: booking.imeRoditelja || booking.roditeljId?.ime || "",
-      prezime: booking.prezimeRoditelja || booking.roditeljId?.prezime || "",
-      email: booking.emailRoditelja || booking.roditeljId?.email || "",
-      telefon: booking.telefonRoditelja || booking.roditeljId?.telefon || "",
-    };
-
-    const timeSlot = {
-      datum: booking.datum,
-      vremeOd: booking.vremeOd,
-      vremeDo: booking.vremeDo,
-    };
-
-    if (userForEmail.email) {
-      sendBookingCancellation(
-        booking,
-        userForEmail,
-        booking.playroomId,
-        timeSlot,
-      ).catch((err) => console.error("MAIL USER CANCEL ERROR:", err.message));
-    }
-
-    if (booking.playroomId?.vlasnikId?.email) {
-      sendCancellationToOwner(
-        booking,
-        userForEmail,
-        booking.playroomId,
-        timeSlot,
-        booking.playroomId.vlasnikId,
-      ).catch((err) => console.error("MAIL OWNER CANCEL ERROR:", err.message));
-    }
-  } catch (err) {
-    console.error("EMAIL ERROR (cancel):", err.message);
-  }
-};
-
-const createBookingWithEmails = async (data) => {
-  const booking = await reserveSlot(data);
-
-  return booking;
 };
 
 const getBookingWithRelations = async (bookingId, session = null) => {
@@ -1177,9 +975,8 @@ const canUserManageBooking = (booking, user) => {
     booking.roditeljId._id.toString() === user.id;
 
   const isPlayroomOwner =
-    booking.playroomId?.vlasnikId &&
-    (booking.playroomId.vlasnikId._id?.toString() === user.id ||
-      booking.playroomId.vlasnikId.toString() === user.id);
+    booking.playroomId?.vlasnikId?._id &&
+    booking.playroomId.vlasnikId._id.toString() === user.id;
 
   return {
     isAdmin,
@@ -1236,9 +1033,21 @@ const cancelBookingById = async ({ bookingId, currentUser }) => {
     await booking.save({ session });
 
     if (booking.timeSlotId) {
-      const unlockedSlot = await unlockSlot(
-        booking.timeSlotId?._id || booking.timeSlotId,
-        session,
+      const unlockedSlot = await TimeSlot.findOneAndUpdate(
+        {
+          _id: booking.timeSlotId?._id || booking.timeSlotId,
+          aktivno: true,
+          zauzeto: true,
+        },
+        {
+          $set: {
+            zauzeto: false,
+          },
+        },
+        {
+          new: true,
+          session,
+        },
       );
 
       if (!unlockedSlot) {
@@ -1248,11 +1057,11 @@ const cancelBookingById = async ({ bookingId, currentUser }) => {
 
     await session.commitTransaction();
 
-    setImmediate(() => {
-      sendCancellationEmailById(booking._id);
+    queueBookingEmails(booking._id).catch((err) => {
+      logger.error("QUEUE EMAIL ERROR:", err.message);
     });
 
-    console.log("❌ BOOKING CANCELED:", {
+    logger.info("❌ BOOKING CANCELED:", {
       bookingId,
       user: currentUser?.id || null,
       time: new Date().toISOString(),
@@ -1260,7 +1069,9 @@ const cancelBookingById = async ({ bookingId, currentUser }) => {
 
     return booking;
   } catch (error) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     throw error;
   } finally {
     session.endSession();
@@ -1310,6 +1121,29 @@ const confirmBookingById = async ({ bookingId, currentUser }) => {
       throw new ErrorResponse("Prošli termin ne može biti potvrđen", 400);
     }
 
+    const playroom = await Playroom.findById(booking.playroomId._id).session(
+      session,
+    );
+
+    const preparationMinutes = getPreparationMinutes(playroom);
+
+    const overlapBooking = await findOverlappingBookingWithPreparation({
+      playroomId: booking.playroomId._id,
+      datum: booking.datum,
+      vremeOd: booking.vremeOd,
+      vremeDo: booking.vremeDo,
+      preparationMinutes,
+      excludeBookingId: booking._id,
+      session,
+    });
+
+    if (overlapBooking) {
+      throw new ErrorResponse(
+        "Rezervacija više nije dostupna zbog preklapanja termina",
+        409,
+      );
+    }
+
     booking.status = BOOKING_STATUS.POTVRDJENO;
     booking.potvrdjenoAt = getNowInAppTimezone();
     booking.potvrdioId = currentUser.id;
@@ -1318,7 +1152,11 @@ const confirmBookingById = async ({ bookingId, currentUser }) => {
 
     await session.commitTransaction();
 
-    console.log("✅ BOOKING CONFIRMED:", {
+    queueBookingEmails(booking._id).catch((err) => {
+      logger.error("QUEUE EMAIL ERROR:", err.message);
+    });
+
+    logger.info("✅ BOOKING CONFIRMED:", {
       bookingId,
       user: currentUser?.id || null,
       time: new Date().toISOString(),
@@ -1326,68 +1164,17 @@ const confirmBookingById = async ({ bookingId, currentUser }) => {
 
     return booking;
   } catch (error) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     throw error;
   } finally {
     session.endSession();
   }
 };
 
-const lockSlot = async (slotId) => {
-  if (!slotId || !mongoose.Types.ObjectId.isValid(slotId)) {
-    throw new ErrorResponse("Nevalidan slot ID za zaključavanje", 400);
-  }
-
-  return TimeSlot.findOneAndUpdate(
-    {
-      _id: slotId,
-      zauzeto: false,
-      aktivno: true,
-      vanRadnogVremena: false,
-    },
-    {
-      $set: {
-        zauzeto: true,
-      },
-    },
-    { new: true },
-  );
-};
-
-const unlockSlot = async (slotId, session = null) => {
-  if (!slotId || !mongoose.Types.ObjectId.isValid(slotId)) {
-    throw new ErrorResponse("Nevalidan slot ID za otključavanje", 400);
-  }
-
-  const options = { new: true };
-  if (session) {
-    options.session = session;
-  }
-
-  return TimeSlot.findOneAndUpdate(
-    {
-      _id: slotId,
-      aktivno: true,
-      zauzeto: true,
-    },
-    {
-      $set: {
-        zauzeto: false,
-      },
-    },
-    options,
-  );
-};
-
 module.exports = {
   reserveSlot,
-  createBookingWithEmails,
-  handleBookingEmails,
-
-  sendCancellationEmailById,
-
-  lockSlot,
-  unlockSlot,
   cancelBookingById,
   confirmBookingById,
   getBookingWithRelations,
