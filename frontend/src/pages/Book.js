@@ -1111,6 +1111,12 @@ const Book = () => {
                             } ${item.type !== "free" ? "disabled" : ""}`}
                             onClick={() => {
                               setError("");
+                              if (selectedStartTime === item.value) {
+                                setSelectedStartTime("");
+                                setSelectedEndTime("");
+                                return;
+                              }
+
                               setSelectedStartTime(item.value);
 
                               if (playroom?.rezimRezervacije === "fiksno") {
@@ -1151,6 +1157,11 @@ const Book = () => {
                               } ${item.type !== "free" ? "disabled" : ""}`}
                               onClick={() => {
                                 setError("");
+                                if (selectedEndTime === item.value) {
+                                  setSelectedEndTime("");
+                                  return;
+                                }
+
                                 setSelectedEndTime(item.value);
                               }}
                             >

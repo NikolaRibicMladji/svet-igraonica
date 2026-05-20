@@ -864,10 +864,15 @@
   transform: translateY(-2px);
 }
 
-.time-pill.active {
-  background: #fff1ec;
-  border-color: #ff6b4a;
-  color: #ff6b4a;
+.time-pill {
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+.time-pill:not(.active) {
+  background: white;
 }
 
 .time-pill.disabled {
