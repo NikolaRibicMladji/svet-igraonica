@@ -651,11 +651,7 @@ const Book = () => {
         items.push({
           type: "busy",
           key: `busy-${index}-${segment.vremeOd}-${segment.vremeDo}`,
-          label: `❌ Zauzeto: ${segment.vremeOd} - ${segment.vremeDo}${
-            segment.pripremaOd && segment.pripremaDo
-              ? ` + priprema ${segment.pripremaOd} - ${segment.pripremaDo}`
-              : ""
-          }`,
+          label: `❌ ${segment.vremeOd}-${segment.vremeDo}`,
         });
         return;
       }
@@ -706,11 +702,7 @@ const Book = () => {
         items.push({
           type: "busy",
           key: `end-busy-${index}-${segment.vremeOd}-${segment.vremeDo}`,
-          label: `❌ Zauzeto: ${segment.vremeOd} - ${segment.vremeDo}${
-            segment.pripremaOd && segment.pripremaDo
-              ? ` + priprema ${segment.pripremaOd} - ${segment.pripremaDo}`
-              : ""
-          }`,
+          label: `❌ ${segment.vremeOd}-${segment.vremeDo}`,
         });
         return;
       }
@@ -1105,31 +1097,30 @@ const Book = () => {
                       <label>Vreme od *</label>
 
                       <div className="time-picker-grid">
-                        {startDropdownItems
-                          .filter((item) => item.type === "free")
-                          .map((item) => (
-                            <button
-                              type="button"
-                              key={item.key}
-                              className={`time-pill ${
-                                selectedStartTime === item.value ? "active" : ""
-                              }`}
-                              onClick={() => {
-                                setError("");
-                                setSelectedStartTime(item.value);
+                        {startDropdownItems.map((item) => (
+                          <button
+                            type="button"
+                            key={item.key}
+                            disabled={item.type !== "free"}
+                            className={`time-pill ${
+                              selectedStartTime === item.value ? "active" : ""
+                            } ${item.type !== "free" ? "disabled" : ""}`}
+                            onClick={() => {
+                              setError("");
+                              setSelectedStartTime(item.value);
 
-                                if (playroom?.rezimRezervacije === "fiksno") {
-                                  const endMinutes =
-                                    timeToMinutes(item.value) + trajanjeTermina;
-                                  setSelectedEndTime(minutesToTime(endMinutes));
-                                } else {
-                                  setSelectedEndTime("");
-                                }
-                              }}
-                            >
-                              {item.value}
-                            </button>
-                          ))}
+                              if (playroom?.rezimRezervacije === "fiksno") {
+                                const endMinutes =
+                                  timeToMinutes(item.value) + trajanjeTermina;
+                                setSelectedEndTime(minutesToTime(endMinutes));
+                              } else {
+                                setSelectedEndTime("");
+                              }
+                            }}
+                          >
+                            {item.type === "free" ? item.value : item.label}
+                          </button>
+                        ))}
 
                         {startDropdownItems.filter(
                           (item) => item.type === "free",
@@ -1146,23 +1137,22 @@ const Book = () => {
                         <label>Vreme do *</label>
 
                         <div className="time-picker-grid">
-                          {endDropdownItems
-                            .filter((item) => item.type === "free")
-                            .map((item) => (
-                              <button
-                                type="button"
-                                key={item.key}
-                                className={`time-pill ${
-                                  selectedEndTime === item.value ? "active" : ""
-                                }`}
-                                onClick={() => {
-                                  setError("");
-                                  setSelectedEndTime(item.value);
-                                }}
-                              >
-                                {item.value}
-                              </button>
-                            ))}
+                          {endDropdownItems.map((item) => (
+                            <button
+                              type="button"
+                              key={item.key}
+                              disabled={item.type !== "free"}
+                              className={`time-pill ${
+                                selectedEndTime === item.value ? "active" : ""
+                              } ${item.type !== "free" ? "disabled" : ""}`}
+                              onClick={() => {
+                                setError("");
+                                setSelectedEndTime(item.value);
+                              }}
+                            >
+                              {item.type === "free" ? item.value : item.label}
+                            </button>
+                          ))}
 
                           {selectedStartTime &&
                             endDropdownItems.filter(

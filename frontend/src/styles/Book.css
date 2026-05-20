@@ -859,7 +859,7 @@
   font-size: 14px;
 }
 
-.time-pill:hover {
+.time-pill:not(.disabled):hover {
   border-color: #ff6b4a;
   transform: translateY(-2px);
 }
