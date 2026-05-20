@@ -1,15 +1,174 @@
+==================================================
+frontend-ui-rules
+==================================================
+
+# Frontend UI/UX Rules
+
+## Opšta Pravila
+
+Frontend mora biti:
+
+- responsive
+- profesionalan
+- moderan
+- brz
+- čist
+- production-ready
+
+UI mora dobro raditi na:
+
+- telefonu
+- tabletu
+- desktopu
+
+## CSS Pravila
+
+CSS:
+
+- ide u posebne fajlove
+- ne koristiti inline style osim ako baš mora
+- koristiti konzistentan spacing
+- ništa ne sme biti zalepljeno uz ivice
+
+## Responsive Pravila
+
+Obavezno:
+
+- mobile-first pristup
+- fleksibilni grid/layout
+- responsive typography
+- responsive buttons
+- responsive modali
+
+## Komponente
+
+Komponente moraju:
+
+- biti modularne
+- imati jasnu odgovornost
+- ne biti ogromne
+- biti reusable gde ima smisla
+
+Ne stavljati:
+
+- business logiku u UI komponentu
+- ogromne useEffect blokove
+- previše state logike u jednoj komponenti
+
+## Stranice
+
+Glavne stranice:
+
+- Home
+- Playrooms
+- PlayroomDetails
+- Book
+- MyBookings
+- OwnerDashboard
+- AdminPanel
+- CreatePlayroom
+- ManagePlayroom
+
+## Booking UI
+
+Booking UI mora:
+
+- jasno prikazivati slobodne termine
+- jasno prikazivati zauzete termine
+- prikazivati preparation time efekte
+- biti brz i intuitivan
+
+Korisnik mora odmah razumeti:
+
+- šta je slobodno
+- šta je zauzeto
+- šta može kliknuti
+- šta ne može
+
+## Forme
+
+Sve forme moraju imati:
+
+- validaciju
+- jasne error poruke
+- loading state
+- disabled state tokom submit-a
+
+## Toast Sistem
+
+Toast poruke:
+
+- moraju biti jasne
+- ne smeju spamovati korisnika
+- koristiti centralizovani ToastContext
+
+## Modal Pravila
+
+Modali:
+
+- moraju biti responsive
+- zatvaranje na ESC
+- zatvaranje klikom van modala
+- proper scroll handling
+
+## API Pozivi
+
+Frontend:
+
+- ne sme direktno koristiti fetch svuda
+- koristiti centralizovane services
+- koristiti axios instance
+
+## Auth UI
+
+Auth flow:
+
+- automatski refresh token
+- protected routes
+- proper loading state
+- proper logout flow
+
+## Performance Pravila
+
+Izbegavati:
+
+- nepotrebne rerender-e
+- ogromne komponente
+- duplirane API pozive
+- previše state-a
+
+Koristiti:
+
+- memoizaciju gde ima smisla
+- lazy loading gde ima smisla
+- reusable hooks
+
+## Zabranjeno
+
+Ne sme:
+
+- inline CSS svuda
+- hardcoded boje svuda po komponentama
+- business logika u page komponentama
+- direktni API pozivi iz mnogo mesta
+- nekonzistentan spacing
+- loš mobile UI
+
+==================================================
+FILE: Book.js
+==================================================
 import React, {
-  useEffect,
-  useRef,
-  useCallback,
-  useState,
-  useMemo,
+useEffect,
+useRef,
+useCallback,
+useState,
+useMemo,
 } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
-  getAvailableTimeSlots,
-  createBooking,
-  createGuestBooking,
+getAvailableTimeSlots,
+createBooking,
+createGuestBooking,
 } from "../services/bookingService";
 import { getPlayroomById } from "../services/playroomService";
 import { useAuth } from "../context/AuthContext";
@@ -19,106 +178,107 @@ import { normalizeText } from "../utils/normalizeText";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const getLocalDate = () => {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+const d = new Date();
+const year = d.getFullYear();
+const month = String(d.getMonth() + 1).padStart(2, "0");
+const day = String(d.getDate()).padStart(2, "0");
+return `${year}-${month}-${day}`;
 };
 
 const formatDateForBackend = (date) => {
-  if (!date) return "";
+if (!date) return "";
 
-  // date je već YYYY-MM-DD string
-  // ne koristiti toISOString zbog timezone shift problema
-  if (typeof date === "string") {
-    return date;
-  }
+// date je već YYYY-MM-DD string
+// ne koristiti toISOString zbog timezone shift problema
+if (typeof date === "string") {
+return date;
+}
 
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+const year = date.getFullYear();
+const month = String(date.getMonth() + 1).padStart(2, "0");
+const day = String(date.getDate()).padStart(2, "0");
 
-  return `${year}-${month}-${day}`;
+return `${year}-${month}-${day}`;
 };
 
 const Book = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const queryParams = new URLSearchParams(location.search);
+const { id } = useParams();
+const navigate = useNavigate();
+const location = useLocation();
+const queryParams = new URLSearchParams(location.search);
 
-  const prefillDate = queryParams.get("datum") || "";
-  const prefillStart = queryParams.get("vremeOd") || "";
-  const prefillEnd = queryParams.get("vremeDo") || "";
-  const isOwnerBooking = queryParams.get("mode") === "owner";
-  const {
-    user,
-    isAuthenticated,
-    loading: authLoading,
-    handleAuthSuccess,
-  } = useAuth();
-  const toast = useToast();
-  const [selectedCenaIds, setSelectedCenaIds] = useState([]);
-  const [selectedPaketId, setSelectedPaketId] = useState("");
-  const [selectedUslugeIds, setSelectedUslugeIds] = useState([]);
-  const [openStartDropdown, setOpenStartDropdown] = useState(false);
-  const [openEndDropdown, setOpenEndDropdown] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+const prefillDate = queryParams.get("datum") || "";
+const prefillStart = queryParams.get("vremeOd") || "";
+const prefillEnd = queryParams.get("vremeDo") || "";
+const isOwnerBooking = queryParams.get("mode") === "owner";
+const {
+user,
+isAuthenticated,
+loading: authLoading,
+handleAuthSuccess,
+} = useAuth();
+const toast = useToast();
+const [selectedCenaIds, setSelectedCenaIds] = useState([]);
+const [selectedPaketId, setSelectedPaketId] = useState("");
+const [selectedUslugeIds, setSelectedUslugeIds] = useState([]);
+const [openStartDropdown, setOpenStartDropdown] = useState(false);
+const [openEndDropdown, setOpenEndDropdown] = useState(false);
+const [showPassword, setShowPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const topRef = useRef(null);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [playroom, setPlayroom] = useState(null);
-  const [availability, setAvailability] = useState(null);
-  const [selectedStartTime, setSelectedStartTime] = useState(prefillStart);
-  const [selectedEndTime, setSelectedEndTime] = useState(prefillEnd);
-  const startDropdownRef = useRef(null);
-  const endDropdownRef = useRef(null);
-  const startTimeRef = useRef(null);
-  const endTimeRef = useRef(null);
-  const brojDeceWrapperRef = useRef(null);
-  const pricingRef = useRef(null);
-  const imeRef = useRef(null);
-  const prezimeRef = useRef(null);
-  const emailRef = useRef(null);
-  const telefonRef = useRef(null);
-  const passwordRef = useRef(null);
-  const confirmPasswordRef = useRef(null);
-  const termsRef = useRef(null);
-  const [napomena, setNapomena] = useState("");
-  const [brojDece, setBrojDece] = useState("");
-  const [brojRoditelja, setBrojRoditelja] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const brojDeceRef = useRef(null);
-  const [selectedDate, setSelectedDate] = useState(
-    prefillDate || getLocalDate(),
-  );
+const topRef = useRef(null);
+const [acceptedTerms, setAcceptedTerms] = useState(false);
+const [playroom, setPlayroom] = useState(null);
+const [availability, setAvailability] = useState(null);
+const [selectedStartTime, setSelectedStartTime] = useState(prefillStart);
+const [selectedEndTime, setSelectedEndTime] = useState(prefillEnd);
+const startDropdownRef = useRef(null);
+const endDropdownRef = useRef(null);
+const startTimeRef = useRef(null);
+const endTimeRef = useRef(null);
+const brojDeceWrapperRef = useRef(null);
+const pricingRef = useRef(null);
+const imeRef = useRef(null);
+const prezimeRef = useRef(null);
+const emailRef = useRef(null);
+const telefonRef = useRef(null);
+const passwordRef = useRef(null);
+const confirmPasswordRef = useRef(null);
+const termsRef = useRef(null);
+const [napomena, setNapomena] = useState("");
+const [brojDece, setBrojDece] = useState("");
+const [brojRoditelja, setBrojRoditelja] = useState("");
+const [loading, setLoading] = useState(true);
+const [loadingSlots, setLoadingSlots] = useState(false);
+const [submitting, setSubmitting] = useState(false);
+const [error, setError] = useState("");
+const brojDeceRef = useRef(null);
+const [selectedDate, setSelectedDate] = useState(
+prefillDate || getLocalDate(),
+);
 
-  const [korisnikPodaci, setKorisnikPodaci] = useState({
-    ime: "",
-    prezime: "",
-    email: "",
-    telefon: "",
-    password: "",
-    confirmPassword: "",
-  });
+const [korisnikPodaci, setKorisnikPodaci] = useState({
+ime: "",
+prezime: "",
+email: "",
+telefon: "",
+password: "",
+confirmPassword: "",
+});
 
-  const formatDateShortLat = (date) => {
-    if (!date) return "";
+const formatDateShortLat = (date) => {
+if (!date) return "";
 
     return new Intl.DateTimeFormat("sr-Latn-RS", {
       day: "2-digit",
       month: "long",
       year: "numeric",
     }).format(new Date(date));
-  };
 
-  const formatDateLat = (date) => {
-    if (!date) return "";
+};
+
+const formatDateLat = (date) => {
+if (!date) return "";
 
     return new Intl.DateTimeFormat("sr-Latn-RS", {
       weekday: "long",
@@ -126,14 +286,15 @@ const Book = () => {
       month: "long",
       year: "numeric",
     }).format(new Date(date));
-  };
 
-  const hasPerPersonPricing = useMemo(() => {
-    const izabraneCene = Array.isArray(playroom?.cene)
-      ? playroom.cene.filter((item) =>
-          selectedCenaIds.includes(String(item._id)),
-        )
-      : [];
+};
+
+const hasPerPersonPricing = useMemo(() => {
+const izabraneCene = Array.isArray(playroom?.cene)
+? playroom.cene.filter((item) =>
+selectedCenaIds.includes(String(item.\_id)),
+)
+: [];
 
     const izabranPaket =
       Array.isArray(playroom?.paketi) && selectedPaketId
@@ -155,18 +316,19 @@ const Book = () => {
     ];
 
     return sveIzabrano.some((item) => item?.tip === "po_osobi");
-  }, [playroom, selectedCenaIds, selectedPaketId, selectedUslugeIds]);
 
-  const showBrojDeceRequiredNotice = () => {
-    toast.error(
-      "Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po osobi.",
-    );
-  };
+}, [playroom, selectedCenaIds, selectedPaketId, selectedUslugeIds]);
 
-  const focusBrojDeceField = () => {
-    if (brojDeceRef.current) {
-      const elementTop =
-        brojDeceRef.current.getBoundingClientRect().top + window.pageYOffset;
+const showBrojDeceRequiredNotice = () => {
+toast.error(
+"Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po osobi.",
+);
+};
+
+const focusBrojDeceField = () => {
+if (brojDeceRef.current) {
+const elementTop =
+brojDeceRef.current.getBoundingClientRect().top + window.pageYOffset;
 
       const offset = 140; // promeni na 120 ili 160 ako hoćeš malo više/manje
       const targetTop = elementTop - offset;
@@ -180,15 +342,16 @@ const Book = () => {
         brojDeceRef.current.focus();
       }, 450);
     }
-  };
 
-  const hasSelectedDate = Boolean(selectedDate);
+};
 
-  const handleCenaToggle = (cenaId) => {
-    setError("");
-    const clickedCena = Array.isArray(playroom?.cene)
-      ? playroom.cene.find((item) => String(item._id) === String(cenaId))
-      : null;
+const hasSelectedDate = Boolean(selectedDate);
+
+const handleCenaToggle = (cenaId) => {
+setError("");
+const clickedCena = Array.isArray(playroom?.cene)
+? playroom.cene.find((item) => String(item.\_id) === String(cenaId))
+: null;
 
     const wasSelected = selectedCenaIds.includes(String(cenaId));
 
@@ -202,13 +365,14 @@ const Book = () => {
       showBrojDeceRequiredNotice();
       focusBrojDeceField();
     }
-  };
 
-  const handlePaketToggle = (paketId) => {
-    setError("");
-    const clickedPaket = Array.isArray(playroom?.paketi)
-      ? playroom.paketi.find((item) => String(item._id) === String(paketId))
-      : null;
+};
+
+const handlePaketToggle = (paketId) => {
+setError("");
+const clickedPaket = Array.isArray(playroom?.paketi)
+? playroom.paketi.find((item) => String(item.\_id) === String(paketId))
+: null;
 
     const isSameSelected = String(selectedPaketId) === String(paketId);
 
@@ -223,15 +387,16 @@ const Book = () => {
       showBrojDeceRequiredNotice();
       focusBrojDeceField();
     }
-  };
 
-  const handleUslugaToggle = (uslugaId) => {
-    setError("");
-    const clickedUsluga = Array.isArray(playroom?.dodatneUsluge)
-      ? playroom.dodatneUsluge.find(
-          (item) => String(item._id) === String(uslugaId),
-        )
-      : null;
+};
+
+const handleUslugaToggle = (uslugaId) => {
+setError("");
+const clickedUsluga = Array.isArray(playroom?.dodatneUsluge)
+? playroom.dodatneUsluge.find(
+(item) => String(item.\_id) === String(uslugaId),
+)
+: null;
 
     const wasSelected = selectedUslugeIds.includes(String(uslugaId));
 
@@ -249,11 +414,12 @@ const Book = () => {
       showBrojDeceRequiredNotice();
       focusBrojDeceField();
     }
-  };
 
-  const loadPlayroom = useCallback(async () => {
-    setLoading(true);
-    setError("");
+};
+
+const loadPlayroom = useCallback(async () => {
+setLoading(true);
+setError("");
 
     try {
       const result = await getPlayroomById(id);
@@ -272,16 +438,17 @@ const Book = () => {
     } finally {
       setLoading(false);
     }
-  }, [id]);
 
-  const loadTimeSlots = useCallback(async () => {
-    setLoadingSlots(true);
-    setError("");
-    if (!isOwnerBooking) {
-      setSelectedStartTime("");
-      setSelectedEndTime("");
-      setError("");
-    }
+}, [id]);
+
+const loadTimeSlots = useCallback(async () => {
+setLoadingSlots(true);
+setError("");
+if (!isOwnerBooking) {
+setSelectedStartTime("");
+setSelectedEndTime("");
+setError("");
+}
 
     try {
       const result = await getAvailableTimeSlots(
@@ -305,25 +472,26 @@ const Book = () => {
     } finally {
       setLoadingSlots(false);
     }
-  }, [id, selectedDate]);
 
-  useEffect(() => {
-    if (isOwnerBooking && prefillStart && prefillEnd) {
-      setSelectedStartTime(prefillStart);
-      setSelectedEndTime(prefillEnd);
-    }
-  }, [isOwnerBooking, prefillStart, prefillEnd]);
+}, [id, selectedDate]);
 
-  useEffect(() => {
-    if (isOwnerBooking) {
-      setKorisnikPodaci({
-        ime: "",
-        prezime: "",
-        email: "",
-        telefon: "",
-        password: "",
-        confirmPassword: "",
-      });
+useEffect(() => {
+if (isOwnerBooking && prefillStart && prefillEnd) {
+setSelectedStartTime(prefillStart);
+setSelectedEndTime(prefillEnd);
+}
+}, [isOwnerBooking, prefillStart, prefillEnd]);
+
+useEffect(() => {
+if (isOwnerBooking) {
+setKorisnikPodaci({
+ime: "",
+prezime: "",
+email: "",
+telefon: "",
+password: "",
+confirmPassword: "",
+});
 
       return;
     }
@@ -339,30 +507,31 @@ const Book = () => {
         confirmPassword: "",
       }));
     }
-  }, [authLoading, isAuthenticated, user, isOwnerBooking]);
 
-  useEffect(() => {
-    loadPlayroom();
-  }, [loadPlayroom]);
+}, [authLoading, isAuthenticated, user, isOwnerBooking]);
 
-  useEffect(() => {
-    if (playroom?._id && selectedDate) {
-      loadTimeSlots();
-    } else {
-      setAvailability(null);
-      setSelectedStartTime("");
-      setSelectedEndTime("");
-    }
-  }, [playroom?._id, selectedDate, loadTimeSlots]);
+useEffect(() => {
+loadPlayroom();
+}, [loadPlayroom]);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        startDropdownRef.current &&
-        !startDropdownRef.current.contains(event.target)
-      ) {
-        setOpenStartDropdown(false);
-      }
+useEffect(() => {
+if (playroom?.\_id && selectedDate) {
+loadTimeSlots();
+} else {
+setAvailability(null);
+setSelectedStartTime("");
+setSelectedEndTime("");
+}
+}, [playroom?._id, selectedDate, loadTimeSlots]);
+
+useEffect(() => {
+const handleClickOutside = (event) => {
+if (
+startDropdownRef.current &&
+!startDropdownRef.current.contains(event.target)
+) {
+setOpenStartDropdown(false);
+}
 
       if (
         endDropdownRef.current &&
@@ -377,23 +546,24 @@ const Book = () => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, []);
 
-  const scrollToTop = () => {
-    setTimeout(() => {
-      if (topRef.current) {
-        topRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-      } else {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-    }, 100);
-  };
+}, []);
 
-  const scrollToField = (ref) => {
-    if (!ref?.current) {
-      scrollToTop();
-      return;
-    }
+const scrollToTop = () => {
+setTimeout(() => {
+if (topRef.current) {
+topRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+} else {
+window.scrollTo({ top: 0, behavior: "smooth" });
+}
+}, 100);
+};
+
+const scrollToField = (ref) => {
+if (!ref?.current) {
+scrollToTop();
+return;
+}
 
     const elementTop =
       ref.current.getBoundingClientRect().top + window.pageYOffset;
@@ -407,42 +577,44 @@ const Book = () => {
       const input = ref.current.querySelector("input, textarea, select");
       if (input) input.focus();
     }, 400);
-  };
 
-  const selectedCene = Array.isArray(playroom?.cene)
-    ? playroom.cene.filter((c) => selectedCenaIds.includes(String(c._id)))
-    : [];
+};
 
-  const selectedPaket = Array.isArray(playroom?.paketi)
-    ? playroom.paketi.find((p) => String(p._id) === String(selectedPaketId))
-    : null;
+const selectedCene = Array.isArray(playroom?.cene)
+? playroom.cene.filter((c) => selectedCenaIds.includes(String(c.\_id)))
+: [];
 
-  const selectedUsluge = Array.isArray(playroom?.dodatneUsluge)
-    ? playroom.dodatneUsluge.filter((u) =>
-        selectedUslugeIds.includes(String(u._id)),
-      )
-    : [];
+const selectedPaket = Array.isArray(playroom?.paketi)
+? playroom.paketi.find((p) => String(p.\_id) === String(selectedPaketId))
+: null;
 
-  const isFiksno = playroom?.rezimRezervacije === "fiksno";
-  const trajanjeTermina = Number(playroom?.trajanjeTermina) || 60;
+const selectedUsluge = Array.isArray(playroom?.dodatneUsluge)
+? playroom.dodatneUsluge.filter((u) =>
+selectedUslugeIds.includes(String(u.\_id)),
+)
+: [];
 
-  const timeToMinutes = (time) => {
-    const [h, m] = String(time || "00:00")
-      .split(":")
-      .map(Number);
-    return h * 60 + m;
-  };
+const isFiksno = playroom?.rezimRezervacije === "fiksno";
+const trajanjeTermina = Number(playroom?.trajanjeTermina) || 60;
 
-  const minutesToTime = (minutes) => {
-    const safeMinutes = Math.max(0, Number(minutes) || 0);
-    const hour = Math.floor(safeMinutes / 60);
-    const minute = safeMinutes % 60;
+const timeToMinutes = (time) => {
+const [h, m] = String(time || "00:00")
+.split(":")
+.map(Number);
+return h \* 60 + m;
+};
+
+const minutesToTime = (minutes) => {
+const safeMinutes = Math.max(0, Number(minutes) || 0);
+const hour = Math.floor(safeMinutes / 60);
+const minute = safeMinutes % 60;
 
     return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-  };
 
-  const slotDurationHours = useMemo(() => {
-    if (!selectedStartTime || !selectedEndTime) return 1;
+};
+
+const slotDurationHours = useMemo(() => {
+if (!selectedStartTime || !selectedEndTime) return 1;
 
     const startMinutes = timeToMinutes(selectedStartTime);
     const endMinutes = timeToMinutes(selectedEndTime);
@@ -451,10 +623,11 @@ const Book = () => {
     if (!Number.isFinite(diff) || diff <= 0) return 1;
 
     return diff / 60;
-  }, [selectedStartTime, selectedEndTime]);
 
-  const slotDurationLabel = useMemo(() => {
-    if (!selectedStartTime || !selectedEndTime) return "";
+}, [selectedStartTime, selectedEndTime]);
+
+const slotDurationLabel = useMemo(() => {
+if (!selectedStartTime || !selectedEndTime) return "";
 
     const startMinutes = timeToMinutes(selectedStartTime);
     const endMinutes = timeToMinutes(selectedEndTime);
@@ -474,11 +647,12 @@ const Book = () => {
     }
 
     return `${minuti}min`;
-  }, [selectedStartTime, selectedEndTime]);
 
-  const calculateTotal = useCallback(() => {
-    let total = 0;
-    const trajanjeSati = slotDurationHours;
+}, [selectedStartTime, selectedEndTime]);
+
+const calculateTotal = useCallback(() => {
+let total = 0;
+const trajanjeSati = slotDurationHours;
 
     if (Array.isArray(selectedCene)) {
       selectedCene.forEach((c) => {
@@ -529,18 +703,19 @@ const Book = () => {
     });
 
     return total;
-  }, [
-    selectedCene,
-    selectedPaket,
-    selectedUsluge,
-    brojDece,
-    slotDurationHours,
-  ]);
 
-  const totalPrice = useMemo(() => calculateTotal(), [calculateTotal]);
+}, [
+selectedCene,
+selectedPaket,
+selectedUsluge,
+brojDece,
+slotDurationHours,
+]);
 
-  const isToday = (date) => {
-    if (!date) return false;
+const totalPrice = useMemo(() => calculateTotal(), [calculateTotal]);
+
+const isToday = (date) => {
+if (!date) return false;
 
     const today = new Date();
 
@@ -551,12 +726,13 @@ const Book = () => {
     ].join("-");
 
     return date === todayString;
-  };
 
-  const isPastTime = (time) => {
-    if (!selectedDate || !isToday(selectedDate)) {
-      return false;
-    }
+};
+
+const isPastTime = (time) => {
+if (!selectedDate || !isToday(selectedDate)) {
+return false;
+}
 
     const now = new Date();
 
@@ -568,20 +744,22 @@ const Book = () => {
     const slotDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
 
     return slotDate <= now;
-  };
 
-  const isQuarterHour = (time) => {
-    const [h, m] = String(time || "00:00")
-      .split(":")
-      .map(Number);
+};
+
+const isQuarterHour = (time) => {
+const [h, m] = String(time || "00:00")
+.split(":")
+.map(Number);
 
     if (!Number.isFinite(h) || !Number.isFinite(m)) return false;
 
     return [0, 15, 30, 45].includes(m);
-  };
 
-  const generateQuarterHourOptions = (startTime, endTime) => {
-    if (!startTime || !endTime) return [];
+};
+
+const generateQuarterHourOptions = (startTime, endTime) => {
+if (!startTime || !endTime) return [];
 
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
@@ -595,29 +773,33 @@ const Book = () => {
     }
 
     return options;
-  };
 
-  const doesOverlapBusyInterval = (start, end) => {
-    const busyIntervals = Array.isArray(availability?.busyIntervals)
-      ? availability.busyIntervals
-      : [];
+};
+
+const doesOverlapBusyInterval = (start, end) => {
+const busyIntervals = Array.isArray(availability?.busyIntervals)
+? availability.busyIntervals
+: [];
 
     const startMinutes = timeToMinutes(start);
     const endMinutes = timeToMinutes(end);
+    const preparationMinutes = Number(playroom?.vremePripremeTermina) || 0;
 
     return busyIntervals.some((interval) => {
       const busyStart = timeToMinutes(interval.vremeOd);
-      const busyEnd = timeToMinutes(interval.vremeDo);
+      const busyEnd = timeToMinutes(interval.vremeDo) + preparationMinutes;
 
       return startMinutes < busyEnd && endMinutes > busyStart;
     });
-  };
 
-  const buildAvailabilitySegments = () => {
-    if (!availability?.workingHours) return [];
+};
+
+const buildAvailabilitySegments = () => {
+if (!availability?.workingHours) return [];
 
     const workingStart = timeToMinutes(availability.workingHours.vremeOd);
     const workingEnd = timeToMinutes(availability.workingHours.vremeDo);
+    const preparationMinutes = Number(playroom?.vremePripremeTermina) || 0;
 
     const busyIntervals = Array.isArray(availability?.busyIntervals)
       ? [...availability.busyIntervals].sort(
@@ -631,8 +813,9 @@ const Book = () => {
     for (const interval of busyIntervals) {
       const busyStart = timeToMinutes(interval.vremeOd);
       const busyEnd = timeToMinutes(interval.vremeDo);
-      const originalBusyEnd = timeToMinutes(
-        interval.originalVremeDo || interval.vremeDo,
+      const busyEndWithPrep = Math.min(
+        busyEnd + preparationMinutes,
+        workingEnd,
       );
 
       if (busyStart > cursor) {
@@ -647,13 +830,12 @@ const Book = () => {
         tip: "zauzeto",
         vremeOd: interval.vremeOd,
         vremeDo: interval.vremeDo,
-        pripremaOd: interval.hasPreparationBuffer
-          ? minutesToTime(originalBusyEnd)
-          : null,
-        pripremaDo: interval.hasPreparationBuffer ? interval.vremeDo : null,
+        pripremaOd: busyEnd < busyEndWithPrep ? interval.vremeDo : null,
+        pripremaDo:
+          busyEnd < busyEndWithPrep ? minutesToTime(busyEndWithPrep) : null,
       });
 
-      cursor = Math.max(cursor, busyEnd);
+      cursor = Math.max(cursor, busyEndWithPrep);
     }
 
     if (cursor < workingEnd) {
@@ -665,10 +847,11 @@ const Book = () => {
     }
 
     return segments;
-  };
 
-  const buildStartDropdownItems = () => {
-    if (!availability?.workingHours) return [];
+};
+
+const buildStartDropdownItems = () => {
+if (!availability?.workingHours) return [];
 
     const items = [];
 
@@ -720,10 +903,11 @@ const Book = () => {
     });
 
     return items;
-  };
 
-  const buildEndDropdownItems = () => {
-    if (!availability?.workingHours || !selectedStartTime) return [];
+};
+
+const buildEndDropdownItems = () => {
+if (!availability?.workingHours || !selectedStartTime) return [];
 
     const items = [];
 
@@ -772,29 +956,30 @@ const Book = () => {
     });
 
     return items;
-  };
 
-  const availabilitySegments = useMemo(
-    () => buildAvailabilitySegments(),
-    [availability, playroom],
-  );
-  const startDropdownItems = useMemo(
-    () => buildStartDropdownItems(),
-    [availability, availabilitySegments, playroom, selectedDate],
-  );
+};
 
-  const endDropdownItems = useMemo(
-    () => buildEndDropdownItems(),
-    [
-      availability,
-      availabilitySegments,
-      playroom,
-      selectedStartTime,
-      trajanjeTermina,
-    ],
-  );
-  const handleBook = async () => {
-    setError("");
+const availabilitySegments = useMemo(
+() => buildAvailabilitySegments(),
+[availability, playroom],
+);
+const startDropdownItems = useMemo(
+() => buildStartDropdownItems(),
+[availability, availabilitySegments, playroom, selectedDate],
+);
+
+const endDropdownItems = useMemo(
+() => buildEndDropdownItems(),
+[
+availability,
+availabilitySegments,
+playroom,
+selectedStartTime,
+trajanjeTermina,
+],
+);
+const handleBook = async () => {
+setError("");
 
     if (!selectedStartTime || !selectedEndTime) {
       setError("Izaberite vreme početka i završetka.");
@@ -1006,10 +1191,11 @@ const Book = () => {
     } finally {
       setSubmitting(false);
     }
-  };
 
-  const handleKorisnikChange = (e) => {
-    setError("");
+};
+
+const handleKorisnikChange = (e) => {
+setError("");
 
     const { name, value } = e.target;
 
@@ -1020,10 +1206,11 @@ const Book = () => {
       ...prev,
       [name]: normalizedValue,
     }));
-  };
 
-  const getPricingLabel = (item) => {
-    if (!item) return "";
+};
+
+const getPricingLabel = (item) => {
+if (!item) return "";
 
     if (item.tip === "po_osobi") {
       return "po osobi";
@@ -1034,36 +1221,39 @@ const Book = () => {
     }
 
     return "fiksna cena";
-  };
 
-  const formatBrojDece = (broj) => {
-    const n = Number(broj) || 0;
+};
+
+const formatBrojDece = (broj) => {
+const n = Number(broj) || 0;
 
     if (n === 1) return "1 dete";
 
     return `${n} dece`;
-  };
 
-  if (loading) {
-    return <div className="container loading">Učitavanje...</div>;
-  }
+};
 
-  if (!playroom) {
-    return (
-      <div className="container loading">
-        Nije moguće učitati podatke o igraonici.
-      </div>
-    );
-  }
+if (loading) {
+return <div className="container loading">Učitavanje...</div>;
+}
 
-  return (
-    <div className="container book-page" ref={topRef}>
-      <button
-        className="back-link"
-        onClick={() => navigate(`/playrooms/${id}`)}
-      >
-        ← Nazad na igraonicu
-      </button>
+if (!playroom) {
+return (
+
+<div className="container loading">
+Nije moguće učitati podatke o igraonici.
+</div>
+);
+}
+
+return (
+
+<div className="container book-page" ref={topRef}>
+<button
+className="back-link"
+onClick={() => navigate(`/playrooms/${id}`)} >
+← Nazad na igraonicu
+</button>
 
       <div className="book-card">
         <div className="book-header">
@@ -1128,30 +1318,6 @@ const Book = () => {
                       🕘 Radno vreme: {availability.workingHours.vremeOd} -{" "}
                       {availability.workingHours.vremeDo}
                     </p>
-                  </div>
-                  <div className="day-segments">
-                    <h4>Pregled dostupnosti</h4>
-
-                    {availabilitySegments.map((segment, index) => (
-                      <div
-                        key={`${segment.tip}-${segment.vremeOd}-${segment.vremeDo}-${index}`}
-                        className={`day-segment-item ${
-                          segment.tip === "slobodno" ? "free" : "busy"
-                        }`}
-                      >
-                        {segment.tip === "slobodno"
-                          ? "✅ Slobodno"
-                          : "❌ Zauzeto"}
-                        : {segment.vremeOd} - {segment.vremeDo}
-                        {segment.pripremaOd && segment.pripremaDo && (
-                          <span>
-                            {" "}
-                            · priprema {segment.pripremaOd} -{" "}
-                            {segment.pripremaDo}
-                          </span>
-                        )}
-                      </div>
-                    ))}
                   </div>
 
                   <div className="form-row time-row">
@@ -1796,7 +1962,1179 @@ const Book = () => {
         )}
       </div>
     </div>
-  );
+
+);
 };
 
 export default Book;
+
+==================================================
+FILE: PlayroomDetails.js
+==================================================
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { getPlayroomById } from "../services/playroomService";
+import { normalizeText } from "../utils/normalizeText";
+import "../styles/PlayroomDetails.css";
+import ImageModal from "../components/ImageModal";
+import Reviews from "../components/Reviews";
+import VideoPlayer from "../components/VideoPlayer";
+
+const DAY_LABELS = {
+ponedeljak: "Ponedeljak",
+utorak: "Utorak",
+sreda: "Sreda",
+cetvrtak: "Četvrtak",
+petak: "Petak",
+subota: "Subota",
+nedelja: "Nedelja",
+};
+
+const PlayroomDetails = () => {
+const { id } = useParams();
+
+const navigate = useNavigate();
+
+const [playroom, setPlayroom] = useState(null);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState("");
+const [showPriceModal, setShowPriceModal] = useState(false);
+const [modalOpen, setModalOpen] = useState(false);
+const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+useEffect(() => {
+const fetchData = async () => {
+setLoading(true);
+setError("");
+
+      try {
+        const result = await getPlayroomById(id);
+
+        if (result?.success) {
+          setPlayroom(result.data);
+        } else {
+          setPlayroom(null);
+          setError(result?.error || "Greška pri učitavanju igraonice.");
+        }
+      } catch (err) {
+        setPlayroom(null);
+        setError(
+          err?.response?.data?.message ||
+            err?.message ||
+            "Greška pri učitavanju igraonice.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+
+}, [id]);
+
+useEffect(() => {
+if (
+(window.location.hash === "#reviews" ||
+window.location.hash === "#reviews-section") &&
+playroom
+) {
+setTimeout(() => {
+const element = document.getElementById("reviews-section");
+if (element) {
+element.scrollIntoView({ behavior: "smooth" });
+}
+}, 300);
+}
+}, [playroom]);
+
+const handleBook = () => {
+navigate(`/book/${id}`);
+};
+
+const openGalleryModal = (index) => {
+setSelectedImageIndex(index);
+setModalOpen(true);
+};
+
+const scrollToReviews = () => {
+document
+.getElementById("reviews-section")
+?.scrollIntoView({ behavior: "smooth" });
+};
+
+if (loading) {
+return <div className="container loading">Učitavanje...</div>;
+}
+
+if (error) {
+return (
+
+<div className="container">
+<h1>Greška</h1>
+<p>{error}</p>
+</div>
+);
+}
+
+if (!playroom) {
+return (
+
+<div className="container">
+<h1>Igraonica nije pronađena</h1>
+</div>
+);
+}
+
+const galleryImages = Array.isArray(playroom.slike) ? playroom.slike : [];
+
+const modalImages = galleryImages;
+
+const ratingValue = Number(playroom.rating || 0);
+const filledStars = Math.max(0, Math.min(5, Math.floor(ratingValue)));
+
+const cene = Array.isArray(playroom.cene) ? playroom.cene : [];
+
+const cenaDete = cene.find((c) => normalizeText(c.naziv) === "dete");
+
+const cenaRoditelj = cene.find((c) => normalizeText(c.naziv) === "roditelj");
+
+const ostaleCene = cene.filter((c) => {
+const naziv = normalizeText(c.naziv);
+return naziv !== "dete" && naziv !== "roditelj";
+});
+
+const getCenaTipLabel = (tip) => {
+if (tip === "po_osobi") return "po osobi";
+if (tip === "po_satu") return "po satu";
+if (tip === "fiksno") return "fiksno";
+return "";
+};
+
+return (
+
+<div className="container playroom-details">
+<button
+type="button"
+className="btn-back"
+onClick={() => navigate("/playrooms")} >
+← Nazad na igraonice
+</button>
+
+      <div className="details-card">
+        {playroom.profilnaSlika?.url && (
+          <div className="profile-image-container">
+            <div className="profile-image-wrapper">
+              <img
+                src={playroom.profilnaSlika.url}
+                alt={playroom.naziv}
+                className="profile-image-detail"
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="details-header">
+          <h1>{playroom.naziv}</h1>
+
+          <div className="playroom-rating-large">
+            <div className="stars-large">
+              {"★".repeat(filledStars)}
+              {"☆".repeat(5 - filledStars)}
+            </div>
+
+            <span className="rating-number-large">
+              {ratingValue.toFixed(1)}
+            </span>
+
+            <span
+              className="review-count-link-large"
+              onClick={scrollToReviews}
+              style={{
+                cursor: "pointer",
+                color: "#2196f3",
+                textDecoration: "underline",
+              }}
+            >
+              ({playroom.reviewCount || 0} recenzija)
+            </span>
+          </div>
+        </div>
+
+        <div className="details-location">
+          📍 {playroom.adresa}, {playroom.grad}
+        </div>
+
+        <div className="details-grid">
+          <div className="detail-item">
+            <label>📞 Telefon</label>
+            <p>{playroom.kontaktTelefon || "-"}</p>
+          </div>
+
+          <div className="detail-item">
+            <label>📧 Email</label>
+            {playroom.kontaktEmail ? (
+              <a
+                href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(playroom.kontaktEmail)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {playroom.kontaktEmail}
+              </a>
+            ) : (
+              <p>-</p>
+            )}
+          </div>
+
+          <div className="detail-item">
+            <label>👶 Kapacitet dece</label>
+            <p>{playroom.kapacitet?.deca || 0} dece</p>
+          </div>
+
+          <div className="detail-item">
+            <label>👨‍👩‍👧 Kapacitet roditelja</label>
+            <p>
+              {playroom.kapacitet?.roditelji
+                ? `${playroom.kapacitet.roditelji} roditelja`
+                : "Neograničeno"}
+            </p>
+          </div>
+          <div className="detail-item">
+            <label>⏰ Režim rezervacije</label>
+            <p>
+              {playroom.rezimRezervacije === "fiksno"
+                ? `Fiksni termini (${playroom.trajanjeTermina || 60} min)`
+                : "Fleksibilno od-do"}
+            </p>
+          </div>
+        </div>
+        <div className="detail-item full-width">
+          <label>📝 Opis</label>
+          <p className="description-text">{playroom.opis || "-"}</p>
+        </div>
+        <div className="details-price">
+          <div className="price-buttons">
+            <button
+              type="button"
+              className="btn-price"
+              onClick={() => setShowPriceModal(true)}
+            >
+              💰 Cenovnik
+            </button>
+
+            <button type="button" className="btn-book" onClick={handleBook}>
+              📅 Rezerviši
+            </button>
+          </div>
+        </div>
+
+        <div className="details-working-hours">
+          <h3>Radno vreme</h3>
+          <div className="hours-list">
+            {Object.entries(playroom.radnoVreme || {}).map(([dan, vreme]) => {
+              const isZatvoreno =
+                vreme?.radi === false || (!vreme?.od && !vreme?.do);
+
+              return (
+                <div key={dan} className="hour-item">
+                  <span className="day">{DAY_LABELS[dan] || dan}:</span>
+                  {isZatvoreno ? (
+                    <span className="closed">Zatvoreno</span>
+                  ) : (
+                    <span>
+                      {vreme?.od || "09:00"} - {vreme?.do || "20:00"}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {playroom.drustveneMreze && (
+          <div className="detail-item full-width">
+            <label>🌐 Društvene mreže</label>
+            <div className="social-links-manage">
+              {playroom.drustveneMreze.instagram && (
+                <a
+                  href={playroom.drustveneMreze.instagram}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="social-link-small instagram"
+                >
+                  Instagram
+                </a>
+              )}
+
+              {playroom.drustveneMreze.facebook && (
+                <a
+                  href={playroom.drustveneMreze.facebook}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="social-link-small facebook"
+                >
+                  Facebook
+                </a>
+              )}
+
+              {playroom.drustveneMreze.tiktok && (
+                <a
+                  href={playroom.drustveneMreze.tiktok}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="social-link-small tiktok"
+                >
+                  TikTok
+                </a>
+              )}
+
+              {playroom.drustveneMreze.website && (
+                <a
+                  href={playroom.drustveneMreze.website}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="social-link-small website"
+                >
+                  Veb sajt
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {galleryImages.length > 0 && (
+          <div className="details-gallery">
+            <h3>📸 Galerija slika</h3>
+            <div className="gallery-grid">
+              {galleryImages.map((img, idx) => (
+                <div
+                  key={img.publicId || img.public_id || img.url || idx}
+                  className="gallery-item"
+                  onClick={() => openGalleryModal(idx)}
+                >
+                  <img src={img.url} alt={`Slika ${idx + 1}`} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {modalOpen && modalImages.length > 0 && (
+          <ImageModal
+            images={modalImages}
+            currentIndex={selectedImageIndex}
+            onClose={() => setModalOpen(false)}
+          />
+        )}
+
+        {Array.isArray(playroom.videoGalerija) &&
+        playroom.videoGalerija.length > 0 ? (
+          <div className="details-video-gallery">
+            <h3>🎥 Video galerija</h3>
+            <div className="video-gallery-grid">
+              {playroom.videoGalerija.map((video, idx) => (
+                <VideoPlayer
+                  key={video.publicId || video.public_id || video.url || idx}
+                  video={video}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              margin: "20px 0",
+              padding: "20px",
+              background: "#fff3e0",
+              borderRadius: "12px",
+              textAlign: "center",
+            }}
+          >
+            <p>📹 Još nema dodatih video snimaka za ovu igraonicu.</p>
+          </div>
+        )}
+        <Reviews playroomId={playroom._id} />
+      </div>
+
+      {showPriceModal && (
+        <div className="price-modal" onClick={() => setShowPriceModal(false)}>
+          <div
+            className="price-modal-content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="price-modal-header">
+              <h2>Cenovnik - {playroom.naziv}</h2>
+              <button
+                type="button"
+                className="price-modal-close"
+                onClick={() => setShowPriceModal(false)}
+              >
+                ✖
+              </button>
+            </div>
+
+            <div className="price-modal-body">
+              <div className="price-group">
+                <h3>💰 Cene</h3>
+
+                {cenaDete ? (
+                  <div className="price-item">
+                    <span>Deca:</span>
+                    <strong>{cenaDete.cena} RSD</strong>
+                    {getCenaTipLabel(cenaDete.tip) && (
+                      <span className="price-type">
+                        ({getCenaTipLabel(cenaDete.tip)})
+                      </span>
+                    )}
+                    {cenaDete.opis && (
+                      <span className="price-desc">({cenaDete.opis})</span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="price-item">
+                    <span>Deca:</span>
+                    <strong>besplatno</strong>
+                  </div>
+                )}
+
+                {cenaRoditelj ? (
+                  <div className="price-item">
+                    <span>Roditelji:</span>
+                    <strong>{cenaRoditelj.cena} RSD</strong>
+                    {getCenaTipLabel(cenaRoditelj.tip) && (
+                      <span className="price-type">
+                        ({getCenaTipLabel(cenaRoditelj.tip)})
+                      </span>
+                    )}
+                    {cenaRoditelj.opis && (
+                      <span className="price-desc">({cenaRoditelj.opis})</span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="price-item">
+                    <span>Roditelji:</span>
+                    <strong>besplatno</strong>
+                  </div>
+                )}
+
+                {ostaleCene.map((cena, idx) => (
+                  <div key={`${cena.naziv}-${idx}`} className="price-item">
+                    <span>{cena.naziv}:</span>
+                    <strong>{cena.cena} RSD</strong>
+                    {getCenaTipLabel(cena.tip) && (
+                      <span className="price-type">
+                        ({getCenaTipLabel(cena.tip)})
+                      </span>
+                    )}
+                    {cena.opis && (
+                      <span className="price-desc">({cena.opis})</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {Array.isArray(playroom.paketi) && playroom.paketi.length > 0 && (
+                <div className="price-group">
+                  <h3>🎁 Paketi</h3>
+                  {playroom.paketi.map((paket, idx) => (
+                    <div key={`${paket.naziv}-${idx}`} className="price-item">
+                      <span>{paket.naziv}:</span>
+                      <strong>{paket.cena} RSD</strong>
+                      {paket.tip === "po_osobi" && (
+                        <span className="price-type">(po osobi)</span>
+                      )}
+                      {paket.tip === "po_satu" && (
+                        <span className="price-type">(po satu)</span>
+                      )}
+                      {paket.tip === "fiksno" && (
+                        <span className="price-type">(fiksno)</span>
+                      )}
+                      {paket.opis && (
+                        <span className="price-desc">({paket.opis})</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {Array.isArray(playroom.dodatneUsluge) &&
+                playroom.dodatneUsluge.length > 0 && (
+                  <div className="price-group">
+                    <h3>🎪 Dodatne pogodnosti</h3>
+                    {playroom.dodatneUsluge.map((usluga, idx) => (
+                      <div
+                        key={`${usluga.naziv}-${idx}`}
+                        className="price-item"
+                      >
+                        <span>{usluga.naziv}:</span>
+                        <strong>{usluga.cena} RSD</strong>
+                        {usluga.tip === "po_osobi" && (
+                          <span className="price-type">(po osobi)</span>
+                        )}
+                        {usluga.tip === "po_satu" && (
+                          <span className="price-type">(po satu)</span>
+                        )}
+                        {usluga.opis && (
+                          <span className="price-desc">({usluga.opis})</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+              {Array.isArray(playroom.besplatnePogodnosti) &&
+                playroom.besplatnePogodnosti.length > 0 && (
+                  <div className="price-group">
+                    <h3>✨ Besplatne pogodnosti</h3>
+                    <div className="free-features">
+                      {playroom.besplatnePogodnosti.map((feat, idx) => (
+                        <span key={`${feat}-${idx}`} className="free-feature">
+                          ✓ {feat}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+
+);
+};
+
+export default PlayroomDetails;
+
+==================================================
+FILE: OwnerTimeSlots.js
+==================================================
+import React, { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getMyPlayrooms } from "../services/playroomService";
+import { getAllTimeSlotsForOwner } from "../services/bookingService";
+import { useAuth } from "../context/AuthContext";
+
+import "../styles/OwnerTimeSlots.css";
+import { useToast } from "../context/ToastContext";
+
+const OwnerTimeSlots = () => {
+const { user, loading: authLoading } = useAuth();
+const navigate = useNavigate();
+const toast = useToast();
+const [playrooms, setPlayrooms] = useState([]);
+const [selectedPlayroom, setSelectedPlayroom] = useState("");
+const [timeSlots, setTimeSlots] = useState([]);
+const [loadingPlayrooms, setLoadingPlayrooms] = useState(true);
+const [loadingSlots, setLoadingSlots] = useState(false);
+const [selectedDate, setSelectedDate] = useState(
+new Date().toISOString().split("T")[0],
+);
+const [message, setMessage] = useState("");
+
+const [error, setError] = useState("");
+
+const [expandedBookingId, setExpandedBookingId] = useState(null);
+
+useEffect(() => {
+if (!authLoading) {
+loadPlayrooms();
+}
+}, [authLoading]);
+
+const loadTimeSlots = useCallback(async () => {
+if (!selectedPlayroom) return;
+
+    setLoadingSlots(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const result = await getAllTimeSlotsForOwner(
+        selectedPlayroom,
+        selectedDate,
+      );
+
+      if (result?.success) {
+        setTimeSlots(
+          Array.isArray(result.data)
+            ? result.data.sort((a, b) => a.vremeOd.localeCompare(b.vremeOd))
+            : [],
+        );
+      } else {
+        setTimeSlots([]);
+        setError(result?.error || "Greška pri učitavanju termina.");
+      }
+    } catch (err) {
+      setTimeSlots([]);
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Greška pri učitavanju termina.",
+      );
+    } finally {
+      setLoadingSlots(false);
+    }
+
+}, [selectedPlayroom, selectedDate]);
+
+useEffect(() => {
+if (selectedPlayroom) {
+loadTimeSlots();
+}
+}, [selectedPlayroom, selectedDate, loadTimeSlots]);
+
+const calculateDuration = (od, doVreme) => {
+if (!od || !doVreme) return "-";
+
+    const [h1, m1] = od.split(":").map(Number);
+    const [h2, m2] = doVreme.split(":").map(Number);
+
+    const start = h1 * 60 + m1;
+    const end = h2 * 60 + m2;
+
+    const diff = end - start;
+
+    const sati = Math.floor(diff / 60);
+    const minuti = diff % 60;
+
+    if (sati > 0 && minuti > 0) return `${sati}h ${minuti}min`;
+    if (sati > 0) return `${sati}h`;
+    return `${minuti}min`;
+
+};
+
+const loadPlayrooms = async () => {
+setLoadingPlayrooms(true);
+setError("");
+setMessage("");
+
+    try {
+      const result = await getMyPlayrooms();
+
+      if (
+        result?.success &&
+        Array.isArray(result.data) &&
+        result.data.length > 0
+      ) {
+        setPlayrooms(result.data);
+        setSelectedPlayroom((prev) => prev || result.data[0]._id);
+      } else {
+        setPlayrooms([]);
+        setSelectedPlayroom("");
+        setError("Nemate nijednu igraonicu. Prvo dodajte igraonicu.");
+      }
+    } catch (err) {
+      setPlayrooms([]);
+      setSelectedPlayroom("");
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Greška pri učitavanju igraonica.",
+      );
+    } finally {
+      setLoadingPlayrooms(false);
+    }
+
+};
+
+const goToReservationPage = () => {
+if (!selectedPlayroom || !selectedDate) {
+setError("Izaberi igraonicu i datum.");
+return;
+}
+
+    const params = new URLSearchParams({
+      datum: selectedDate,
+      mode: "owner",
+    });
+
+    navigate(`/book/${selectedPlayroom}?${params.toString()}`);
+
+};
+
+const getBookingId = (booking) => {
+return booking?.\_id || booking?.id || null;
+};
+
+const handleSlotClick = (segment) => {
+const bookingId = getBookingId(segment.booking);
+
+    if (!bookingId) return;
+
+    setExpandedBookingId((prev) => (prev === bookingId ? null : bookingId));
+
+};
+
+const selectedPlayroomData = playrooms.find(
+(p) => p.\_id === selectedPlayroom,
+);
+
+const occupiedSlots = timeSlots.filter(
+(segment) => segment.tip === "zauzeto",
+);
+
+const formatBookingName = (booking) => {
+if (!booking) return "-";
+
+    const ime =
+      booking.ime || booking.imeRoditelja || booking.parentFirstName || "";
+    const prezime =
+      booking.prezime ||
+      booking.prezimeRoditelja ||
+      booking.parentLastName ||
+      "";
+
+    const fullName = `${ime} ${prezime}`.trim();
+    return fullName || booking.userName || "-";
+
+};
+
+const formatBookingEmail = (booking) => {
+return (
+booking?.email || booking?.emailRoditelja || booking?.parentEmail || "-"
+);
+};
+
+const formatBookingPhone = (booking) => {
+return (
+booking?.telefon ||
+booking?.telefonRoditelja ||
+booking?.parentPhone ||
+"-"
+);
+};
+
+if (authLoading || loadingPlayrooms) {
+return <div className="container loading">Učitavanje...</div>;
+}
+
+if (user?.role !== "vlasnik" && user?.role !== "admin") {
+return (
+
+<div className="container">
+<h1>Pristup zabranjen</h1>
+<p>Samo vlasnici igraonica mogu upravljati terminima.</p>
+</div>
+);
+}
+
+return (
+
+<div className="container owner-slots-page">
+<div className="page-header">
+<h1>📅 Termini igraonice</h1>
+</div>
+
+      {error && <div className="error-message">{error}</div>}
+      {message && <div className="success-message">{message}</div>}
+
+      {playrooms.length === 0 ? (
+        <div className="empty-state">
+          <p>Nemate nijednu igraonicu.</p>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => navigate("/create-playroom")}
+          >
+            Dodaj igraonicu
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="owner-reservation-toolbar">
+            <div className="filter-group owner-date-filter">
+              <label htmlFor="owner-date-select">Izaberite datum</label>
+              <input
+                id="owner-date-select"
+                type="date"
+                value={selectedDate}
+                min={new Date().toISOString().split("T")[0]}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value);
+                  setMessage("");
+                  setError("");
+                  setExpandedBookingId(null);
+                }}
+              />
+            </div>
+
+            <button
+              type="button"
+              className="owner-reserve-btn"
+              onClick={goToReservationPage}
+              disabled={!selectedPlayroom || !selectedDate}
+            >
+              ➕ Rezerviši termin
+            </button>
+          </div>
+
+          {loadingSlots ? (
+            <div className="loading-slots">Učitavanje termina...</div>
+          ) : occupiedSlots.length === 0 ? (
+            <div className="empty-state">
+              <p>Nema zauzetih termina za izabrani datum.</p>
+            </div>
+          ) : (
+            <div className="slots-grid">
+              {occupiedSlots.map((segment, index) => (
+                <div
+                  key={`${segment.vremeOd}-${segment.vremeDo}-${index}`}
+                  className={`slot-card clickable-slot ${
+                    segment.tip === "zauzeto" ? "zauzeto" : "slobodno"
+                  }`}
+                >
+                  <div
+                    className="owner-booking-card-header"
+                    onClick={() => handleSlotClick(segment)}
+                  >
+                    <div>
+                      <h3>{formatBookingName(segment.booking)}</h3>
+
+                      <p className="owner-booking-short-info">
+                        🗓{" "}
+                        {segment.booking?.datum
+                          ? new Date(segment.booking.datum).toLocaleDateString(
+                              "sr-RS",
+                            )
+                          : selectedDate
+                            ? new Date(selectedDate).toLocaleDateString("sr-RS")
+                            : "-"}{" "}
+                        | ⏰ {segment.vremeOd || "-"} - {segment.vremeDo || "-"}
+                      </p>
+                    </div>
+
+                    <div className="owner-booking-card-right">
+                      <span className="owner-booking-status-badge">
+                        Potvrđeno
+                      </span>
+                      <span
+                        className={`owner-booking-arrow ${
+                          expandedBookingId === getBookingId(segment.booking)
+                            ? "open"
+                            : ""
+                        }`}
+                      >
+                        ▼
+                      </span>
+                    </div>
+                  </div>
+
+                  {expandedBookingId === getBookingId(segment.booking) && (
+                    <div
+                      className="owner-booking-card-details"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <p>✉️ {formatBookingEmail(segment.booking)}</p>
+                      <p>📞 {formatBookingPhone(segment.booking)}</p>
+
+                      <p>
+                        🗓{" "}
+                        {segment.booking?.datum
+                          ? new Date(segment.booking.datum).toLocaleDateString(
+                              "sr-RS",
+                            )
+                          : selectedDate
+                            ? new Date(selectedDate).toLocaleDateString("sr-RS")
+                            : "-"}
+                      </p>
+
+                      <p>
+                        ⏰ {segment.vremeOd || "-"} - {segment.vremeDo || "-"}
+                      </p>
+
+                      <p>👶 Broj dece: {segment.booking?.brojDece ?? 0}</p>
+                      <p>
+                        👨‍👩‍👧 Broj roditelja: {segment.booking?.brojRoditelja ?? 0}
+                      </p>
+                      <p>
+                        💰 Ukupna cena: {segment.booking?.ukupnaCena ?? 0} RSD
+                      </p>
+                      {Array.isArray(segment.booking?.izabraneCene) &&
+                        segment.booking.izabraneCene.length > 0 && (
+                          <div className="owner-booking-extra-block">
+                            <p>
+                              <strong>Izabrane stavke:</strong>
+                            </p>
+
+                            {segment.booking.izabraneCene.map((item, idx) => (
+                              <p key={`cena-${idx}`}>
+                                • {item.naziv} ({item.tip || "fiksno"}) -{" "}
+                                {item.cena} RSD
+                                {item.tip === "po_satu" && (
+                                  <>
+                                    {" "}
+                                    ×{" "}
+                                    {calculateDuration(
+                                      segment.vremeOd,
+                                      segment.vremeDo,
+                                    )}{" "}
+                                    ={" "}
+                                    {(Number(item.cena) || 0) *
+                                      ((Number(segment.vremeDo?.slice(0, 2)) *
+                                        60 +
+                                        Number(segment.vremeDo?.slice(3, 5)) -
+                                        (Number(segment.vremeOd?.slice(0, 2)) *
+                                          60 +
+                                          Number(
+                                            segment.vremeOd?.slice(3, 5),
+                                          ))) /
+                                        60)}{" "}
+                                    RSD
+                                  </>
+                                )}
+                                {item.opis && <span> - {item.opis}</span>}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+
+                      {segment.booking?.izabraniPaket?.naziv && (
+                        <div className="owner-booking-extra-block">
+                          <p>
+                            <strong>Paket:</strong>{" "}
+                            {segment.booking.izabraniPaket.naziv} (
+                            {segment.booking.izabraniPaket.tip || "fiksno"}) -{" "}
+                            {segment.booking.izabraniPaket.cena} RSD
+                          </p>
+
+                          {segment.booking.izabraniPaket.opis && (
+                            <p>- {segment.booking.izabraniPaket.opis}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {Array.isArray(segment.booking?.izabraneUsluge) &&
+                        segment.booking.izabraneUsluge.length > 0 && (
+                          <div className="owner-booking-extra-block">
+                            <p>
+                              <strong>Dodatne usluge:</strong>
+                            </p>
+
+                            {segment.booking.izabraneUsluge.map((item, idx) => (
+                              <p key={`usluga-${idx}`}>
+                                • {item.naziv} ({item.tip || "fiksno"}) -{" "}
+                                {item.cena} RSD
+                                {item.opis && <span> - {item.opis}</span>}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+
+                      {segment.booking?.napomena && (
+                        <p>📝 Napomena: {segment.booking.napomena}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+
+);
+};
+
+export default OwnerTimeSlots;
+
+==================================================
+FILE: App.js
+==================================================
+import React, { useEffect } from "react";
+import {
+BrowserRouter as Router,
+Routes,
+Route,
+Navigate,
+useLocation,
+} from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import Home from "./pages/Home";
+import Register from "./pages/Register";
+import Login from "./pages/Login";
+import Playrooms from "./pages/Playrooms";
+import CreatePlayroom from "./pages/CreatePlayroom";
+import ManagePlayroom from "./pages/ManagePlayroom";
+import AdminPanel from "./pages/AdminPanel";
+import PlayroomDetails from "./pages/PlayroomDetails";
+import Book from "./pages/Book";
+import BookingSuccess from "./pages/BookingSuccess";
+import MyBookings from "./pages/MyBookings";
+import OwnerTimeSlots from "./pages/OwnerTimeSlots";
+import OwnerDashboard from "./pages/OwnerDashboard";
+import "./styles/global.css";
+import { ToastProvider } from "./context/ToastContext";
+import ToastContainer from "./components/ToastContainer";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import BookingPolicy from "./pages/BookingPolicy";
+import VerifyEmail from "./pages/VerifyEmail";
+
+const ScrollToTop = () => {
+const { pathname } = useLocation();
+
+useEffect(() => {
+window.scrollTo(0, 0);
+}, [pathname]);
+
+return null;
+};
+
+const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+const { user, isAuthenticated, loading } = useAuth();
+
+if (loading) {
+return <div className="container loading">Učitavanje...</div>;
+}
+
+if (!isAuthenticated) {
+return <Navigate to="/login" replace />;
+}
+
+if (
+Array.isArray(allowedRoles) &&
+allowedRoles.length > 0 &&
+!allowedRoles.includes(user?.role)
+) {
+return <Navigate to="/" replace />;
+}
+
+return children;
+};
+
+const VlasnikRoute = ({ children }) => (
+<ProtectedRoute allowedRoles={["vlasnik", "admin"]}>
+{children}
+</ProtectedRoute>
+);
+
+const AdminRoute = ({ children }) => (
+<ProtectedRoute allowedRoles={["admin"]}>{children}</ProtectedRoute>
+);
+
+const RoditeljRoute = ({ children }) => (
+<ProtectedRoute allowedRoles={["roditelj", "admin"]}>
+{children}
+</ProtectedRoute>
+);
+
+function AppRoutes() {
+const location = useLocation();
+
+const showFooter = [
+"/",
+"/playrooms",
+"/privacy-policy",
+"/terms-of-service",
+"/booking-policy",
+].includes(location.pathname);
+return (
+<>
+<Navbar />
+
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/verify-email/:token" element={<VerifyEmail />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="/booking-policy" element={<BookingPolicy />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/playrooms" element={<Playrooms />} />
+        <Route path="/playrooms/:id" element={<PlayroomDetails />} />
+
+        {/* BOOK mora biti JAVAN */}
+        <Route path="/book/:id" element={<Book />} />
+
+        <Route
+          path="/booking-success"
+          element={
+            <RoditeljRoute>
+              <BookingSuccess />
+            </RoditeljRoute>
+          }
+        />
+
+        <Route
+          path="/my-bookings"
+          element={
+            <RoditeljRoute>
+              <MyBookings />
+            </RoditeljRoute>
+          }
+        />
+
+        <Route
+          path="/create-playroom"
+          element={
+            <VlasnikRoute>
+              <CreatePlayroom />
+            </VlasnikRoute>
+          }
+        />
+
+        <Route
+          path="/manage-playroom"
+          element={
+            <VlasnikRoute>
+              <ManagePlayroom />
+            </VlasnikRoute>
+          }
+        />
+
+        <Route
+          path="/owner/timeslots"
+          element={
+            <VlasnikRoute>
+              <OwnerTimeSlots />
+            </VlasnikRoute>
+          }
+        />
+
+        <Route
+          path="/owner/dashboard"
+          element={
+            <VlasnikRoute>
+              <OwnerDashboard />
+            </VlasnikRoute>
+          }
+        />
+
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminPanel />
+            </AdminRoute>
+          }
+        />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+
+      {showFooter && <Footer />}
+    </>
+
+);
+}
+
+export default function App() {
+return (
+<ToastProvider>
+<AuthProvider>
+<Router>
+<ScrollToTop />
+<ToastContainer />
+<AppRoutes />
+</Router>
+</AuthProvider>
+</ToastProvider>
+);
+}

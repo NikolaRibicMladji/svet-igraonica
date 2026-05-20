@@ -283,9 +283,6 @@ const buildDaySegments = ({
       timeToMinutes(booking.vremeDo) + preparationMinutes,
       dayEnd,
     );
-    const originalBookingEnd = timeToMinutes(booking.vremeDo);
-    const hasPreparationBuffer =
-      preparationMinutes > 0 && bookingEnd > originalBookingEnd;
 
     if (bookingStart > cursor) {
       segments.push({
@@ -298,9 +295,7 @@ const buildDaySegments = ({
     segments.push({
       tip: "zauzeto",
       vremeOd: booking.vremeOd,
-      vremeDo: minutesToTime(bookingEnd),
-      originalVremeDo: booking.vremeDo,
-      hasPreparationBuffer,
+      vremeDo: booking.vremeDo,
       booking,
     });
 

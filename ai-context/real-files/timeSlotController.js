@@ -371,8 +371,6 @@ exports.getAvailableTimeSlots = async (req, res, next) => {
       .map((s) => ({
         vremeOd: s.vremeOd,
         vremeDo: s.vremeDo,
-        originalVremeDo: s.originalVremeDo || s.vremeDo,
-        hasPreparationBuffer: Boolean(s.hasPreparationBuffer),
       }));
 
     const freeIntervals = segments
@@ -459,7 +457,6 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
 
     const segments = bookingService.buildDaySegments({
       workingHours,
-      preparationMinutes: Number(playroom.vremePripremeTermina) || 0,
       bookings: bookings.map((booking) => ({
         _id: booking._id,
         vremeOd: booking.vremeOd,
@@ -488,8 +485,6 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
       tip: segment.tip,
       vremeOd: segment.vremeOd,
       vremeDo: segment.vremeDo,
-      originalVremeDo: segment.originalVremeDo || segment.vremeDo,
-      hasPreparationBuffer: Boolean(segment.hasPreparationBuffer),
       booking: segment.booking?.booking || segment.booking || null,
     }));
 

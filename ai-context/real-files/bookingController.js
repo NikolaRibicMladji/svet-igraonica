@@ -156,7 +156,7 @@ exports.getMyBookings = async (req, res, next) => {
   try {
     const bookings = await Booking.find({ roditeljId: req.user.id })
       .populate("playroomId", "naziv adresa grad slike")
-      .populate("timeSlotId", "datum vremeOd vremeDo")
+      .populate("timeSlotId")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -182,7 +182,7 @@ exports.getOwnerBookings = async (req, res, next) => {
     const bookings = await Booking.find({ playroomId: { $in: playroomIds } })
       .populate("roditeljId", "ime prezime email telefon")
       .populate("playroomId", "naziv adresa grad")
-      .populate("timeSlotId", "datum vremeOd vremeDo")
+      .populate("timeSlotId")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -230,7 +230,7 @@ exports.getBookingById = async (req, res, next) => {
         "playroomId",
         "naziv adresa grad kontaktTelefon kontaktEmail vlasnikId",
       )
-      .populate("timeSlotId", "datum vremeOd vremeDo");
+      .populate("timeSlotId");
 
     if (!booking) {
       return res.status(404).json({

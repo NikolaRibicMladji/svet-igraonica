@@ -604,10 +604,11 @@ const Book = () => {
 
     const startMinutes = timeToMinutes(start);
     const endMinutes = timeToMinutes(end);
+    const preparationMinutes = Number(playroom?.vremePripremeTermina) || 0;
 
     return busyIntervals.some((interval) => {
       const busyStart = timeToMinutes(interval.vremeOd);
-      const busyEnd = timeToMinutes(interval.vremeDo);
+      const busyEnd = timeToMinutes(interval.vremeDo) + preparationMinutes;
 
       return startMinutes < busyEnd && endMinutes > busyStart;
     });
@@ -618,6 +619,7 @@ const Book = () => {
 
     const workingStart = timeToMinutes(availability.workingHours.vremeOd);
     const workingEnd = timeToMinutes(availability.workingHours.vremeDo);
+    const preparationMinutes = Number(playroom?.vremePripremeTermina) || 0;
 
     const busyIntervals = Array.isArray(availability?.busyIntervals)
       ? [...availability.busyIntervals].sort(
@@ -631,8 +633,9 @@ const Book = () => {
     for (const interval of busyIntervals) {
       const busyStart = timeToMinutes(interval.vremeOd);
       const busyEnd = timeToMinutes(interval.vremeDo);
-      const originalBusyEnd = timeToMinutes(
-        interval.originalVremeDo || interval.vremeDo,
+      const busyEndWithPrep = Math.min(
+        busyEnd + preparationMinutes,
+        workingEnd,
       );
 
       if (busyStart > cursor) {
@@ -647,13 +650,12 @@ const Book = () => {
         tip: "zauzeto",
         vremeOd: interval.vremeOd,
         vremeDo: interval.vremeDo,
-        pripremaOd: interval.hasPreparationBuffer
-          ? minutesToTime(originalBusyEnd)
-          : null,
-        pripremaDo: interval.hasPreparationBuffer ? interval.vremeDo : null,
+        pripremaOd: busyEnd < busyEndWithPrep ? interval.vremeDo : null,
+        pripremaDo:
+          busyEnd < busyEndWithPrep ? minutesToTime(busyEndWithPrep) : null,
       });
 
-      cursor = Math.max(cursor, busyEnd);
+      cursor = Math.max(cursor, busyEndWithPrep);
     }
 
     if (cursor < workingEnd) {
@@ -1128,30 +1130,6 @@ const Book = () => {
                       🕘 Radno vreme: {availability.workingHours.vremeOd} -{" "}
                       {availability.workingHours.vremeDo}
                     </p>
-                  </div>
-                  <div className="day-segments">
-                    <h4>Pregled dostupnosti</h4>
-
-                    {availabilitySegments.map((segment, index) => (
-                      <div
-                        key={`${segment.tip}-${segment.vremeOd}-${segment.vremeDo}-${index}`}
-                        className={`day-segment-item ${
-                          segment.tip === "slobodno" ? "free" : "busy"
-                        }`}
-                      >
-                        {segment.tip === "slobodno"
-                          ? "✅ Slobodno"
-                          : "❌ Zauzeto"}
-                        : {segment.vremeOd} - {segment.vremeDo}
-                        {segment.pripremaOd && segment.pripremaDo && (
-                          <span>
-                            {" "}
-                            · priprema {segment.pripremaOd} -{" "}
-                            {segment.pripremaDo}
-                          </span>
-                        )}
-                      </div>
-                    ))}
                   </div>
 
                   <div className="form-row time-row">

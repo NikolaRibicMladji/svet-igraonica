@@ -1,0 +1,736 @@
+==================================================
+FILE: Booking.js
+==================================================
+const mongoose = require("mongoose");
+const BOOKING_STATUS = require("../constants/bookingStatus");
+
+const BookingSchema = new mongoose.Schema(
+{
+roditeljId: {
+type: mongoose.Schema.Types.ObjectId,
+ref: "User",
+default: null,
+index: true,
+},
+
+    playroomId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Playroom",
+      required: true,
+      index: true,
+    },
+
+    timeSlotId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "TimeSlot",
+      default: null,
+      index: true,
+    },
+
+    datum: {
+      type: Date,
+      required: true,
+      index: true,
+    },
+
+    vremeOd: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    vremeDo: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    ukupnaCena: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    brojDece: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    brojRoditelja: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    izabraneCene: {
+      type: [
+        {
+          naziv: {
+            type: String,
+            default: "",
+            trim: true,
+          },
+          cena: {
+            type: Number,
+            default: 0,
+            min: 0,
+          },
+          tip: {
+            type: String,
+            enum: ["fiksno", "po_osobi", "po_satu"],
+            default: "fiksno",
+          },
+          opis: {
+            type: String,
+            default: "",
+            trim: true,
+          },
+        },
+      ],
+      default: [],
+    },
+
+    izabraniPaket: {
+      type: {
+        naziv: {
+          type: String,
+          default: "",
+          trim: true,
+        },
+        cena: {
+          type: Number,
+          default: 0,
+          min: 0,
+        },
+        tip: {
+          type: String,
+          enum: ["fiksno", "po_osobi", "po_satu"],
+          default: "fiksno",
+        },
+        opis: {
+          type: String,
+          default: "",
+          trim: true,
+        },
+      },
+      default: null,
+    },
+
+    izabraneUsluge: {
+      type: [
+        {
+          naziv: {
+            type: String,
+            trim: true,
+          },
+          cena: {
+            type: Number,
+            min: 0,
+          },
+          tip: {
+            type: String,
+            enum: ["fiksno", "po_osobi", "po_satu"],
+            default: "fiksno",
+          },
+          opis: {
+            type: String,
+            default: "",
+            trim: true,
+          },
+        },
+      ],
+      default: [],
+    },
+
+    status: {
+      type: String,
+      enum: Object.values(BOOKING_STATUS),
+      default: BOOKING_STATUS.POTVRDJENO,
+      index: true,
+    },
+
+    napomena: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
+
+    imeRoditelja: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100,
+    },
+
+    prezimeRoditelja: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100,
+    },
+
+    emailRoditelja: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, "Email nije validan"],
+    },
+
+    telefonRoditelja: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 30,
+    },
+
+},
+{
+timestamps: true,
+},
+);
+
+// Sprečava duple aktivne rezervacije za isti slot.
+// Otkazana rezervacija ne blokira novi booking.
+BookingSchema.index(
+{ timeSlotId: 1, status: 1 },
+{
+unique: true,
+partialFilterExpression: {
+timeSlotId: { $type: "objectId" },
+status: { $ne: BOOKING_STATUS.OTKAZANO },
+},
+},
+);
+// Sprečava duple aktivne rezervacije za isti vremenski interval (custom booking)
+BookingSchema.index(
+{ playroomId: 1, datum: 1, vremeOd: 1, vremeDo: 1 },
+{
+unique: true,
+partialFilterExpression: {
+status: { $ne: BOOKING_STATUS.OTKAZANO },
+},
+},
+);
+
+// Brži query za owner dashboard
+BookingSchema.index({ playroomId: 1, datum: 1 });
+
+// Brži query za korisnik istoriju
+BookingSchema.index({ roditeljId: 1, createdAt: -1 });
+
+// Brži query za aktivne rezervacije po danu
+BookingSchema.index({ playroomId: 1, datum: 1, status: 1 });
+
+BookingSchema.index({ status: 1, datum: 1, vremeDo: 1 });
+
+module.exports = mongoose.model("Booking", BookingSchema);
+
+==================================================
+FILE: Playroom.js
+==================================================
+const mongoose = require("mongoose");
+const PLAYROOM_STATUS = require("../constants/playroomStatus");
+const { normalizeText } = require("../utils/normalizeText");
+
+const dnevnoRadnoVremeSchema = new mongoose.Schema(
+{
+od: {
+type: String,
+default: "",
+trim: true,
+},
+do: {
+type: String,
+default: "",
+trim: true,
+},
+radi: {
+type: Boolean,
+default: true,
+},
+},
+{ \_id: false },
+);
+
+const stavkaCenovnikaSchema = new mongoose.Schema({
+naziv: {
+type: String,
+required: true,
+trim: true,
+maxlength: 100,
+},
+cena: {
+type: Number,
+required: true,
+min: 0,
+},
+tip: {
+type: String,
+enum: ["fiksno", "po_osobi", "po_satu"],
+default: "fiksno",
+},
+
+opis: {
+type: String,
+default: "",
+trim: true,
+maxlength: 500,
+},
+});
+
+const paketSchema = new mongoose.Schema({
+naziv: {
+type: String,
+required: true,
+trim: true,
+maxlength: 100,
+},
+cena: {
+type: Number,
+required: true,
+min: 0,
+},
+
+tip: {
+type: String,
+enum: ["fiksno", "po_osobi", "po_satu"],
+default: "fiksno",
+},
+
+opis: {
+type: String,
+default: "",
+trim: true,
+maxlength: 500,
+},
+});
+
+const dodatnaUslugaSchema = new mongoose.Schema({
+naziv: {
+type: String,
+required: true,
+trim: true,
+maxlength: 100,
+},
+cena: {
+type: Number,
+required: true,
+min: 0,
+},
+opis: {
+type: String,
+default: "",
+trim: true,
+maxlength: 500,
+},
+tip: {
+type: String,
+enum: ["po_osobi", "fiksno", "po_satu"],
+default: "fiksno",
+},
+});
+
+const slikaSchema = new mongoose.Schema(
+{
+url: {
+type: String,
+required: true,
+trim: true,
+},
+publicId: {
+type: String,
+required: true,
+trim: true,
+},
+width: Number,
+height: Number,
+size: Number,
+format: String,
+},
+{ \_id: false },
+);
+
+const videoSchema = new mongoose.Schema(
+{
+url: {
+type: String,
+trim: true,
+},
+publicId: {
+type: String,
+trim: true,
+},
+thumbnail: {
+type: String,
+trim: true,
+},
+naziv: {
+type: String,
+trim: true,
+maxlength: 150,
+},
+trajanje: {
+type: Number,
+min: 0,
+},
+createdAt: {
+type: Date,
+default: Date.now,
+},
+},
+{ \_id: false },
+);
+
+const PlayroomSchema = new mongoose.Schema(
+{
+vlasnikId: {
+type: mongoose.Schema.Types.ObjectId,
+ref: "User",
+required: true,
+index: true,
+},
+
+    naziv: {
+      type: String,
+      required: [true, "Naziv igraonice je obavezan"],
+      trim: true,
+
+      maxlength: 150,
+    },
+
+    adresa: {
+      type: String,
+      required: [true, "Adresa je obavezna"],
+      trim: true,
+      maxlength: 200,
+    },
+
+    adresaNormalized: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    grad: {
+      type: String,
+      required: [true, "Grad je obavezan"],
+      trim: true,
+      maxlength: 100,
+      index: true,
+    },
+
+    opis: {
+      type: String,
+      required: [true, "Opis je obavezan"],
+      trim: true,
+      maxlength: 3000,
+    },
+
+    kontaktTelefon: {
+      type: String,
+      required: [true, "Kontakt telefon je obavezan"],
+      trim: true,
+      maxlength: 30,
+    },
+
+    kontaktEmail: {
+      type: String,
+      required: [true, "Kontakt email je obavezan"],
+      trim: true,
+      lowercase: true,
+      unique: true,
+      index: true,
+      match: [/^\S+@\S+\.\S+$/, "Kontakt email nije validan"],
+    },
+
+    radnoVreme: {
+      ponedeljak: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
+      utorak: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
+      sreda: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
+      cetvrtak: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
+      petak: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
+      subota: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
+      nedelja: { type: dnevnoRadnoVremeSchema, default: () => ({}) },
+    },
+    rezimRezervacije: {
+      type: String,
+      enum: ["fleksibilno", "fiksno"],
+      required: true,
+    },
+    trajanjeTermina: {
+      type: Number,
+      enum: [60, 90, 120, 150, 180, 210, 240, 270, 300],
+      default: 60,
+    },
+    vremePripremeTermina: {
+      type: Number,
+      enum: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60],
+      default: 0,
+    },
+    gradNormalized: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    nazivNormalized: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    kapacitet: {
+      deca: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      roditelji: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+    },
+
+    cene: {
+      type: [stavkaCenovnikaSchema],
+      default: [],
+    },
+
+    paketi: {
+      type: [paketSchema],
+      default: [],
+    },
+
+    dodatneUsluge: {
+      type: [dodatnaUslugaSchema],
+      default: [],
+    },
+
+    besplatnePogodnosti: {
+      type: [
+        {
+          type: String,
+          trim: true,
+          maxlength: 100,
+        },
+      ],
+      default: [],
+    },
+
+    profilnaSlika: {
+      url: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      publicId: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+    },
+
+    slike: {
+      type: [slikaSchema],
+      default: [],
+    },
+
+    videoGalerija: {
+      type: [videoSchema],
+      default: [],
+    },
+
+    verifikovan: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    rating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+      index: true,
+    },
+
+    reviewCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    status: {
+      type: String,
+      enum: Object.values(PLAYROOM_STATUS),
+      default: PLAYROOM_STATUS.U_IZRADI,
+      index: true,
+    },
+    razlogOdbijanja: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1000,
+    },
+
+    odbijenAt: {
+      type: Date,
+      default: null,
+    },
+
+    deactivatedAt: {
+      type: Date,
+      default: null,
+    },
+
+    drustveneMreze: {
+      instagram: { type: String, default: "", trim: true },
+      facebook: { type: String, default: "", trim: true },
+      tiktok: { type: String, default: "", trim: true },
+      website: { type: String, default: "", trim: true },
+    },
+
+},
+{
+timestamps: true,
+},
+);
+
+PlayroomSchema.pre("save", function (next) {
+if (this.isModified("grad")) {
+this.gradNormalized = normalizeText(this.grad);
+}
+
+if (this.isModified("naziv")) {
+this.nazivNormalized = normalizeText(this.naziv);
+}
+
+if (this.isModified("adresa")) {
+this.adresaNormalized = normalizeText(this.adresa);
+}
+
+next();
+});
+
+// listing + filter po gradu
+PlayroomSchema.index({ verifikovan: 1, status: 1, gradNormalized: 1 });
+
+// listing + sortiranje
+PlayroomSchema.index({ verifikovan: 1, status: 1, rating: -1, createdAt: -1 });
+
+// owner
+PlayroomSchema.index({ vlasnikId: 1, createdAt: -1 });
+
+// search
+PlayroomSchema.index({ nazivNormalized: 1 });
+PlayroomSchema.index({ gradNormalized: 1 });
+
+PlayroomSchema.index(
+{ nazivNormalized: 1, gradNormalized: 1 },
+{ unique: true },
+);
+PlayroomSchema.index(
+{ adresaNormalized: 1, gradNormalized: 1 },
+{ unique: true },
+);
+
+module.exports = mongoose.model("Playroom", PlayroomSchema);
+
+==================================================
+FILE: TimeSlot.js
+==================================================
+const mongoose = require("mongoose");
+
+const TimeSlotSchema = new mongoose.Schema(
+{
+playroomId: {
+type: mongoose.Schema.Types.ObjectId,
+ref: "Playroom",
+required: true,
+index: true,
+},
+
+    datum: {
+      type: Date,
+      required: [true, "Datum je obavezan"],
+      index: true,
+    },
+
+    vremeOd: {
+      type: String,
+      required: [true, "Vreme od je obavezno"],
+      trim: true,
+    },
+
+    vremeDo: {
+      type: String,
+      required: [true, "Vreme do je obavezno"],
+      trim: true,
+    },
+
+    zauzeto: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    aktivno: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+
+    cena: {
+      type: Number,
+      required: [true, "Cena je obavezna"],
+      min: 0,
+    },
+
+    vanRadnogVremena: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    napomenaAdmin: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
+
+},
+{
+timestamps: true,
+},
+);
+
+// jedinstven slot
+TimeSlotSchema.index(
+{ playroomId: 1, datum: 1, vremeOd: 1, vremeDo: 1 },
+{ unique: true },
+);
+
+// brzi query za frontend
+TimeSlotSchema.index({
+playroomId: 1,
+datum: 1,
+aktivno: 1,
+vanRadnogVremena: 1,
+});
+
+// brzi query za owner dashboard
+TimeSlotSchema.index({
+playroomId: 1,
+datum: 1,
+zauzeto: 1,
+});
+
+module.exports = mongoose.model("TimeSlot", TimeSlotSchema);
