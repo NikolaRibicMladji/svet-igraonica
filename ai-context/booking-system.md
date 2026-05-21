@@ -47,11 +47,6 @@ Preparation time:
 - zaključava dodatni period
 - sprečava preklapanje rezervacija
 
-Preparation time:
-
-- mora da se računa pri proveri dostupnosti
-- mora da se vidi u busy intervalima
-
 ## Busy Intervals
 
 Busy interval uključuje:
@@ -59,24 +54,13 @@ Busy interval uključuje:
 - aktivne rezervacije
 - preparation time
 
-Busy interval:
-
-- blokira nove rezervacije
-
-## Free Intervals
-
-Korisnik mora videti:
-
-- slobodne intervale
-- zauzete intervale
-
 ## Zabranjeno
 
 Ne sme postojati:
 
 - dupla rezervacija
 - preklapanje termina
-- race condition problem
+- race condition
 - rezervacija van radnog vremena
 
 ## Booking Service
@@ -87,21 +71,10 @@ Centralna booking logika mora biti u:
 
 Ne sme postojati:
 
-- duplirana booking logika
 - booking logika u React komponentama
 - booking logika direktno u controllerima
 
-## Slot Pravila
-
-Svi termini:
-
-- moraju biti validirani
-- moraju biti normalizovani
-- moraju biti u koracima od 15 minuta
-
 ## API
-
-Glavni endpoint:
 
 GET /api/timeslots/playroom/:playroomId/available?datum=YYYY-MM-DD
 
@@ -110,27 +83,3 @@ Response:
 - workingHours
 - busyIntervals
 - freeIntervals
-
-## Production Pravila
-
-Kritične booking operacije:
-
-- koristiti transaction/session
-- imati race condition zaštitu
-- imati unique protection
-- validirati sve inpute
-
-## Frontend Pravila
-
-Frontend mora prikazivati:
-
-- busy intervale
-- free intervale
-- zaključane slotove
-- preparation time efekte
-
-UI mora biti:
-
-- responsive
-- brz
-- jasan korisniku

@@ -2,13 +2,22 @@ const { z } = require("zod");
 
 const registerSchema = z.object({
   body: z.object({
-    ime: z.string().min(2, "Ime mora imati bar 2 karaktera").trim(),
-    prezime: z.string().min(2, "Prezime mora imati bar 2 karaktera").trim(),
+    ime: z
+      .string()
+      .trim()
+      .min(2, "Ime mora imati bar 2 karaktera")
+      .max(100, "Ime je predugo"),
+
+    prezime: z
+      .string()
+      .trim()
+      .min(2, "Prezime mora imati bar 2 karaktera")
+      .max(100, "Prezime je predugo"),
     email: z
       .string()
-      .email("Neispravan format email adrese")
+      .trim()
       .toLowerCase()
-      .trim(),
+      .email("Neispravan format email adrese"),
     password: z
       .string()
       .min(8, "Lozinka mora imati najmanje 8 karaktera")
@@ -16,6 +25,7 @@ const registerSchema = z.object({
     telefon: z
       .string()
       .trim()
+      .max(30, "Telefon je predug")
       .regex(
         /^\+?[0-9]+$/,
         "Telefon može sadržati samo brojeve i opcioni + na početku",
@@ -40,10 +50,13 @@ const loginSchema = z.object({
   body: z.object({
     email: z
       .string()
-      .email("Neispravan format email adrese")
+      .trim()
       .toLowerCase()
-      .trim(),
-    password: z.string().min(1, "Lozinka je obavezna"),
+      .email("Neispravan format email adrese"),
+    password: z
+      .string()
+      .min(1, "Lozinka je obavezna")
+      .max(128, "Lozinka je preduga"),
   }),
   params: z.object({}).optional(),
   query: z.object({}).optional(),
@@ -53,9 +66,9 @@ const forgotPasswordSchema = z.object({
   body: z.object({
     email: z
       .string()
-      .email("Neispravan format email adrese")
+      .trim()
       .toLowerCase()
-      .trim(),
+      .email("Neispravan format email adrese"),
   }),
   params: z.object({}).optional(),
   query: z.object({}).optional(),
@@ -70,10 +83,14 @@ const resetPasswordSchema = z
         .max(50, "Lozinka je preduga"),
       confirmPassword: z
         .string()
-        .min(8, "Potvrda lozinke mora imati bar 8 karaktera"),
+        .min(8, "Potvrda lozinke mora imati bar 8 karaktera")
+        .max(50, "Potvrda lozinke je preduga"),
     }),
     params: z.object({
-      token: z.string().min(1, "Token je obavezan"),
+      token: z
+        .string()
+        .length(64, "Token nije validan")
+        .regex(/^[a-fA-F0-9]+$/, "Token nije validan"),
     }),
     query: z.object({}).optional(),
   })
@@ -87,8 +104,7 @@ const verifyEmailSchema = z.object({
   params: z.object({
     token: z
       .string()
-      .min(32, "Token nije validan")
-      .max(128, "Token nije validan")
+      .length(64, "Token nije validan")
       .regex(/^[a-fA-F0-9]+$/, "Token nije validan"),
   }),
   query: z.object({}).optional(),
@@ -98,9 +114,9 @@ const resendVerificationSchema = z.object({
   body: z.object({
     email: z
       .string()
-      .email("Neispravan format email adrese")
+      .trim()
       .toLowerCase()
-      .trim(),
+      .email("Neispravan format email adrese"),
   }),
   params: z.object({}).optional(),
   query: z.object({}).optional(),
@@ -109,14 +125,18 @@ const resendVerificationSchema = z.object({
 const changePasswordSchema = z
   .object({
     body: z.object({
-      currentPassword: z.string().min(1, "Trenutna lozinka je obavezna"),
+      currentPassword: z
+        .string()
+        .min(1, "Trenutna lozinka je obavezna")
+        .max(128, "Trenutna lozinka je preduga"),
       newPassword: z
         .string()
         .min(8, "Nova lozinka mora imati bar 8 karaktera")
         .max(50, "Nova lozinka je preduga"),
       confirmNewPassword: z
         .string()
-        .min(8, "Potvrda nove lozinke mora imati bar 8 karaktera"),
+        .min(8, "Potvrda nove lozinke mora imati bar 8 karaktera")
+        .max(50, "Potvrda nove lozinke je preduga"),
     }),
     params: z.object({}).optional(),
     query: z.object({}).optional(),
@@ -128,12 +148,15 @@ const changePasswordSchema = z
 
 const changeEmailSchema = z.object({
   body: z.object({
-    currentPassword: z.string().min(1, "Trenutna lozinka je obavezna"),
+    currentPassword: z
+      .string()
+      .min(1, "Trenutna lozinka je obavezna")
+      .max(128, "Trenutna lozinka je preduga"),
     newEmail: z
       .string()
-      .email("Neispravan format email adrese")
+      .trim()
       .toLowerCase()
-      .trim(),
+      .email("Neispravan format email adrese"),
   }),
   params: z.object({}).optional(),
   query: z.object({}).optional(),
@@ -141,7 +164,10 @@ const changeEmailSchema = z.object({
 
 const deleteAccountSchema = z.object({
   body: z.object({
-    currentPassword: z.string().min(1, "Trenutna lozinka je obavezna"),
+    currentPassword: z
+      .string()
+      .min(1, "Trenutna lozinka je obavezna")
+      .max(128, "Trenutna lozinka je preduga"),
   }),
   params: z.object({}).optional(),
   query: z.object({}).optional(),

@@ -1,22 +1,23 @@
-const { ZodError } = require("zod");
 const validate = (schema) => {
   return (req, res, next) => {
-    try {
-      const result = schema.safeParse({
-        body: req.body,
-        params: req.params,
-        query: req.query,
-      });
+    const result = schema.safeParse({
+      body: req.body,
+      params: req.params,
+      query: req.query,
+    });
 
-      if (!result.success) {
-        return next(new ZodError(result.error.issues));
-      }
-
-      req.validated = result.data;
-      next();
-    } catch (error) {
-      next(error);
+    if (!result.success) {
+      result.error.statusCode = 422;
+      return next(result.error);
     }
+
+    req.validated = {
+      body: result.data.body || {},
+      params: result.data.params || {},
+      query: result.data.query || {},
+    };
+
+    return next();
   };
 };
 

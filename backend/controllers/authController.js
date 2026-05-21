@@ -105,11 +105,7 @@ exports.logout = async (req, res, next) => {
   try {
     await authService.logoutUser(req.cookies.refreshToken);
 
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
-    });
+    res.clearCookie("refreshToken", authService.cookieOptions);
 
     res.status(200).json({
       success: true,
@@ -186,9 +182,11 @@ exports.forgotPassword = async (req, res, next) => {
 
     await user.save({ validateBeforeSave: false });
 
-    const frontendUrl = (
-      process.env.FRONTEND_URL || "http://localhost:3000"
-    ).replace(/\/$/, "");
+    if (!process.env.FRONTEND_URL) {
+      throw new ErrorResponse("FRONTEND_URL nije podešen.", 500);
+    }
+
+    const frontendUrl = process.env.FRONTEND_URL.replace(/\/$/, "");
 
     const resetUrl = `${frontendUrl}/reset-password/${encodeURIComponent(
       resetToken,
@@ -250,6 +248,8 @@ exports.resetPassword = async (req, res, next) => {
     await RefreshSession.deleteMany({
       userId: user._id,
     });
+
+    res.clearCookie("refreshToken", authService.cookieOptions);
 
     return res.status(200).json({
       success: true,
@@ -401,11 +401,7 @@ exports.changePassword = async (req, res, next) => {
       userId: user._id,
     });
 
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
-    });
+    res.clearCookie("refreshToken", authService.cookieOptions);
 
     return res.status(200).json({
       success: true,
@@ -486,11 +482,7 @@ exports.changeEmail = async (req, res, next) => {
       userId: user._id,
     });
 
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
-    });
+    res.clearCookie("refreshToken", authService.cookieOptions);
 
     return res.status(200).json({
       success: true,
@@ -563,11 +555,7 @@ exports.deleteAccount = async (req, res, next) => {
 
     await User.findByIdAndDelete(user._id);
 
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
-    });
+    res.clearCookie("refreshToken", authService.cookieOptions);
 
     return res.status(200).json({
       success: true,

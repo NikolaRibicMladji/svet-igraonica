@@ -138,7 +138,7 @@ UserSchema.index(
 );
 
 // Brži lookup za role-based upite
-UserSchema.index({ role: 1 });
+
 UserSchema.index({ emailVerificationToken: 1 });
 UserSchema.index({ passwordResetToken: 1 });
 

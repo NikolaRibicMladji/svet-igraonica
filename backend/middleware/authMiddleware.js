@@ -1,16 +1,16 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const ErrorResponse = require("../utils/errorResponse");
+const mongoose = require("mongoose");
 
 const protect = async (req, res, next) => {
   try {
     let token;
 
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
+    const authHeader = req.headers.authorization;
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
     }
 
     if (!token) {
@@ -23,6 +23,9 @@ const protect = async (req, res, next) => {
       decoded = jwt.verify(token, process.env.JWT_SECRET, {
         algorithms: ["HS256"],
       });
+      if (!decoded?.id || !mongoose.isValidObjectId(decoded.id)) {
+        throw new ErrorResponse("Token nije validan", 401);
+      }
     } catch (err) {
       throw new ErrorResponse("Token nije validan", 401);
     }

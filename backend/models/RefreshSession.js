@@ -6,25 +6,21 @@ const RefreshSessionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
 
     tokenHash: {
       type: String,
       required: true,
-      index: true,
     },
 
     expiresAt: {
       type: Date,
       required: true,
-      index: true,
     },
 
     revokedAt: {
       type: Date,
       default: null,
-      index: true,
     },
 
     replacedByTokenHash: {
@@ -51,8 +47,8 @@ const RefreshSessionSchema = new mongoose.Schema(
   },
 );
 
-RefreshSessionSchema.index({ userId: 1, createdAt: -1 });
 RefreshSessionSchema.index({ tokenHash: 1 }, { unique: true });
 RefreshSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+RefreshSessionSchema.index({ userId: 1, revokedAt: 1, createdAt: -1 });
 
 module.exports = mongoose.model("RefreshSession", RefreshSessionSchema);

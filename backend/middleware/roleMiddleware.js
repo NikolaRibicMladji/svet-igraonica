@@ -1,14 +1,12 @@
-const ROLES = require("../constants/roles");
+const ErrorResponse = require("../utils/errorResponse");
 
 const authorize = (...allowedRoles) => {
   return (req, res, next) => {
     if (!req.user || !allowedRoles.includes(req.user.role)) {
-      const error = new Error("Nemate dozvolu za ovu akciju");
-      error.statusCode = 403;
-      return next(error);
+      return next(new ErrorResponse("Nemate dozvolu za ovu akciju", 403));
     }
 
-    next();
+    return next();
   };
 };
 

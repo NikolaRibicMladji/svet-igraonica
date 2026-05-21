@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const generateAccessToken = require("../utils/generateToken");
 const ROLES = require("../constants/roles");
 const RefreshSession = require("../models/RefreshSession");
+const mongoose = require("mongoose");
 const { sendEmailVerificationEmail } = require("../utils/emailService");
 
 const EMAIL_VERIFICATION_EXPIRES_MINUTES = 15;
@@ -68,28 +69,27 @@ const generateRefreshToken = (user, sessionId) => {
 };
 
 const generateAuthResponse = async (user, session = null, metadata = {}) => {
-  const refreshSession = await RefreshSession.create(
+  const sessionId = new mongoose.Types.ObjectId();
+
+  const accessToken = generateAccessToken(user);
+  const refreshToken = generateRefreshToken(user, sessionId.toString());
+  const refreshTokenHash = hashToken(refreshToken);
+
+  const createdSessions = await RefreshSession.create(
     [
       {
+        _id: sessionId,
         userId: user._id,
-        tokenHash: "PENDING",
+        tokenHash: refreshTokenHash,
         expiresAt: getRefreshTokenExpiryDate(),
         userAgent: metadata.userAgent || "",
         ipAddress: metadata.ipAddress || "",
       },
     ],
     session ? { session } : {},
-  ).then((docs) => docs[0]);
-
-  const accessToken = generateAccessToken(user);
-  const refreshToken = generateRefreshToken(
-    user,
-    refreshSession._id.toString(),
   );
-  const refreshTokenHash = hashToken(refreshToken);
 
-  refreshSession.tokenHash = refreshTokenHash;
-  await refreshSession.save(session ? { session } : {});
+  const refreshSession = createdSessions[0];
 
   // 🔥 cleanup starih sesija
   await RefreshSession.updateMany(
@@ -247,16 +247,28 @@ exports.refreshUserToken = async (refreshToken, metadata = {}) => {
     throw createError("Refresh token nema validnu sesiju", 401);
   }
 
+  if (
+    !mongoose.isValidObjectId(decoded.id) ||
+    !mongoose.isValidObjectId(decoded.sid)
+  ) {
+    throw createError("Refresh token nije validan", 401);
+  }
+
   const user = await User.findById(decoded.id);
 
   if (!user) {
     throw createError("Korisnik ne postoji", 401);
   }
 
+  const incomingHash = hashToken(refreshToken);
+
   const sessionDoc = await RefreshSession.findOneAndUpdate(
     {
       _id: decoded.sid,
+      userId: decoded.id,
+      tokenHash: incomingHash,
       revokedAt: null,
+      expiresAt: { $gt: new Date() },
     },
     {
       $set: {
@@ -296,36 +308,22 @@ exports.refreshUserToken = async (refreshToken, metadata = {}) => {
     throw createError("Refresh token je istekao", 401);
   }
 
-  const incomingHash = hashToken(refreshToken);
+  const newSessionId = new mongoose.Types.ObjectId();
 
-  if (incomingHash !== sessionDoc.tokenHash) {
-    await RefreshSession.updateMany(
-      { userId: user._id, revokedAt: null },
-      { $set: { revokedAt: new Date() } },
-    );
-
-    throw createError("Sesija kompromitovana. Prijavite se ponovo.", 401);
-  }
+  const accessToken = generateAccessToken(user);
+  const newRefreshToken = generateRefreshToken(user, newSessionId.toString());
+  const newRefreshTokenHash = hashToken(newRefreshToken);
 
   const newSession = await RefreshSession.create([
     {
+      _id: newSessionId,
       userId: user._id,
-      tokenHash: "PENDING",
+      tokenHash: newRefreshTokenHash,
       expiresAt: getRefreshTokenExpiryDate(),
       userAgent: metadata.userAgent || sessionDoc.userAgent || "",
       ipAddress: metadata.ipAddress || sessionDoc.ipAddress || "",
     },
   ]).then((docs) => docs[0]);
-
-  const accessToken = generateAccessToken(user);
-
-  const newRefreshToken = generateRefreshToken(user, newSession._id.toString());
-
-  const newRefreshTokenHash = hashToken(newRefreshToken);
-
-  newSession.tokenHash = newRefreshTokenHash;
-
-  await newSession.save();
 
   // cleanup starih sesija
   await RefreshSession.updateMany(

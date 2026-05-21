@@ -12,47 +12,14 @@ const app = express();
 
 app.set("trust proxy", 1);
 
-// Security
-app.use(helmet());
-app.use(mongoSanitize());
-app.use(xss());
+// Security headers
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
+);
 
-// Rate limit
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: "Previše zahteva, pokušajte ponovo kasnije",
-  },
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 15,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message:
-      "Previše pokušaja prijave ili registracije. Pokušajte ponovo kasnije.",
-  },
-});
-
-const passwordResetLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: "Previše zahteva za reset lozinke. Pokušajte ponovo kasnije.",
-  },
-});
-
-// 🔥 REQUEST LOGGER
+// Request logger
 app.use((req, res, next) => {
   req.requestId = Math.random().toString(36).substring(2, 10);
 
@@ -74,24 +41,27 @@ app.use((req, res, next) => {
     );
   });
 
-  next();
+  return next();
 });
+
 // Core middleware
 app.use(cookieParser());
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      const allowedOrigins = [
-        process.env.FRONTEND_URL,
-        "http://localhost:3000",
-      ].filter(Boolean);
+      const allowedOrigins =
+        process.env.NODE_ENV === "production"
+          ? [process.env.FRONTEND_URL].filter(Boolean)
+          : [process.env.FRONTEND_URL, "http://localhost:3000"].filter(Boolean);
 
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      return callback(new Error("CORS nije dozvoljen"));
+      const error = new Error("CORS nije dozvoljen");
+      error.statusCode = 403;
+      return callback(error);
     },
     credentials: true,
   }),
@@ -99,6 +69,51 @@ app.use(
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+// Sanitize parsed input
+app.use(mongoSanitize());
+app.use(xss());
+
+// Rate limit helper
+const createLimiter = ({ windowMs, max, message }) =>
+  rateLimit({
+    windowMs,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req, res) => {
+      return res.status(429).json({
+        success: false,
+        message,
+        errors: [],
+      });
+    },
+  });
+
+const apiLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: "Previše zahteva, pokušajte ponovo kasnije",
+});
+
+const authLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message:
+    "Previše pokušaja prijave ili registracije. Pokušajte ponovo kasnije.",
+});
+
+const refreshLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: "Previše refresh zahteva. Pokušajte ponovo kasnije.",
+});
+
+const passwordResetLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: "Previše zahteva za reset lozinke. Pokušajte ponovo kasnije.",
+});
 
 // Static files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -108,13 +123,20 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({
     success: true,
     message: "API radi",
+    data: null,
   });
 });
 
-// API rute
+// Auth-specific limiters
+app.use("/api/auth/register", authLimiter);
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/resend-verification", authLimiter);
+app.use("/api/auth/refresh", refreshLimiter);
 app.use("/api/auth/forgot-password", passwordResetLimiter);
 app.use("/api/auth/reset-password", passwordResetLimiter);
-app.use("/api/auth", authLimiter, require("./routes/authRoutes"));
+
+// API rute
+app.use("/api/auth", require("./routes/authRoutes"));
 
 app.use("/api/playrooms", apiLimiter, require("./routes/playroomRoutes"));
 app.use("/api/timeslots", apiLimiter, require("./routes/timeSlotRoutes"));
@@ -124,23 +146,27 @@ app.use("/api/reviews", apiLimiter, require("./routes/reviewRoutes"));
 app.use("/api/upload", apiLimiter, require("./routes/uploadRoutes"));
 app.use("/api/temp-upload", apiLimiter, require("./routes/tempUploadRoutes"));
 
-// Root ruta za API servis
+// Root ruta
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
     message: `Svet igraonica API radi u ${
       process.env.NODE_ENV || "development"
     } modu!`,
+    data: null,
+  });
+});
+
+// 404
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Ruta nije pronađena",
+    errors: [],
   });
 });
 
 // Error handler mora poslednji
-app.use((req, res, next) => {
-  res.status(404).json({
-    success: false,
-    message: "Ruta nije pronađena",
-  });
-});
 app.use(errorHandler);
 
 module.exports = app;
