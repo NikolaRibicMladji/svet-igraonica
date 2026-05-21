@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const PLAYROOM_STATUS = require("../constants/playroomStatus");
 const BOOKING_STATUS = require("../constants/bookingStatus");
 const logger = require("../utils/logger");
+const ErrorResponse = require("../utils/errorResponse");
 const {
   getNowInAppTimezone,
   startOfDayInAppTimezone,
@@ -79,17 +80,11 @@ exports.createPlayroom = async (req, res, next) => {
     });
 
     if (existingOwnerPlayroom) {
-      return res.status(400).json({
-        success: false,
-        message: "Već imate registrovanu igraonicu.",
-      });
+      throw new ErrorResponse("Već imate registrovanu igraonicu.", 400);
     }
 
     if (!ownerUser?.email) {
-      return res.status(401).json({
-        success: false,
-        message: "Korisnik nije pronađen ili nema email.",
-      });
+      throw new ErrorResponse("Korisnik nije pronađen ili nema email.", 401);
     }
 
     const normalizedNaziv = normalizeText(body.naziv?.trim());
@@ -102,10 +97,10 @@ exports.createPlayroom = async (req, res, next) => {
     });
 
     if (postojiNaziv) {
-      return res.status(400).json({
-        success: false,
-        message: "Igraonica sa ovim nazivom već postoji u ovom gradu.",
-      });
+      throw new ErrorResponse(
+        "Igraonica sa ovim nazivom već postoji u ovom gradu.",
+        400,
+      );
     }
 
     const postojiAdresa = await Playroom.findOne({
@@ -114,10 +109,10 @@ exports.createPlayroom = async (req, res, next) => {
     });
 
     if (postojiAdresa) {
-      return res.status(400).json({
-        success: false,
-        message: "Igraonica sa ovom adresom već postoji u ovom gradu.",
-      });
+      throw new ErrorResponse(
+        "Igraonica sa ovom adresom već postoji u ovom gradu.",
+        400,
+      );
     }
 
     const trimmedNaziv = body.naziv?.trim() || "";
@@ -201,7 +196,14 @@ exports.getAllPlayrooms = async (req, res, next) => {
     }
 
     const [playrooms, total] = await Promise.all([
-      Playroom.find(query).select("-__v").sort(sort).skip(skip).limit(limit),
+      Playroom.find(query)
+        .select(
+          "naziv adresa grad opis kontaktTelefon kontaktEmail radnoVreme rezimRezervacije trajanjeTermina vremePripremeTermina kapacitet cene paketi dodatneUsluge besplatnePogodnosti profilnaSlika slike videoGalerija rating reviewCount",
+        )
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
       Playroom.countDocuments(query),
     ]);
 
@@ -226,10 +228,7 @@ exports.getPlayroomById = async (req, res, next) => {
     const playroom = await Playroom.findById(req.params.id);
 
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
     const isAdmin = req.user?.role === "admin";
@@ -240,10 +239,7 @@ exports.getPlayroomById = async (req, res, next) => {
       !isAdmin &&
       !isOwner
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Ova igraonica nije javno dostupna",
-      });
+      throw new ErrorResponse("Ova igraonica nije javno dostupna", 403);
     }
 
     const data = playroom.toObject();
@@ -303,20 +299,14 @@ exports.updatePlayroom = async (req, res, next) => {
     let playroom = await Playroom.findById(req.params.id);
 
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate pravo da menjate ovu igraonicu",
-      });
+      throw new ErrorResponse("Nemate pravo da menjate ovu igraonicu", 403);
     }
 
     const oldRadnoVreme = normalizeRadnoVreme(playroom.radnoVreme);
@@ -325,7 +315,10 @@ exports.updatePlayroom = async (req, res, next) => {
       "radnoVreme",
     );
     const newRadnoVreme = hasRadnoVremeUpdate
-      ? normalizeRadnoVreme(body.radnoVreme)
+      ? normalizeRadnoVreme({
+          ...oldRadnoVreme,
+          ...body.radnoVreme,
+        })
       : oldRadnoVreme;
 
     const oldRezimRezervacije = playroom.rezimRezervacije || "fleksibilno";
@@ -407,10 +400,7 @@ exports.updatePlayroom = async (req, res, next) => {
       });
 
       if (existingPlayroom) {
-        return res.status(400).json({
-          success: false,
-          message: "Igraonica sa ovim imenom već postoji",
-        });
+        throw new ErrorResponse("Igraonica sa ovim imenom već postoji", 400);
       }
     }
 
@@ -423,10 +413,10 @@ exports.updatePlayroom = async (req, res, next) => {
       });
 
       if (existingAddress) {
-        return res.status(400).json({
-          success: false,
-          message: "Igraonica sa ovom adresom već postoji u ovom gradu.",
-        });
+        throw new ErrorResponse(
+          "Igraonica sa ovom adresom već postoji u ovom gradu.",
+          400,
+        );
       }
     }
 
@@ -449,10 +439,10 @@ exports.updatePlayroom = async (req, res, next) => {
       syncResult = await syncTimeSlotsWithWorkingHours(playroom._id);
 
       if (!syncResult.success) {
-        return res.status(400).json({
-          success: false,
-          message: syncResult.message || "Greška pri sinhronizaciji termina",
-        });
+        throw new ErrorResponse(
+          syncResult.message || "Greška pri sinhronizaciji termina",
+          400,
+        );
       }
     }
 
@@ -475,27 +465,21 @@ exports.deletePlayroom = async (req, res, next) => {
     const playroom = await Playroom.findById(req.params.id);
 
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate pravo da obrišete ovu igraonicu",
-      });
+      throw new ErrorResponse("Nemate pravo da obrišete ovu igraonicu", 403);
     }
 
     if (playroom.status !== PLAYROOM_STATUS.DEAKTIVIRAN) {
-      return res.status(400).json({
-        success: false,
-        message: "Prvo morate deaktivirati igraonicu pre brisanja.",
-      });
+      throw new ErrorResponse(
+        "Prvo morate deaktivirati igraonicu pre brisanja.",
+        400,
+      );
     }
 
     const now = getNowInAppTimezone();
@@ -510,10 +494,10 @@ exports.deletePlayroom = async (req, res, next) => {
     });
 
     if (activeBookings > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Ne možeš obrisati igraonicu dok postoje aktivne rezervacije",
-      });
+      throw new ErrorResponse(
+        "Ne možeš obrisati igraonicu dok postoje aktivne rezervacije",
+        400,
+      );
     }
 
     await TimeSlot.deleteMany({ playroomId: playroom._id });
@@ -536,29 +520,20 @@ exports.deactivatePlayroom = async (req, res, next) => {
     const playroom = await Playroom.findById(req.params.id);
 
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate pravo za ovu akciju",
-      });
+      throw new ErrorResponse("Nemate pravo za ovu akciju", 403);
     }
 
     const user = await User.findById(req.user.id).select("+password");
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "Korisnik nije pronađen",
-      });
+      throw new ErrorResponse("Korisnik nije pronađen", 404);
     }
 
     const passwordMatch = await bcrypt.compare(
@@ -567,28 +542,36 @@ exports.deactivatePlayroom = async (req, res, next) => {
     );
 
     if (!passwordMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Lozinka nije tačna",
-      });
+      throw new ErrorResponse("Lozinka nije tačna", 401);
     }
 
     if (playroom.status === PLAYROOM_STATUS.DEAKTIVIRAN) {
-      return res.status(400).json({
-        success: false,
-        message: "Igraonica je već deaktivirana.",
-      });
+      throw new ErrorResponse("Igraonica je već deaktivirana.", 400);
+    }
+
+    const now = getNowInAppTimezone();
+    const startOfToday = startOfDayInAppTimezone(now);
+
+    const activeBookings = await Booking.countDocuments({
+      playroomId: playroom._id,
+      status: {
+        $in: [BOOKING_STATUS.CEKANJE, BOOKING_STATUS.POTVRDJENO],
+      },
+      datum: { $gte: startOfToday },
+    });
+
+    if (activeBookings > 0) {
+      throw new ErrorResponse(
+        "Ne možete deaktivirati igraonicu dok postoje aktivne buduće rezervacije.",
+        400,
+      );
     }
 
     playroom.status = PLAYROOM_STATUS.DEAKTIVIRAN;
     playroom.verifikovan = false;
-    playroom.deactivatedAt = new Date();
+    playroom.deactivatedAt = getNowInAppTimezone();
 
     await playroom.save();
-
-    // deaktiviraj buduće slobodne slotove
-    const now = getNowInAppTimezone();
-    const startOfToday = startOfDayInAppTimezone(now);
 
     await TimeSlot.updateMany(
       {
@@ -639,20 +622,17 @@ exports.regenerateTimeSlots = async (req, res, next) => {
     const playroom = await Playroom.findById(req.params.id);
 
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate pravo da regenerišete termine za ovu igraonicu",
-      });
+      throw new ErrorResponse(
+        "Nemate pravo da regenerišete termine za ovu igraonicu",
+        403,
+      );
     }
 
     const result = await regenerateSlotsForPlayroom(req.params.id);
@@ -680,20 +660,14 @@ exports.getOwnerStats = async (req, res, next) => {
 
     const playroom = await Playroom.findById(playroomId);
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate dozvolu za ovaj pristup",
-      });
+      throw new ErrorResponse("Nemate dozvolu za ovaj pristup", 403);
     }
 
     const stats = await Booking.aggregate([

@@ -10,6 +10,7 @@ const objectIdSchema = z.string().regex(/^[a-f\d]{24}$/i, "ID nije validan");
 const phoneSchema = z
   .string()
   .trim()
+  .max(30, "Telefon je predug")
   .regex(
     PHONE_REGEX,
     "Telefon može sadržati samo brojeve i opcioni + na početku",
@@ -27,7 +28,7 @@ const priceItemSchema = z.object({
   opis: z.string().trim().max(500).optional().default(""),
 });
 
-const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const TIME_REGEX = /^([01]\d|2[0-3]):(00|15|30|45)$/;
 
 const workingDaySchema = z
   .object({
@@ -243,8 +244,7 @@ const deactivatePlayroomSchema = z.object({
   body: z.object({
     password: z
       .string()
-      .trim()
-      .min(8, "Lozinka je obavezna")
+      .min(1, "Lozinka je obavezna")
       .max(128, "Lozinka je predugačka"),
   }),
 
@@ -255,8 +255,17 @@ const deactivatePlayroomSchema = z.object({
   query: z.object({}).optional(),
 });
 
+const playroomIdParamSchema = z.object({
+  body: z.object({}).optional(),
+  params: z.object({
+    id: objectIdSchema,
+  }),
+  query: z.object({}).optional(),
+});
+
 module.exports = {
   createPlayroomSchema,
   updatePlayroomSchema,
   deactivatePlayroomSchema,
+  playroomIdParamSchema,
 };

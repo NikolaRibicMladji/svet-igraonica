@@ -1,44 +1,45 @@
+const mongoose = require("mongoose");
 const Playroom = require("../models/Playroom");
+const ROLES = require("../constants/roles");
+const ErrorResponse = require("../utils/errorResponse");
 
 const checkOwner = async (req, res, next) => {
   try {
-    const playroomId = req.params.playroomId || req.params.id;
+    const playroomId =
+      req.validated?.params?.playroomId ||
+      req.validated?.params?.id ||
+      req.params.playroomId ||
+      req.params.id;
 
     if (!playroomId) {
-      return res.status(400).json({
-        success: false,
-        message: "ID igraonice nije prosleđen",
-      });
+      throw new ErrorResponse("ID igraonice nije prosleđen", 400);
     }
 
-    const playroom = await Playroom.findById(playroomId);
+    if (!mongoose.isValidObjectId(playroomId)) {
+      throw new ErrorResponse("ID igraonice nije validan", 400);
+    }
+
+    const playroom = await Playroom.findById(playroomId)
+      .select("_id vlasnikId")
+      .lean();
 
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
-    // admin može sve
-    if (req.user.role === "admin") {
+    if (req.user?.role === ROLES.ADMIN) {
       req.playroom = playroom;
       return next();
     }
 
-    // vlasnik može samo svoju
     if (playroom.vlasnikId.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate dozvolu za ovu igraonicu",
-      });
+      throw new ErrorResponse("Nemate dozvolu za ovu igraonicu", 403);
     }
 
     req.playroom = playroom;
-
-    next();
+    return next();
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 

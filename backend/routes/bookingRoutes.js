@@ -26,7 +26,13 @@ const {
 router.post("/guest", validate(createGuestBookingSchema), createGuestBooking);
 
 // ulogovan roditelj: standardna rezervacija
-router.post("/", protect, validate(createBookingSchema), createBooking);
+router.post(
+  "/",
+  protect,
+  authorize(ROLES.RODITELJ),
+  validate(createBookingSchema),
+  createBooking,
+);
 
 // sve ispod traži login
 router.use(protect);

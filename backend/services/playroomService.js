@@ -1,5 +1,8 @@
 const Playroom = require("../models/Playroom");
 const PLAYROOM_STATUS = require("../constants/playroomStatus");
+const mongoose = require("mongoose");
+const ErrorResponse = require("../utils/errorResponse");
+const logger = require("../utils/logger");
 const {
   generateTimeSlotsForPlayroom,
   syncTimeSlotsWithWorkingHours,
@@ -17,10 +20,9 @@ const createPlayroomWithSlots = async (playroomData) => {
       slotError: null,
     };
   } catch (error) {
-    console.error(
-      "Greška pri generisanju termina nakon kreiranja igraonice:",
-      error,
-    );
+    logger.error("Greška pri generisanju termina nakon kreiranja igraonice:", {
+      message: error.message,
+    });
 
     return {
       playroom,
@@ -31,12 +33,14 @@ const createPlayroomWithSlots = async (playroomData) => {
 };
 
 const verifyPlayroomAndGenerateSlots = async (playroomId) => {
+  if (!mongoose.isValidObjectId(playroomId)) {
+    throw new ErrorResponse("ID igraonice nije validan", 400);
+  }
+
   const playroom = await Playroom.findById(playroomId);
 
   if (!playroom) {
-    const error = new Error("Igraonica nije pronađena");
-    error.statusCode = 404;
-    throw error;
+    throw new ErrorResponse("Igraonica nije pronađena", 404);
   }
 
   if (playroom.verifikovan && playroom.status === PLAYROOM_STATUS.AKTIVAN) {
@@ -63,22 +67,23 @@ const verifyPlayroomAndGenerateSlots = async (playroomId) => {
 };
 
 const regenerateSlotsForPlayroom = async (playroomId) => {
+  if (!mongoose.isValidObjectId(playroomId)) {
+    throw new ErrorResponse("ID igraonice nije validan", 400);
+  }
+
   const playroom = await Playroom.findById(playroomId);
 
   if (!playroom) {
-    const error = new Error("Igraonica nije pronađena");
-    error.statusCode = 404;
-    throw error;
+    throw new ErrorResponse("Igraonica nije pronađena", 404);
   }
 
   const result = await syncTimeSlotsWithWorkingHours(playroom._id);
 
   if (!result.success) {
-    const error = new Error(
+    throw new ErrorResponse(
       result.message || "Greška pri sinhronizaciji termina",
+      400,
     );
-    error.statusCode = 400;
-    throw error;
   }
 
   return result;

@@ -2,17 +2,47 @@ const mongoose = require("mongoose");
 const PLAYROOM_STATUS = require("../constants/playroomStatus");
 const { normalizeText } = require("../utils/normalizeText");
 
+const TIME_REGEX = /^([01]\d|2[0-3]):(00|15|30|45)$/;
+
+const timeToMinutes = (time) => {
+  const [hour, minute] = String(time).split(":").map(Number);
+  return hour * 60 + minute;
+};
+
 const dnevnoRadnoVremeSchema = new mongoose.Schema(
   {
     od: {
       type: String,
       default: "",
       trim: true,
+      validate: {
+        validator: function (value) {
+          if (!value) return true;
+          return TIME_REGEX.test(value);
+        },
+        message: "Radno vreme od mora biti u formatu HH:mm i na 00/15/30/45",
+      },
     },
     do: {
       type: String,
       default: "",
       trim: true,
+      validate: [
+        {
+          validator: function (value) {
+            if (!value) return true;
+            return TIME_REGEX.test(value);
+          },
+          message: "Radno vreme do mora biti u formatu HH:mm i na 00/15/30/45",
+        },
+        {
+          validator: function (value) {
+            if (!this.od || !value) return true;
+            return timeToMinutes(value) > timeToMinutes(this.od);
+          },
+          message: "Radno vreme do mora biti posle vremena od",
+        },
+      ],
     },
     radi: {
       type: Boolean,
@@ -407,6 +437,48 @@ PlayroomSchema.pre("save", function (next) {
     this.adresaNormalized = normalizeText(this.adresa);
   }
 
+  next();
+});
+
+const applyNormalizedFieldsToUpdate = (update = {}) => {
+  const $set = update.$set || {};
+
+  const grad = Object.prototype.hasOwnProperty.call($set, "grad")
+    ? $set.grad
+    : update.grad;
+
+  const naziv = Object.prototype.hasOwnProperty.call($set, "naziv")
+    ? $set.naziv
+    : update.naziv;
+
+  const adresa = Object.prototype.hasOwnProperty.call($set, "adresa")
+    ? $set.adresa
+    : update.adresa;
+
+  if (typeof grad === "string") {
+    $set.gradNormalized = normalizeText(grad);
+  }
+
+  if (typeof naziv === "string") {
+    $set.nazivNormalized = normalizeText(naziv);
+  }
+
+  if (typeof adresa === "string") {
+    $set.adresaNormalized = normalizeText(adresa);
+  }
+
+  update.$set = $set;
+
+  return update;
+};
+
+PlayroomSchema.pre("findOneAndUpdate", function (next) {
+  this.setUpdate(applyNormalizedFieldsToUpdate(this.getUpdate()));
+  next();
+});
+
+PlayroomSchema.pre("updateOne", function (next) {
+  this.setUpdate(applyNormalizedFieldsToUpdate(this.getUpdate()));
   next();
 });
 
