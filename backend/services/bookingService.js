@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 const Playroom = require("../models/Playroom");
 const { queueBookingEmails } = require("./emailQueueService");
 const logger = require("../utils/logger");
+const BookingDayLock = require("../models/BookingDayLock");
 
 const {
   APP_TIMEZONE,
@@ -355,6 +356,25 @@ const reserveSlot = async ({
       throw new ErrorResponse("Nevalidan slot ID", 400);
     }
 
+    const slotForLock = await TimeSlot.findOne({
+      _id: slotId,
+      zauzeto: false,
+      aktivno: true,
+      vanRadnogVremena: false,
+    })
+      .select("playroomId datum")
+      .session(session);
+
+    if (!slotForLock) {
+      throw new ErrorResponse("Termin je već zauzet ili ne postoji", 400);
+    }
+
+    await lockBookingDay({
+      playroomId: slotForLock.playroomId,
+      datum: slotForLock.datum,
+      session,
+    });
+
     const slot = await TimeSlot.findOneAndUpdate(
       {
         _id: slotId,
@@ -374,7 +394,7 @@ const reserveSlot = async ({
     );
 
     if (!slot) {
-      throw new ErrorResponse("Termin je već zauzet ili ne postoji", 400);
+      throw new ErrorResponse("Termin je upravo zauzet, pokušaj ponovo", 409);
     }
 
     const slotStart = buildDateTime(slot.datum, slot.vremeOd);
@@ -384,6 +404,10 @@ const reserveSlot = async ({
     }
 
     const playroom = await Playroom.findById(slot.playroomId).session(session);
+
+    if (!playroom) {
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
+    }
 
     const preparationMinutes = getPreparationMinutes(playroom);
 
@@ -401,10 +425,6 @@ const reserveSlot = async ({
         "Termin nije dostupan zbog vremena za pripremu između rezervacija",
         400,
       );
-    }
-
-    if (!playroom) {
-      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
     const brojDece = Number(payload.brojDece) || 0;
@@ -611,6 +631,29 @@ const reserveSlot = async ({
   }
 };
 
+const lockBookingDay = async ({ playroomId, datum, session }) => {
+  const day = startOfDayInAppTimezone(datum);
+
+  await BookingDayLock.findOneAndUpdate(
+    {
+      playroomId,
+      datum: day,
+    },
+    {
+      $inc: { version: 1 },
+      $setOnInsert: {
+        playroomId,
+        datum: day,
+      },
+    },
+    {
+      upsert: true,
+      new: true,
+      session,
+    },
+  );
+};
+
 const reserveCustomInterval = async ({
   playroomId,
   datum,
@@ -644,6 +687,12 @@ const reserveCustomInterval = async ({
     }
 
     const bookingDate = parseValidDate(datum);
+
+    await lockBookingDay({
+      playroomId,
+      datum: bookingDate,
+      session,
+    });
 
     if (!vremeOd || !vremeDo) {
       throw new ErrorResponse("Vreme od/do je obavezno", 400);

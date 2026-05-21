@@ -10,6 +10,7 @@ const bookingService = require("../services/bookingService");
 const authService = require("../services/authService");
 const mongoose = require("mongoose");
 const logger = require("../utils/logger");
+const ErrorResponse = require("../utils/errorResponse");
 const { queueBookingEmails } = require("../services/emailQueueService");
 
 // @desc    Kreiraj novu rezervaciju (ulogovan korisnik)
@@ -166,11 +167,9 @@ exports.createGuestBooking = async (req, res, next) => {
 // @access  Private (roditelj)
 exports.getMyBookings = async (req, res, next) => {
   try {
-    const page = Math.max(Number(req.query.page) || 1, 1);
-    const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 50);
-    const skip = (page - 1) * limit;
-
-    const { status, datumOd, datumDo } = req.query;
+    const { page, limit, status, datumOd, datumDo } = req.validated.query;
+    const safeLimit = Math.min(limit, 50);
+    const skip = (page - 1) * safeLimit;
 
     const filter = {
       roditeljId: req.user.id,
@@ -202,7 +201,7 @@ exports.getMyBookings = async (req, res, next) => {
         .populate("timeSlotId", "datum vremeOd vremeDo")
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(limit)
+        .limit(safeLimit)
         .lean(),
 
       Booking.countDocuments(filter),
@@ -214,8 +213,8 @@ exports.getMyBookings = async (req, res, next) => {
       pagination: {
         total,
         page,
-        limit,
-        pages: Math.ceil(total / limit),
+        limit: safeLimit,
+        pages: Math.ceil(total / safeLimit),
       },
       data: bookings,
     });
@@ -229,59 +228,53 @@ exports.getMyBookings = async (req, res, next) => {
 // @access  Private (vlasnik)
 exports.getOwnerBookings = async (req, res, next) => {
   try {
-    const page = Math.max(Number(req.query.page) || 1, 1);
-    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+    const { page, limit, status, datumOd, datumDo, playroomId } =
+      req.validated.query;
+
     const skip = (page - 1) * limit;
+    const isAdmin = req.user.role === ROLES.ADMIN;
 
-    const { status, datumOd, datumDo, playroomId } = req.query;
+    const filter = {};
 
-    const playrooms = await Playroom.find({ vlasnikId: req.user.id })
-      .select("_id")
-      .lean();
+    if (isAdmin) {
+      if (playroomId) {
+        filter.playroomId = playroomId;
+      }
+    } else {
+      const playrooms = await Playroom.find({ vlasnikId: req.user.id })
+        .select("_id")
+        .lean();
 
-    const ownerPlayroomIds = playrooms.map((p) => p._id);
+      const ownerPlayroomIds = playrooms.map((p) => p._id);
 
-    if (ownerPlayroomIds.length === 0) {
-      return res.status(200).json({
-        success: true,
-        count: 0,
-        pagination: {
-          total: 0,
-          page,
-          limit,
-          pages: 0,
-        },
-        data: [],
-      });
-    }
-
-    let allowedPlayroomIds = ownerPlayroomIds;
-
-    if (playroomId) {
-      if (!mongoose.Types.ObjectId.isValid(playroomId)) {
-        return res.status(400).json({
-          success: false,
-          message: "Nevalidan ID igraonice",
+      if (ownerPlayroomIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          count: 0,
+          pagination: {
+            total: 0,
+            page,
+            limit,
+            pages: 0,
+          },
+          data: [],
         });
       }
 
-      const ownsPlayroom = ownerPlayroomIds.some(
-        (id) => id.toString() === playroomId,
-      );
+      if (playroomId) {
+        const ownsPlayroom = ownerPlayroomIds.some(
+          (id) => id.toString() === playroomId,
+        );
 
-      if (!ownsPlayroom) {
-        return res.status(403).json({
-          success: false,
-          message: "Nemate pristup ovoj igraonici",
-        });
+        if (!ownsPlayroom) {
+          throw new ErrorResponse("Nemate pristup ovoj igraonici", 403);
+        }
+
+        filter.playroomId = playroomId;
+      } else {
+        filter.playroomId = { $in: ownerPlayroomIds };
       }
-
-      allowedPlayroomIds = [playroomId];
     }
-
-    const filter = {
-      playroomId: { $in: allowedPlayroomIds },
-    };
 
     if (status) {
       filter.status = status;
@@ -316,7 +309,7 @@ exports.getOwnerBookings = async (req, res, next) => {
       Booking.countDocuments(filter),
     ]);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: bookings.length,
       pagination: {
@@ -331,6 +324,7 @@ exports.getOwnerBookings = async (req, res, next) => {
     next(error);
   }
 };
+
 // @desc    Otkaži rezervaciju
 // @route   PUT /api/bookings/:id/cancel
 // @access  Private (roditelj ili vlasnik ili admin)
@@ -369,10 +363,7 @@ exports.getBookingById = async (req, res, next) => {
       .lean();
 
     if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "Rezervacija nije pronađena",
-      });
+      throw new ErrorResponse("Rezervacija nije pronađena", 404);
     }
 
     const isAdmin = req.user.role === ROLES.ADMIN;
@@ -385,10 +376,7 @@ exports.getBookingById = async (req, res, next) => {
       booking.playroomId.vlasnikId.toString() === req.user.id;
 
     if (!isOwnerOfBooking && !isPlayroomOwner && !isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate pravo da vidite ovu rezervaciju",
-      });
+      throw new ErrorResponse("Nemate pravo da vidite ovu rezervaciju", 403);
     }
 
     res.status(200).json({

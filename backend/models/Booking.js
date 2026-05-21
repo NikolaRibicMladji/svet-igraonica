@@ -225,12 +225,14 @@ const BookingSchema = new mongoose.Schema(
 // Sprečava duple aktivne rezervacije za isti slot.
 // Otkazana rezervacija ne blokira novi booking.
 BookingSchema.index(
-  { timeSlotId: 1, status: 1 },
+  { timeSlotId: 1 },
   {
     unique: true,
     partialFilterExpression: {
       timeSlotId: { $type: "objectId" },
-      status: { $ne: BOOKING_STATUS.OTKAZANO },
+      status: {
+        $in: [BOOKING_STATUS.CEKANJE, BOOKING_STATUS.POTVRDJENO],
+      },
     },
   },
 );
