@@ -1,6 +1,7 @@
 const TimeSlot = require("../models/TimeSlot");
 const Booking = require("../models/Booking");
 const BOOKING_STATUS = require("../constants/bookingStatus");
+const ErrorResponse = require("../utils/errorResponse");
 
 const findDuplicateSlot = async ({ playroomId, datum, vremeOd, vremeDo }) => {
   return TimeSlot.findOne({
@@ -8,36 +9,50 @@ const findDuplicateSlot = async ({ playroomId, datum, vremeOd, vremeDo }) => {
     datum,
     vremeOd,
     vremeDo,
-  });
+  }).lean();
 };
 
 const hasActiveBookingForSlot = async (timeSlotId) => {
-  const existingBooking = await Booking.findOne({
+  const existingBooking = await Booking.exists({
     timeSlotId,
     status: { $ne: BOOKING_STATUS.OTKAZANO },
   });
 
-  return !!existingBooking;
+  return Boolean(existingBooking);
 };
 
 const deactivateSlotIfAllowed = async (timeSlot) => {
   const hasActiveBooking = await hasActiveBookingForSlot(timeSlot._id);
 
   if (hasActiveBooking || timeSlot.zauzeto) {
-    const error = new Error(
+    throw new ErrorResponse(
       "Ne možeš deaktivirati termin koji ima rezervaciju ili je zauzet",
+      400,
     );
-    error.statusCode = 400;
-    throw error;
   }
 
-  const updated = await TimeSlot.findByIdAndUpdate(
-    timeSlot._id,
+  const updated = await TimeSlot.findOneAndUpdate(
     {
-      $set: { aktivno: false },
+      _id: timeSlot._id,
+      zauzeto: false,
     },
-    { new: true },
+    {
+      $set: {
+        aktivno: false,
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
   );
+
+  if (!updated) {
+    throw new ErrorResponse(
+      "Termin je u međuvremenu zauzet i ne može biti deaktiviran",
+      409,
+    );
+  }
 
   return updated;
 };
@@ -46,14 +61,23 @@ const deleteSlotIfAllowed = async (timeSlot) => {
   const hasActiveBooking = await hasActiveBookingForSlot(timeSlot._id);
 
   if (hasActiveBooking || timeSlot.zauzeto) {
-    const error = new Error(
+    throw new ErrorResponse(
       "Ne možeš obrisati termin koji ima rezervaciju ili je zauzet",
+      400,
     );
-    error.statusCode = 400;
-    throw error;
   }
 
-  await TimeSlot.findByIdAndDelete(timeSlot._id);
+  const deleted = await TimeSlot.findOneAndDelete({
+    _id: timeSlot._id,
+    zauzeto: false,
+  });
+
+  if (!deleted) {
+    throw new ErrorResponse(
+      "Termin je u međuvremenu zauzet i ne može biti obrisan",
+      409,
+    );
+  }
 
   return true;
 };

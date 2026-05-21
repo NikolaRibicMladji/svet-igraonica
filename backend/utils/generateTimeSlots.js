@@ -1,41 +1,90 @@
+const mongoose = require("mongoose");
 const TimeSlot = require("../models/TimeSlot");
 const Playroom = require("../models/Playroom");
 const PLAYROOM_STATUS = require("../constants/playroomStatus");
+const logger = require("../utils/logger");
+
+const {
+  APP_TIMEZONE,
+  getNowInAppTimezone,
+  startOfDayInAppTimezone,
+  endOfDayInAppTimezone,
+  parseDateOnlyInAppTimezone,
+} = require("../utils/dateTime");
+
+const { formatInTimeZone } = require("date-fns-tz");
 
 const DAY_MAP = {
-  monday: "ponedeljak",
-  tuesday: "utorak",
-  wednesday: "sreda",
-  thursday: "cetvrtak",
-  friday: "petak",
-  saturday: "subota",
-  sunday: "nedelja",
+  1: "ponedeljak",
+  2: "utorak",
+  3: "sreda",
+  4: "cetvrtak",
+  5: "petak",
+  6: "subota",
+  7: "nedelja",
 };
 
-const DEFAULT_CAPACITY = 20;
-const DEFAULT_PRICE = 800;
+const DEFAULT_PRICE = 0;
 
 const getStartOfDay = (date) => {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  return startOfDayInAppTimezone(date);
 };
 
 const getEndOfDay = (date) => {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
+  return endOfDayInAppTimezone(date);
 };
 
 const getDateKey = (date) => {
-  return getStartOfDay(date).toISOString().split("T")[0];
+  return formatInTimeZone(date, APP_TIMEZONE, "yyyy-MM-dd");
+};
+
+const parseDateInput = (datum) => {
+  if (datum instanceof Date) {
+    return getStartOfDay(datum);
+  }
+
+  if (typeof datum === "string" && /^\d{4}-\d{2}-\d{2}$/.test(datum)) {
+    return getStartOfDay(parseDateOnlyInAppTimezone(datum));
+  }
+
+  const parsed = new Date(datum);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return getStartOfDay(parsed);
+};
+
+const addDays = (date, daysToAdd) => {
+  const d = new Date(date);
+  d.setDate(d.getDate() + daysToAdd);
+  return d;
+};
+
+const normalizeDays = (days) => {
+  const value = Number(days);
+
+  if (!Number.isFinite(value) || value < 1) {
+    return 30;
+  }
+
+  return Math.min(Math.floor(value), 90);
 };
 
 const parseTimeToMinutes = (time = "") => {
+  if (!/^\d{2}:\d{2}$/.test(String(time))) {
+    return null;
+  }
+
   const [hours, minutes] = String(time)
     .split(":")
     .map((v) => parseInt(v, 10));
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  if (hours < 0 || hours > 23) return null;
+  if (![0, 15, 30, 45].includes(minutes)) return null;
+
   return hours * 60 + minutes;
 };
 
@@ -58,11 +107,8 @@ const getSlotSettings = (playroom) => {
 };
 
 const getWorkingHoursForDate = (playroom, date) => {
-  const weekday = date
-    .toLocaleDateString("en-US", { weekday: "long" })
-    .toLowerCase();
-
-  const dayKey = DAY_MAP[weekday];
+  const isoDay = formatInTimeZone(date, APP_TIMEZONE, "i");
+  const dayKey = DAY_MAP[isoDay];
   const radnoVreme = playroom.radnoVreme?.[dayKey];
 
   if (!radnoVreme) {
@@ -127,8 +173,7 @@ const createSlotPayload = (playroom, date, vremeOd, vremeDo) => ({
   datum: getStartOfDay(date),
   vremeOd,
   vremeDo,
-
-  cena: playroom.osnovnaCena ?? DEFAULT_PRICE,
+  cena: DEFAULT_PRICE,
   zauzeto: false,
   aktivno: true,
   vanRadnogVremena: false,
@@ -140,7 +185,17 @@ const createSlotPayload = (playroom, date, vremeOd, vremeDo) => ({
  */
 const generateTimeSlotsForPlayroom = async (playroomId, days = 30) => {
   try {
-    const playroom = await Playroom.findById(playroomId);
+    if (!mongoose.isValidObjectId(playroomId)) {
+      return {
+        createdCount: 0,
+        existingCount: 0,
+        skippedDays: 0,
+        error: "ID igraonice nije validan",
+      };
+    }
+
+    const playroom = await Playroom.findById(playroomId).lean();
+
     if (!playroom) {
       return {
         createdCount: 0,
@@ -159,21 +214,16 @@ const generateTimeSlotsForPlayroom = async (playroomId, days = 30) => {
       };
     }
 
-    const startDate = getStartOfDay(new Date());
-    const endDate = getEndOfDay(
-      new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000),
-    );
+    const numberOfDays = normalizeDays(days);
+    const startDate = getStartOfDay(getNowInAppTimezone());
 
     let createdCount = 0;
     let existingCount = 0;
     let skippedDays = 0;
 
-    for (
-      let d = new Date(startDate);
-      d <= endDate;
-      d.setDate(d.getDate() + 1)
-    ) {
-      const currentDate = new Date(d);
+    for (let offset = 0; offset < numberOfDays; offset++) {
+      const currentDate = getStartOfDay(addDays(startDate, offset));
+
       const expectedSlots = buildExpectedSlotsForDate(playroom, currentDate);
 
       if (expectedSlots.length === 0) {
@@ -187,7 +237,9 @@ const generateTimeSlotsForPlayroom = async (playroomId, days = 30) => {
       const existingSlots = await TimeSlot.find({
         playroomId: playroom._id,
         datum: { $gte: startOfDay, $lte: endOfDay },
-      }).select("_id vremeOd vremeDo");
+      })
+        .select("_id vremeOd vremeDo")
+        .lean();
 
       const existingKeys = new Set(
         existingSlots.map(
@@ -228,7 +280,9 @@ const generateTimeSlotsForPlayroom = async (playroomId, days = 30) => {
       skippedDays,
     };
   } catch (error) {
-    console.error("Greška pri generisanju termina:", error);
+    logger.error("Greška pri generisanju termina:", {
+      message: error.message,
+    });
     return {
       createdCount: 0,
       existingCount: 0,
@@ -246,7 +300,9 @@ const generateAllTimeSlots = async (days = 30) => {
     const playrooms = await Playroom.find({
       verifikovan: true,
       status: PLAYROOM_STATUS.AKTIVAN,
-    });
+    })
+      .select("_id naziv")
+      .lean();
 
     if (playrooms.length === 0) {
       return { totalCreated: 0, totalExisting: 0, results: [] };
@@ -271,7 +327,9 @@ const generateAllTimeSlots = async (days = 30) => {
 
     return { totalCreated, totalExisting, results };
   } catch (error) {
-    console.error("Greška pri generisanju termina za sve igraonice:", error);
+    logger.error("Greška pri generisanju termina za sve igraonice:", {
+      message: error.message,
+    });
     return {
       totalCreated: 0,
       totalExisting: 0,
@@ -286,6 +344,10 @@ const generateAllTimeSlots = async (days = 30) => {
  */
 const deleteAllTimeSlotsForPlayroom = async (playroomId) => {
   try {
+    if (!mongoose.isValidObjectId(playroomId)) {
+      return { error: "ID igraonice nije validan" };
+    }
+
     const result = await TimeSlot.deleteMany({
       playroomId,
       zauzeto: false,
@@ -294,7 +356,9 @@ const deleteAllTimeSlotsForPlayroom = async (playroomId) => {
 
     return { deletedCount: result.deletedCount };
   } catch (error) {
-    console.error("Greška pri brisanju termina:", error);
+    logger.error("Greška pri brisanju termina:", {
+      message: error.message,
+    });
     return { error: error.message };
   }
 };
@@ -307,7 +371,9 @@ const resetTimeSlotsForPlayroom = async (playroomId, days = 30) => {
     await deleteAllTimeSlotsForPlayroom(playroomId);
     return await generateTimeSlotsForPlayroom(playroomId, days);
   } catch (error) {
-    console.error("Greška pri resetovanju termina:", error);
+    logger.error("Greška pri resetovanju termina:", {
+      message: error.message,
+    });
     return { error: error.message };
   }
 };
@@ -317,7 +383,16 @@ const resetTimeSlotsForPlayroom = async (playroomId, days = 30) => {
  */
 const generateTimeSlotsForDay = async (playroomId, datum) => {
   try {
-    const playroom = await Playroom.findById(playroomId);
+    if (!mongoose.isValidObjectId(playroomId)) {
+      return {
+        createdCount: 0,
+        existingCount: 0,
+        error: "ID igraonice nije validan",
+      };
+    }
+
+    const playroom = await Playroom.findById(playroomId).lean();
+
     if (!playroom) {
       return {
         createdCount: 0,
@@ -326,7 +401,15 @@ const generateTimeSlotsForDay = async (playroomId, datum) => {
       };
     }
 
-    const targetDate = getStartOfDay(new Date(datum));
+    const targetDate = parseDateInput(datum);
+
+    if (!targetDate) {
+      return {
+        createdCount: 0,
+        existingCount: 0,
+        error: "Datum nije validan",
+      };
+    }
     const expectedSlots = buildExpectedSlotsForDate(playroom, targetDate);
 
     if (expectedSlots.length === 0) {
@@ -343,7 +426,9 @@ const generateTimeSlotsForDay = async (playroomId, datum) => {
     const existingSlots = await TimeSlot.find({
       playroomId,
       datum: { $gte: startOfDay, $lte: endOfDay },
-    }).select("_id vremeOd vremeDo");
+    })
+      .select("_id vremeOd vremeDo")
+      .lean();
 
     const existingKeys = new Set(
       existingSlots.map(
@@ -382,10 +467,12 @@ const generateTimeSlotsForDay = async (playroomId, datum) => {
     return {
       createdCount,
       existingCount,
-      message: `Generisano ${createdCount} termina za ${datum}`,
+      message: `Generisano ${createdCount} termina za ${getDateKey(targetDate)}`,
     };
   } catch (error) {
-    console.error("Greška pri generisanju termina za dan:", error);
+    logger.error("Greška pri generisanju termina za dan:", {
+      message: error.message,
+    });
     return { error: error.message };
   }
 };
@@ -395,15 +482,22 @@ const generateTimeSlotsForDay = async (playroomId, datum) => {
  */
 const syncTimeSlotsWithWorkingHours = async (playroomId, days = 30) => {
   try {
-    const playroom = await Playroom.findById(playroomId);
+    if (!mongoose.isValidObjectId(playroomId)) {
+      return {
+        success: false,
+        message: "ID igraonice nije validan",
+      };
+    }
+
+    const playroom = await Playroom.findById(playroomId).lean();
+
     if (!playroom) {
       return { success: false, message: "Igraonica nije pronađena" };
     }
 
-    const startDate = getStartOfDay(new Date());
-    const endDate = getEndOfDay(
-      new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000),
-    );
+    const numberOfDays = normalizeDays(days);
+    const startDate = getStartOfDay(getNowInAppTimezone());
+    const endDate = getEndOfDay(addDays(startDate, numberOfDays - 1));
 
     const expectedKeys = new Set();
 
@@ -412,12 +506,9 @@ const syncTimeSlotsWithWorkingHours = async (playroomId, days = 30) => {
     let conflictCount = 0;
     let reactivatedCount = 0;
 
-    for (
-      let d = new Date(startDate);
-      d <= endDate;
-      d.setDate(d.getDate() + 1)
-    ) {
-      const currentDate = new Date(d);
+    for (let offset = 0; offset < numberOfDays; offset++) {
+      const currentDate = getStartOfDay(addDays(startDate, offset));
+
       const expectedSlots = buildExpectedSlotsForDate(playroom, currentDate);
 
       for (const slotData of expectedSlots) {
@@ -430,7 +521,7 @@ const syncTimeSlotsWithWorkingHours = async (playroomId, days = 30) => {
       const existingSlots = await TimeSlot.find({
         playroomId,
         datum: { $gte: startOfDay, $lte: endOfDay },
-      });
+      }).lean();
 
       const existingMap = new Map(
         existingSlots.map((slot) => [
@@ -481,23 +572,17 @@ const syncTimeSlotsWithWorkingHours = async (playroomId, days = 30) => {
           shouldUpdate = true;
         }
 
-        if (
-          (existingSlot.maxDece || 0) !==
-          (playroom.kapacitet?.deca || DEFAULT_CAPACITY)
-        ) {
-          updates.maxDece = playroom.kapacitet?.deca || DEFAULT_CAPACITY;
-          shouldUpdate = true;
-        }
-
-        if (
-          (existingSlot.cena || 0) !== (playroom.osnovnaCena ?? DEFAULT_PRICE)
-        ) {
-          updates.cena = playroom.osnovnaCena ?? DEFAULT_PRICE;
+        if ((existingSlot.cena || 0) !== DEFAULT_PRICE) {
+          updates.cena = DEFAULT_PRICE;
           shouldUpdate = true;
         }
 
         if (shouldUpdate) {
-          await TimeSlot.findByIdAndUpdate(existingSlot._id, updates);
+          await TimeSlot.findByIdAndUpdate(
+            existingSlot._id,
+            { $set: updates },
+            { runValidators: true },
+          );
           reactivatedCount++;
         }
       }
@@ -506,7 +591,7 @@ const syncTimeSlotsWithWorkingHours = async (playroomId, days = 30) => {
     const allSlotsInRange = await TimeSlot.find({
       playroomId,
       datum: { $gte: startDate, $lte: endDate },
-    });
+    }).lean();
 
     for (const slot of allSlotsInRange) {
       const slotKey = `${getDateKey(slot.datum)}_${slot.vremeOd}_${slot.vremeDo}`;
@@ -515,18 +600,30 @@ const syncTimeSlotsWithWorkingHours = async (playroomId, days = 30) => {
       if (shouldExist) continue;
 
       if (slot.zauzeto) {
-        await TimeSlot.findByIdAndUpdate(slot._id, {
-          vanRadnogVremena: true,
-          napomenaAdmin:
-            "Slot je van novog radnog vremena, ali ima postojeću rezervaciju.",
-        });
+        await TimeSlot.findByIdAndUpdate(
+          slot._id,
+          {
+            $set: {
+              vanRadnogVremena: true,
+              napomenaAdmin:
+                "Slot je van novog radnog vremena, ali ima postojeću rezervaciju.",
+            },
+          },
+          { runValidators: true },
+        );
         conflictCount++;
       } else {
-        await TimeSlot.findByIdAndUpdate(slot._id, {
-          aktivno: false,
-          vanRadnogVremena: true,
-          napomenaAdmin: "Slot deaktiviran zbog promene radnog vremena.",
-        });
+        await TimeSlot.findByIdAndUpdate(
+          slot._id,
+          {
+            $set: {
+              aktivno: false,
+              vanRadnogVremena: true,
+              napomenaAdmin: "Slot deaktiviran zbog promene radnog vremena.",
+            },
+          },
+          { runValidators: true },
+        );
         deactivatedCount++;
       }
     }
@@ -539,7 +636,9 @@ const syncTimeSlotsWithWorkingHours = async (playroomId, days = 30) => {
       reactivatedCount,
     };
   } catch (error) {
-    console.error("Greška pri sinhronizaciji termina:", error);
+    logger.error("Greška pri sinhronizaciji termina:", {
+      message: error.message,
+    });
     return {
       success: false,
       message: error.message,

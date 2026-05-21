@@ -1,14 +1,53 @@
 const Playroom = require("../models/Playroom");
 const Booking = require("../models/Booking");
 const { generateTimeSlotsForPlayroom } = require("../utils/generateTimeSlots");
-const BOOKING_STATUS = require("../constants/bookingStatus");
+
 const timeSlotService = require("../services/timeSlotService");
 const mongoose = require("mongoose");
 const TimeSlot = require("../models/TimeSlot");
 const bookingService = require("../services/bookingService");
 const { getBlockingStatuses } = require("../services/bookingService");
 const ErrorResponse = require("../utils/errorResponse");
-const { getNowInAppTimezone } = require("../utils/dateTime");
+const {
+  APP_TIMEZONE,
+  getNowInAppTimezone,
+  startOfDayInAppTimezone,
+  endOfDayInAppTimezone,
+  parseDateOnlyInAppTimezone,
+} = require("../utils/dateTime");
+
+const { formatInTimeZone, fromZonedTime } = require("date-fns-tz");
+const PLAYROOM_STATUS = require("../constants/playroomStatus");
+
+const buildDateTimeInAppTimezone = (date, time) => {
+  const [hour, minute] = String(time || "00:00")
+    .split(":")
+    .map((value) => Number(value));
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+    return null;
+  }
+
+  const datePart = formatInTimeZone(date, APP_TIMEZONE, "yyyy-MM-dd");
+
+  return fromZonedTime(
+    `${datePart}T${String(hour).padStart(2, "0")}:${String(minute).padStart(
+      2,
+      "0",
+    )}:00`,
+    APP_TIMEZONE,
+  );
+};
+
+const ensurePublicPlayroom = (playroom) => {
+  if (!playroom) {
+    throw new ErrorResponse("Igraonica nije pronađena", 404);
+  }
+
+  if (!playroom.verifikovan || playroom.status !== PLAYROOM_STATUS.AKTIVAN) {
+    throw new ErrorResponse("Igraonica nije javno dostupna", 403);
+  }
+};
 
 // @desc    Kreiraj novi termin (samo vlasnik igraonice)
 // @route   POST /api/timeslots
@@ -32,8 +71,7 @@ exports.createTimeSlot = async (req, res, next) => {
       );
     }
 
-    const slotDate = new Date(datum);
-    slotDate.setHours(0, 0, 0, 0);
+    const slotDate = startOfDayInAppTimezone(parseDateOnlyInAppTimezone(datum));
 
     try {
       const timeSlot = await TimeSlot.create({
@@ -71,16 +109,13 @@ exports.getTimeSlotsByPlayroom = async (req, res, next) => {
     const { playroomId } = req.validated.params;
     const { datum } = req.validated.query;
 
-    const playroom = await Playroom.findById(playroomId);
-    if (!playroom) {
-      throw new ErrorResponse("Igraonica nije pronađena", 404);
-    }
+    const playroom = await Playroom.findById(playroomId).lean();
+    ensurePublicPlayroom(playroom);
 
-    const startDate = bookingService.parseValidDate(datum);
-    startDate.setHours(0, 0, 0, 0);
-
-    const endDate = new Date(startDate);
-    endDate.setHours(23, 59, 59, 999);
+    const startDate = startOfDayInAppTimezone(
+      parseDateOnlyInAppTimezone(datum),
+    );
+    const endDate = endOfDayInAppTimezone(startDate);
 
     const now = getNowInAppTimezone();
 
@@ -93,22 +128,14 @@ exports.getTimeSlotsByPlayroom = async (req, res, next) => {
       .sort({ vremeOd: 1 })
       .lean();
     const isToday =
-      startDate.getFullYear() === now.getFullYear() &&
-      startDate.getMonth() === now.getMonth() &&
-      startDate.getDate() === now.getDate();
+      formatInTimeZone(startDate, APP_TIMEZONE, "yyyy-MM-dd") ===
+      formatInTimeZone(now, APP_TIMEZONE, "yyyy-MM-dd");
 
     const filteredSlots = isToday
       ? timeSlots.filter((slot) => {
-          const slotEnd = new Date(
-            new Date(slot.datum).getFullYear(),
-            new Date(slot.datum).getMonth(),
-            new Date(slot.datum).getDate(),
-            ...String(slot.vremeDo || "00:00")
-              .split(":")
-              .map((v) => parseInt(v, 10)),
-          );
+          const slotEnd = buildDateTimeInAppTimezone(slot.datum, slot.vremeDo);
 
-          return slotEnd > now;
+          return slotEnd && slotEnd > now;
         })
       : timeSlots;
 
@@ -127,7 +154,9 @@ exports.getTimeSlotsByPlayroom = async (req, res, next) => {
 // @access  Private (vlasnik)
 exports.getMyTimeSlots = async (req, res, next) => {
   try {
-    const playrooms = await Playroom.find({ vlasnikId: req.user.id });
+    const playrooms = await Playroom.find({ vlasnikId: req.user.id })
+      .select("_id")
+      .lean();
     const playroomIds = playrooms.map((p) => p._id);
 
     const timeSlots = await TimeSlot.find({ playroomId: { $in: playroomIds } })
@@ -157,6 +186,13 @@ exports.getTimeSlotById = async (req, res, next) => {
       throw new ErrorResponse("Termin nije pronađen", 404);
     }
 
+    const playroom = await Playroom.findById(timeSlot.playroomId).lean();
+    ensurePublicPlayroom(playroom);
+
+    if (!timeSlot.aktivno || timeSlot.vanRadnogVremena) {
+      throw new ErrorResponse("Termin nije pronađen", 404);
+    }
+
     res.status(200).json({
       success: true,
       data: timeSlot,
@@ -181,6 +217,10 @@ exports.updateTimeSlot = async (req, res, next) => {
     }
 
     const playroom = await Playroom.findById(timeSlot.playroomId);
+
+    if (!playroom) {
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
+    }
 
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
@@ -207,7 +247,7 @@ exports.updateTimeSlot = async (req, res, next) => {
         {
           $set: { cena: parsedCena },
         },
-        { new: true },
+        { new: true, runValidators: true },
       );
 
       if (!updated) {
@@ -224,16 +264,12 @@ exports.updateTimeSlot = async (req, res, next) => {
       if (aktivno === false) {
         timeSlot = await timeSlotService.deactivateSlotIfAllowed(timeSlot);
       } else {
-        const slotEnd = new Date(
-          new Date(timeSlot.datum).getFullYear(),
-          new Date(timeSlot.datum).getMonth(),
-          new Date(timeSlot.datum).getDate(),
-          ...String(timeSlot.vremeDo || "00:00")
-            .split(":")
-            .map((v) => parseInt(v, 10)),
+        const slotEnd = buildDateTimeInAppTimezone(
+          timeSlot.datum,
+          timeSlot.vremeDo,
         );
 
-        if (slotEnd <= getNowInAppTimezone()) {
+        if (!slotEnd || slotEnd <= getNowInAppTimezone()) {
           throw new ErrorResponse(
             "Prošli termin ne može biti ponovo aktiviran",
             400,
@@ -268,6 +304,10 @@ exports.deleteTimeSlot = async (req, res, next) => {
 
     const playroom = await Playroom.findById(timeSlot.playroomId);
 
+    if (!playroom) {
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
+    }
+
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
@@ -293,7 +333,8 @@ exports.generateSlotsForPlayroom = async (req, res, next) => {
   try {
     const { playroomId } = req.validated.params;
 
-    const playroom = await Playroom.findById(playroomId);
+    const playroom = await Playroom.findById(playroomId).lean();
+
     if (!playroom) {
       throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
@@ -328,11 +369,8 @@ exports.getAvailableTimeSlots = async (req, res, next) => {
     const { playroomId } = req.validated.params;
     const { datum } = req.validated.query;
 
-    const playroom = await Playroom.findById(playroomId);
-
-    if (!playroom) {
-      throw new ErrorResponse("Igraonica nije pronađena", 404);
-    }
+    const playroom = await Playroom.findById(playroomId).lean();
+    ensurePublicPlayroom(playroom);
 
     const targetDate = bookingService.parseValidDate(datum);
 
@@ -438,9 +476,8 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
       });
     }
 
-    const startDate = targetDate;
-    const endDate = new Date(startDate);
-    endDate.setHours(23, 59, 59, 999);
+    const startDate = startOfDayInAppTimezone(targetDate);
+    const endDate = endOfDayInAppTimezone(startDate);
 
     const bookings = await Booking.find({
       playroomId,
