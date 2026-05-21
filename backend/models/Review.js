@@ -28,14 +28,18 @@ const ReviewSchema = new mongoose.Schema(
       required: true,
       min: 1,
       max: 5,
+      validate: {
+        validator: Number.isInteger,
+        message: "Ocena mora biti ceo broj",
+      },
       index: true,
     },
 
     comment: {
       type: String,
-      required: true,
+      default: "",
       trim: true,
-      maxlength: 500,
+      maxlength: 1000,
     },
   },
   {

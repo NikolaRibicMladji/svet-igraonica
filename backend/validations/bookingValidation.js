@@ -19,78 +19,93 @@ const isQuarterHour = (value) => {
   return [0, 15, 30, 45].includes(minutes);
 };
 
+const hasCenaOrPaket = (data) => {
+  return data.body.cenaIds.length > 0 || Boolean(data.body.paketId);
+};
+
+const cenaOrPaketError = {
+  message: "Morate izabrati cenu ili paket",
+  path: ["body", "cenaIds"],
+};
+
 const createBookingSchema = z
   .object({
-    body: z.object({
-      playroomId: objectId,
-      datum: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
-        .refine(
-          (val) => {
-            try {
-              parseDateOnlyInAppTimezone(val);
-              return true;
-            } catch {
-              return false;
-            }
-          },
-          {
-            message: "Datum nije validan",
-          },
-        ),
-      vremeOd: z
-        .string()
-        .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
-        .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
+    body: z
+      .object({
+        playroomId: objectId,
+        datum: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
+          .refine(
+            (val) => {
+              try {
+                parseDateOnlyInAppTimezone(val);
+                return true;
+              } catch {
+                return false;
+              }
+            },
+            {
+              message: "Datum nije validan",
+            },
+          ),
+        vremeOd: z
+          .string()
+          .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
+          .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
 
-      vremeDo: z
-        .string()
-        .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
-        .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
-      cenaIds: z
-        .array(objectId)
-        .max(20, "Previše izabranih cena")
-        .optional()
-        .default([]),
-      paketId: objectId.nullable().optional().default(null),
-      usluge: z
-        .array(objectId)
-        .max(30, "Previše izabranih usluga")
-        .optional()
-        .default([]),
-      brojDece: z.coerce.number().int().min(0).max(150).optional().default(0),
-      brojRoditelja: z.coerce
-        .number()
-        .int()
-        .min(0)
-        .max(100)
-        .optional()
-        .default(0),
-      imeRoditelja: z
-        .string()
-        .trim()
-        .min(2, "Ime mora imati bar 2 karaktera")
-        .max(100, "Ime je predugo"),
-      prezimeRoditelja: z
-        .string()
-        .trim()
-        .min(2, "Prezime mora imati bar 2 karaktera")
-        .max(100, "Prezime je predugo"),
-      emailRoditelja: z.string().trim().toLowerCase().email("Neispravan email"),
-      telefonRoditelja: z
-        .string()
-        .trim()
-        .min(8, "Telefon mora imati bar 8 cifara")
-        .max(30, "Telefon je predug")
-        .regex(/^\+?[0-9]+$/, "Telefon sadrži nedozvoljene karaktere"),
-      napomena: z
-        .string()
-        .trim()
-        .max(500, "Napomena može imati najviše 500 karaktera")
-        .optional()
-        .default(""),
-    }),
+        vremeDo: z
+          .string()
+          .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
+          .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
+        cenaIds: z
+          .array(objectId)
+          .max(20, "Previše izabranih cena")
+          .optional()
+          .default([]),
+        paketId: objectId.nullable().optional().default(null),
+        usluge: z
+          .array(objectId)
+          .max(30, "Previše izabranih usluga")
+          .optional()
+          .default([]),
+        brojDece: z.coerce.number().int().min(0).max(150).optional().default(0),
+        brojRoditelja: z.coerce
+          .number()
+          .int()
+          .min(0)
+          .max(100)
+          .optional()
+          .default(0),
+        imeRoditelja: z
+          .string()
+          .trim()
+          .min(2, "Ime mora imati bar 2 karaktera")
+          .max(100, "Ime je predugo"),
+        prezimeRoditelja: z
+          .string()
+          .trim()
+          .min(2, "Prezime mora imati bar 2 karaktera")
+          .max(100, "Prezime je predugo"),
+        emailRoditelja: z
+          .string()
+          .trim()
+          .toLowerCase()
+          .email("Neispravan email"),
+        telefonRoditelja: z
+          .string()
+          .trim()
+          .min(8, "Telefon mora imati bar 8 cifara")
+          .max(30, "Telefon je predug")
+          .regex(/^\+?[0-9]+$/, "Telefon sadrži nedozvoljene karaktere"),
+        napomena: z
+          .string()
+          .trim()
+          .max(500, "Napomena može imati najviše 500 karaktera")
+          .optional()
+          .default(""),
+      })
+      .strict(),
     params: z.object({}).optional(),
     query: z.object({}).optional(),
   })
@@ -101,96 +116,99 @@ const createBookingSchema = z
       message: "Vreme završetka mora biti posle vremena početka",
       path: ["body", "vremeDo"],
     },
-  );
+  )
+  .refine(hasCenaOrPaket, cenaOrPaketError);
 
 const createGuestBookingSchema = z
   .object({
-    body: z.object({
-      playroomId: objectId,
+    body: z
+      .object({
+        playroomId: objectId,
 
-      datum: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
-        .refine(
-          (val) => {
-            try {
-              parseDateOnlyInAppTimezone(val);
-              return true;
-            } catch {
-              return false;
-            }
-          },
-          {
-            message: "Datum nije validan",
-          },
-        ),
-      vremeOd: z
-        .string()
-        .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
-        .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
+        datum: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
+          .refine(
+            (val) => {
+              try {
+                parseDateOnlyInAppTimezone(val);
+                return true;
+              } catch {
+                return false;
+              }
+            },
+            {
+              message: "Datum nije validan",
+            },
+          ),
+        vremeOd: z
+          .string()
+          .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
+          .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
 
-      vremeDo: z
-        .string()
-        .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
-        .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
-      cenaIds: z
-        .array(objectId)
-        .max(20, "Previše izabranih cena")
-        .optional()
-        .default([]),
-      paketId: objectId.nullable().optional().default(null),
-      usluge: z
-        .array(objectId)
-        .max(30, "Previše izabranih usluga")
-        .optional()
-        .default([]),
-      brojDece: z.coerce.number().int().min(0).max(150).optional().default(0),
-      brojRoditelja: z.coerce
-        .number()
-        .int()
-        .min(0)
-        .max(100)
-        .optional()
-        .default(0),
-      ime: z
-        .string()
-        .trim()
-        .min(2, "Ime mora imati bar 2 karaktera")
-        .max(100, "Ime je predugo"),
-      prezime: z
-        .string()
-        .trim()
-        .min(2, "Prezime mora imati bar 2 karaktera")
-        .max(100, "Prezime je predugo"),
-      email: z.string().trim().toLowerCase().email("Neispravan email"),
-      telefon: z
-        .string()
-        .trim()
-        .min(8, "Telefon mora imati bar 8 cifara")
-        .max(30, "Telefon je predug")
-        .regex(/^\+?[0-9]+$/, "Telefon sadrži nedozvoljene karaktere"),
-      password: z
-        .string()
-        .min(8, "Lozinka mora imati najmanje 8 karaktera")
-        .max(50, "Lozinka je preduga"),
+        vremeDo: z
+          .string()
+          .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
+          .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
+        cenaIds: z
+          .array(objectId)
+          .max(20, "Previše izabranih cena")
+          .optional()
+          .default([]),
+        paketId: objectId.nullable().optional().default(null),
+        usluge: z
+          .array(objectId)
+          .max(30, "Previše izabranih usluga")
+          .optional()
+          .default([]),
+        brojDece: z.coerce.number().int().min(0).max(150).optional().default(0),
+        brojRoditelja: z.coerce
+          .number()
+          .int()
+          .min(0)
+          .max(100)
+          .optional()
+          .default(0),
+        ime: z
+          .string()
+          .trim()
+          .min(2, "Ime mora imati bar 2 karaktera")
+          .max(100, "Ime je predugo"),
+        prezime: z
+          .string()
+          .trim()
+          .min(2, "Prezime mora imati bar 2 karaktera")
+          .max(100, "Prezime je predugo"),
+        email: z.string().trim().toLowerCase().email("Neispravan email"),
+        telefon: z
+          .string()
+          .trim()
+          .min(8, "Telefon mora imati bar 8 cifara")
+          .max(30, "Telefon je predug")
+          .regex(/^\+?[0-9]+$/, "Telefon sadrži nedozvoljene karaktere"),
+        password: z
+          .string()
+          .min(8, "Lozinka mora imati najmanje 8 karaktera")
+          .max(50, "Lozinka je preduga"),
 
-      confirmPassword: z
-        .string()
-        .min(8, "Lozinka mora imati najmanje 8 karaktera")
-        .max(50, "Potvrda lozinke je preduga"),
-      napomena: z
-        .string()
-        .trim()
-        .max(500, "Napomena može imati najviše 500 karaktera")
-        .optional()
-        .default(""),
-      acceptedTerms: z.literal(true, {
-        errorMap: () => ({
-          message:
-            "Morate prihvatiti uslove korišćenja i politiku privatnosti.",
+        confirmPassword: z
+          .string()
+          .min(8, "Lozinka mora imati najmanje 8 karaktera")
+          .max(50, "Potvrda lozinke je preduga"),
+        napomena: z
+          .string()
+          .trim()
+          .max(500, "Napomena može imati najviše 500 karaktera")
+          .optional()
+          .default(""),
+        acceptedTerms: z.literal(true, {
+          errorMap: () => ({
+            message:
+              "Morate prihvatiti uslove korišćenja i politiku privatnosti.",
+          }),
         }),
-      }),
-    }),
+      })
+      .strict(),
     params: z.object({}).optional(),
     query: z.object({}).optional(),
   })
@@ -205,7 +223,8 @@ const createGuestBookingSchema = z
       message: "Vreme završetka mora biti posle vremena početka",
       path: ["body", "vremeDo"],
     },
-  );
+  )
+  .refine(hasCenaOrPaket, cenaOrPaketError);
 const bookingIdParamSchema = z.object({
   body: z.object({}).optional(),
   params: z.object({
@@ -216,75 +235,81 @@ const bookingIdParamSchema = z.object({
 
 const manualBookingSchema = z
   .object({
-    body: z.object({
-      playroomId: objectId,
-      datum: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
-        .refine(
-          (val) => {
-            try {
-              parseDateOnlyInAppTimezone(val);
-              return true;
-            } catch {
-              return false;
-            }
-          },
-          {
-            message: "Datum nije validan",
-          },
-        ),
-      vremeOd: z
-        .string()
-        .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
-        .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
-      vremeDo: z
-        .string()
-        .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
-        .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
-      cenaIds: z
-        .array(objectId)
-        .max(20, "Previše izabranih cena")
-        .optional()
-        .default([]),
-      paketId: objectId.nullable().optional().default(null),
-      usluge: z
-        .array(objectId)
-        .max(30, "Previše izabranih usluga")
-        .optional()
-        .default([]),
-      brojDece: z.coerce.number().int().min(0).max(150).optional().default(0),
-      brojRoditelja: z.coerce
-        .number()
-        .int()
-        .min(0)
-        .max(100)
-        .optional()
-        .default(0),
-      imeRoditelja: z
-        .string()
-        .trim()
-        .min(2, "Ime mora imati bar 2 karaktera")
-        .max(100, "Ime je predugo"),
-      prezimeRoditelja: z
-        .string()
-        .trim()
-        .min(2, "Prezime mora imati bar 2 karaktera")
-        .max(100, "Prezime je predugo"),
-      emailRoditelja: z.string().trim().toLowerCase().email("Neispravan email"),
-      telefonRoditelja: z
-        .string()
-        .trim()
-        .min(8, "Telefon mora imati bar 8 cifara")
-        .max(30, "Telefon je predug")
-        .regex(/^\+?[0-9]+$/, "Telefon sadrži nedozvoljene karaktere"),
-      napomena: z
-        .string()
-        .trim()
-        .max(500, "Napomena može imati najviše 500 karaktera")
-        .optional()
-        .default(""),
-    }),
+    body: z
+      .object({
+        playroomId: objectId,
+        datum: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
+          .refine(
+            (val) => {
+              try {
+                parseDateOnlyInAppTimezone(val);
+                return true;
+              } catch {
+                return false;
+              }
+            },
+            {
+              message: "Datum nije validan",
+            },
+          ),
+        vremeOd: z
+          .string()
+          .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
+          .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
+        vremeDo: z
+          .string()
+          .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
+          .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
+        cenaIds: z
+          .array(objectId)
+          .max(20, "Previše izabranih cena")
+          .optional()
+          .default([]),
+        paketId: objectId.nullable().optional().default(null),
+        usluge: z
+          .array(objectId)
+          .max(30, "Previše izabranih usluga")
+          .optional()
+          .default([]),
+        brojDece: z.coerce.number().int().min(0).max(150).optional().default(0),
+        brojRoditelja: z.coerce
+          .number()
+          .int()
+          .min(0)
+          .max(100)
+          .optional()
+          .default(0),
+        imeRoditelja: z
+          .string()
+          .trim()
+          .min(2, "Ime mora imati bar 2 karaktera")
+          .max(100, "Ime je predugo"),
+        prezimeRoditelja: z
+          .string()
+          .trim()
+          .min(2, "Prezime mora imati bar 2 karaktera")
+          .max(100, "Prezime je predugo"),
+        emailRoditelja: z
+          .string()
+          .trim()
+          .toLowerCase()
+          .email("Neispravan email"),
+        telefonRoditelja: z
+          .string()
+          .trim()
+          .min(8, "Telefon mora imati bar 8 cifara")
+          .max(30, "Telefon je predug")
+          .regex(/^\+?[0-9]+$/, "Telefon sadrži nedozvoljene karaktere"),
+        napomena: z
+          .string()
+          .trim()
+          .max(500, "Napomena može imati najviše 500 karaktera")
+          .optional()
+          .default(""),
+      })
+      .strict(),
     params: z.object({}).optional(),
     query: z.object({}).optional(),
   })
@@ -295,7 +320,8 @@ const manualBookingSchema = z
       message: "Vreme završetka mora biti posle vremena početka",
       path: ["body", "vremeDo"],
     },
-  );
+  )
+  .refine(hasCenaOrPaket, cenaOrPaketError);
 
 const bookingListQuerySchema = z
   .object({

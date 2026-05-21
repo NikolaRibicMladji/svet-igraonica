@@ -7,6 +7,7 @@ const Playroom = require("../models/Playroom");
 const { queueBookingEmails } = require("./emailQueueService");
 const logger = require("../utils/logger");
 const BookingDayLock = require("../models/BookingDayLock");
+const PLAYROOM_STATUS = require("../constants/playroomStatus");
 
 const {
   APP_TIMEZONE,
@@ -81,6 +82,16 @@ const getWorkingHoursForDate = (playroom, date) => {
   };
 };
 
+const ensureBookablePlayroom = (playroom) => {
+  if (!playroom) {
+    throw new ErrorResponse("Igraonica nije pronađena", 404);
+  }
+
+  if (!playroom.verifikovan || playroom.status !== PLAYROOM_STATUS.AKTIVAN) {
+    throw new ErrorResponse("Igraonica trenutno ne prima rezervacije", 403);
+  }
+};
+
 const parseValidDate = (dateString) => {
   if (!dateString) {
     throw new ErrorResponse("Datum nije validan", 400);
@@ -88,7 +99,7 @@ const parseValidDate = (dateString) => {
 
   // ako je već Date
   if (dateString instanceof Date) {
-    return new Date(dateString);
+    return startOfDayInAppTimezone(dateString);
   }
 
   // ako je string "YYYY-MM-DD"
@@ -98,7 +109,7 @@ const parseValidDate = (dateString) => {
     throw new ErrorResponse("Datum nije validan", 400);
   }
 
-  return parsed;
+  return startOfDayInAppTimezone(parsed);
 };
 
 const getBlockingStatuses = () => [
@@ -190,7 +201,7 @@ const findOverlappingBookingWithPreparation = async ({
   const bookings = await query;
 
   const targetStart = timeToMinutes(vremeOd);
-  const targetEnd = timeToMinutes(vremeDo);
+  const targetEnd = timeToMinutes(vremeDo) + preparationMinutes;
 
   return (
     bookings.find((existing) => {
@@ -201,12 +212,10 @@ const findOverlappingBookingWithPreparation = async ({
         return false;
       }
 
-      return isOverlapping(
-        targetStart,
-        targetEnd,
-        timeToMinutes(existing.vremeOd),
-        timeToMinutes(existing.vremeDo) + preparationMinutes,
-      );
+      const existingStart = timeToMinutes(existing.vremeOd);
+      const existingEnd = timeToMinutes(existing.vremeDo) + preparationMinutes;
+
+      return isOverlapping(targetStart, targetEnd, existingStart, existingEnd);
     }) || null
   );
 };
@@ -219,10 +228,7 @@ const ensureVirtualSlotForInterval = async ({
   cena = 0,
   session = null,
 }) => {
-  const normalizedDate =
-    datum instanceof Date ? new Date(datum) : parseValidDate(datum);
-
-  normalizedDate.setHours(0, 0, 0, 0);
+  const normalizedDate = startOfDayInAppTimezone(parseValidDate(datum));
 
   const existing = await TimeSlot.findOne({
     playroomId,
@@ -389,6 +395,7 @@ const reserveSlot = async ({
       },
       {
         new: true,
+        runValidators: true,
         session,
       },
     );
@@ -405,9 +412,7 @@ const reserveSlot = async ({
 
     const playroom = await Playroom.findById(slot.playroomId).session(session);
 
-    if (!playroom) {
-      throw new ErrorResponse("Igraonica nije pronađena", 404);
-    }
+    ensureBookablePlayroom(playroom);
 
     const preparationMinutes = getPreparationMinutes(playroom);
 
@@ -452,16 +457,6 @@ const reserveSlot = async ({
       if (!selectedPaket) {
         throw new ErrorResponse("Izabrani paket nije pronađen", 400);
       }
-    }
-
-    const hasValidCene = selectedCene.length > 0;
-    const hasValidPaket = !!selectedPaket;
-
-    if (!hasValidCene && !hasValidPaket) {
-      throw new ErrorResponse(
-        "Izaberi validnu stavku iz cenovnika ili paket",
-        400,
-      );
     }
 
     let ukupnaCena = 0;
@@ -535,6 +530,13 @@ const reserveSlot = async ({
           ukupnaCena += (Number(usluga.cena) || 0) * trajanjeSati;
         }
       }
+    }
+
+    const hasValidCene = selectedCene.length > 0;
+    const hasValidPaket = Boolean(selectedPaket);
+
+    if (!hasValidCene && !hasValidPaket) {
+      throw new ErrorResponse("Izaberi validnu cenu ili paket", 400);
     }
 
     const hasPerPerson = [
@@ -700,9 +702,7 @@ const reserveCustomInterval = async ({
 
     const playroom = await Playroom.findById(playroomId).session(session);
 
-    if (!playroom) {
-      throw new ErrorResponse("Igraonica nije pronađena", 404);
-    }
+    ensureBookablePlayroom(playroom);
 
     const workingHours = getWorkingHoursForDate(playroom, bookingDate);
 
@@ -768,7 +768,7 @@ const reserveCustomInterval = async ({
       datum: bookingDate,
       vremeOd,
       vremeDo,
-      cena: playroom.osnovnaCena ?? 0,
+      cena: 0,
       session,
     });
 
@@ -784,6 +784,7 @@ const reserveCustomInterval = async ({
       },
       {
         new: true,
+        runValidators: true,
         session,
       },
     );
@@ -827,16 +828,6 @@ const reserveCustomInterval = async ({
       if (!selectedPaket) {
         throw new ErrorResponse("Izabrani paket nije pronađen", 400);
       }
-    }
-
-    const hasValidCene = selectedCene.length > 0;
-    const hasValidPaket = !!selectedPaket;
-
-    if (!hasValidCene && !hasValidPaket) {
-      throw new ErrorResponse(
-        "Izaberi validnu stavku iz cenovnika ili paket",
-        400,
-      );
     }
 
     let ukupnaCena = 0;
@@ -904,6 +895,13 @@ const reserveCustomInterval = async ({
       if (usluga.tip === "po_satu") {
         ukupnaCena += (Number(usluga.cena) || 0) * trajanjeSati;
       }
+    }
+
+    const hasValidCene = selectedCene.length > 0;
+    const hasValidPaket = Boolean(selectedPaket);
+
+    if (!hasValidCene && !hasValidPaket) {
+      throw new ErrorResponse("Izaberi validnu cenu ili paket", 400);
     }
 
     const hasPerPerson = [
@@ -1085,7 +1083,6 @@ const cancelBookingById = async ({ bookingId, currentUser }) => {
       const unlockedSlot = await TimeSlot.findOneAndUpdate(
         {
           _id: booking.timeSlotId?._id || booking.timeSlotId,
-          aktivno: true,
           zauzeto: true,
         },
         {
@@ -1095,6 +1092,7 @@ const cancelBookingById = async ({ bookingId, currentUser }) => {
         },
         {
           new: true,
+          runValidators: true,
           session,
         },
       );
@@ -1170,9 +1168,11 @@ const confirmBookingById = async ({ bookingId, currentUser }) => {
       throw new ErrorResponse("Prošli termin ne može biti potvrđen", 400);
     }
 
-    const playroom = await Playroom.findById(booking.playroomId._id).session(
+    const playroom = await Playroom.findById(booking.playroomId?._id).session(
       session,
     );
+
+    ensureBookablePlayroom(playroom);
 
     const preparationMinutes = getPreparationMinutes(playroom);
 

@@ -18,6 +18,13 @@ const { queueBookingEmails } = require("../services/emailQueueService");
 // @access  Private
 exports.createBooking = async (req, res, next) => {
   try {
+    if (req.user.role !== ROLES.RODITELJ) {
+      throw new ErrorResponse(
+        "Samo roditelj može napraviti rezervaciju ovom rutom",
+        403,
+      );
+    }
+
     const {
       playroomId,
       datum,
@@ -231,7 +238,8 @@ exports.getOwnerBookings = async (req, res, next) => {
     const { page, limit, status, datumOd, datumDo, playroomId } =
       req.validated.query;
 
-    const skip = (page - 1) * limit;
+    const safeLimit = Math.min(limit, 50);
+    const skip = (page - 1) * safeLimit;
     const isAdmin = req.user.role === ROLES.ADMIN;
 
     const filter = {};
@@ -254,7 +262,7 @@ exports.getOwnerBookings = async (req, res, next) => {
           pagination: {
             total: 0,
             page,
-            limit,
+            limit: safeLimit,
             pages: 0,
           },
           data: [],
@@ -303,7 +311,7 @@ exports.getOwnerBookings = async (req, res, next) => {
         .populate("timeSlotId", "datum vremeOd vremeDo")
         .sort({ datum: -1, vremeOd: -1 })
         .skip(skip)
-        .limit(limit)
+        .limit(safeLimit)
         .lean(),
 
       Booking.countDocuments(filter),
@@ -315,8 +323,8 @@ exports.getOwnerBookings = async (req, res, next) => {
       pagination: {
         total,
         page,
-        limit,
-        pages: Math.ceil(total / limit),
+        limit: safeLimit,
+        pages: Math.ceil(total / safeLimit),
       },
       data: bookings,
     });

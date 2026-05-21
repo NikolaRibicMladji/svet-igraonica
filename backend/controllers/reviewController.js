@@ -2,7 +2,20 @@ const Review = require("../models/Review");
 const Playroom = require("../models/Playroom");
 const Booking = require("../models/Booking");
 const BOOKING_STATUS = require("../constants/bookingStatus");
+const ROLES = require("../constants/roles");
+const PLAYROOM_STATUS = require("../constants/playroomStatus");
 const mongoose = require("mongoose");
+const ErrorResponse = require("../utils/errorResponse");
+
+const ensurePublicPlayroom = (playroom) => {
+  if (!playroom) {
+    throw new ErrorResponse("Igraonica nije pronađena", 404);
+  }
+
+  if (!playroom.verifikovan || playroom.status !== PLAYROOM_STATUS.AKTIVAN) {
+    throw new ErrorResponse("Igraonica nije javno dostupna", 403);
+  }
+};
 
 const recalculatePlayroomRating = async (playroomId) => {
   const result = await Review.aggregate([
@@ -21,64 +34,84 @@ const recalculatePlayroomRating = async (playroomId) => {
 
   const reviewCount = result.length > 0 ? result[0].count || 0 : 0;
 
-  await Playroom.findByIdAndUpdate(playroomId, {
-    $set: {
-      rating: avgRating,
-      reviewCount,
+  await Playroom.findByIdAndUpdate(
+    playroomId,
+    {
+      $set: {
+        rating: avgRating,
+        reviewCount,
+      },
     },
-  });
+    { runValidators: true },
+  );
 };
 
 // @desc    Dodaj recenziju za igraonicu
 // @route   POST /api/reviews/:playroomId
-// @access  Private (samo roditelji koji su bili na terminu)
+// @access  Private
 exports.addReview = async (req, res, next) => {
   try {
-    const { playroomId } = req.params;
-    const { rating, comment } = req.body;
+    const { playroomId } = req.validated.params;
+    const { rating, comment } = req.validated.body;
     const userId = req.user.id;
 
-    const playroom = await Playroom.findById(playroomId);
-    if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
-    }
+    const playroom = await Playroom.findById(playroomId)
+      .select("_id verifikovan status")
+      .lean();
 
-    const existingReview = await Review.findOne({ playroomId, userId });
+    ensurePublicPlayroom(playroom);
+
+    const existingReview = await Review.exists({ playroomId, userId });
+
     if (existingReview) {
-      return res.status(400).json({
-        success: false,
-        message: "Već ste ostavili recenziju za ovu igraonicu",
-      });
+      throw new ErrorResponse(
+        "Već ste ostavili recenziju za ovu igraonicu",
+        409,
+      );
     }
 
-    const hasCompletedBooking = await Booking.findOne({
-      playroomId,
-      roditeljId: userId,
-      status: BOOKING_STATUS.ZAVRSENO,
-    });
+    if (req.user.role !== ROLES.ADMIN) {
+      const hasCompletedBooking = await Booking.exists({
+        playroomId,
+        roditeljId: userId,
+        status: BOOKING_STATUS.ZAVRSENO,
+      });
 
-    if (!hasCompletedBooking && req.user.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message:
+      if (!hasCompletedBooking) {
+        throw new ErrorResponse(
           "Samo roditelji koji su posetili igraonicu mogu ostaviti recenziju. Rezervacija mora biti završena.",
-      });
+          403,
+        );
+      }
     }
 
-    const review = await Review.create({
-      playroomId,
-      userId,
-      userName: `${req.user.ime} ${req.user.prezime}`.trim(),
-      rating,
-      comment: (comment || "").trim(),
-    });
+    const userName =
+      `${req.user.ime || ""} ${req.user.prezime || ""}`.trim() || "Korisnik";
+
+    let review;
+
+    try {
+      review = await Review.create({
+        playroomId,
+        userId,
+        userName,
+        rating,
+        comment: comment || "",
+      });
+    } catch (error) {
+      if (error.code === 11000) {
+        throw new ErrorResponse(
+          "Već ste ostavili recenziju za ovu igraonicu",
+          409,
+        );
+      }
+
+      throw error;
+    }
 
     await recalculatePlayroomRating(playroomId);
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: review,
       message: "Recenzija je uspešno dodata",
@@ -93,30 +126,34 @@ exports.addReview = async (req, res, next) => {
 // @access  Public
 exports.getReviews = async (req, res, next) => {
   try {
-    const { playroomId } = req.params;
-    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-    const limit = Math.max(parseInt(req.query.limit, 10) || 10, 1);
+    const { playroomId } = req.validated.params;
+    const { page, limit } = req.validated.query;
 
-    const playroom = await Playroom.findById(playroomId).select("_id");
-    if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
-    }
+    const playroom = await Playroom.findById(playroomId)
+      .select("_id verifikovan status")
+      .lean();
 
-    const reviews = await Review.find({ playroomId })
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .skip((page - 1) * limit);
+    ensurePublicPlayroom(playroom);
 
-    const total = await Review.countDocuments({ playroomId });
+    const skip = (page - 1) * limit;
 
-    res.status(200).json({
+    const [reviews, total] = await Promise.all([
+      Review.find({ playroomId })
+        .select("userName rating comment createdAt")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      Review.countDocuments({ playroomId }),
+    ]);
+
+    return res.status(200).json({
       success: true,
       count: reviews.length,
       total,
       page,
+      limit,
       pages: Math.ceil(total / limit),
       data: reviews,
     });
@@ -125,25 +162,24 @@ exports.getReviews = async (req, res, next) => {
   }
 };
 
-// @desc    Obriši recenziju (samo admin ili autor)
+// @desc    Obriši recenziju
 // @route   DELETE /api/reviews/:id
-// @access  Private (admin ili autor)
+// @access  Private
 exports.deleteReview = async (req, res, next) => {
   try {
-    const review = await Review.findById(req.params.id);
+    const { id } = req.validated.params;
+
+    const review = await Review.findById(id);
 
     if (!review) {
-      return res.status(404).json({
-        success: false,
-        message: "Recenzija nije pronađena",
-      });
+      throw new ErrorResponse("Recenzija nije pronađena", 404);
     }
 
-    if (review.userId.toString() !== req.user.id && req.user.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate pravo da obrišete ovu recenziju",
-      });
+    if (
+      review.userId.toString() !== req.user.id &&
+      req.user.role !== ROLES.ADMIN
+    ) {
+      throw new ErrorResponse("Nemate pravo da obrišete ovu recenziju", 403);
     }
 
     const playroomId = review.playroomId;
@@ -151,7 +187,7 @@ exports.deleteReview = async (req, res, next) => {
     await review.deleteOne();
     await recalculatePlayroomRating(playroomId);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Recenzija je obrisana",
     });

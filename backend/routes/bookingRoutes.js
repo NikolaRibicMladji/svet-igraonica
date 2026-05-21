@@ -51,7 +51,12 @@ router.get(
   getOwnerBookings,
 );
 
-router.put("/:id/cancel", validate(bookingIdParamSchema), cancelBooking);
+router.put(
+  "/:id/cancel",
+  authorize(ROLES.RODITELJ, ROLES.VLASNIK, ROLES.ADMIN),
+  validate(bookingIdParamSchema),
+  cancelBooking,
+);
 
 router.put(
   "/:id/confirm",
@@ -60,6 +65,11 @@ router.put(
   confirmBooking,
 );
 
-router.get("/:id", validate(bookingIdParamSchema), getBookingById);
+router.get(
+  "/:id",
+  authorize(ROLES.RODITELJ, ROLES.VLASNIK, ROLES.ADMIN),
+  validate(bookingIdParamSchema),
+  getBookingById,
+);
 
 module.exports = router;

@@ -1,6 +1,13 @@
 const mongoose = require("mongoose");
 const BOOKING_STATUS = require("../constants/bookingStatus");
 
+const TIME_REGEX = /^([01]\d|2[0-3]):(00|15|30|45)$/;
+
+const timeToMinutes = (time) => {
+  const [hour, minute] = String(time).split(":").map(Number);
+  return hour * 60 + minute;
+};
+
 const BookingSchema = new mongoose.Schema(
   {
     roditeljId: {
@@ -34,12 +41,27 @@ const BookingSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      match: [
+        TIME_REGEX,
+        "Vreme od mora biti u formatu HH:mm i na 00/15/30/45",
+      ],
     },
 
     vremeDo: {
       type: String,
       required: true,
       trim: true,
+      match: [
+        TIME_REGEX,
+        "Vreme do mora biti u formatu HH:mm i na 00/15/30/45",
+      ],
+      validate: {
+        validator: function (value) {
+          if (!this.vremeOd || !value) return true;
+          return timeToMinutes(value) > timeToMinutes(this.vremeOd);
+        },
+        message: "Vreme do mora biti posle vremena od",
+      },
     },
 
     ukupnaCena: {
@@ -242,7 +264,9 @@ BookingSchema.index(
   {
     unique: true,
     partialFilterExpression: {
-      status: { $ne: BOOKING_STATUS.OTKAZANO },
+      status: {
+        $in: [BOOKING_STATUS.CEKANJE, BOOKING_STATUS.POTVRDJENO],
+      },
     },
   },
 );
