@@ -1,5 +1,6 @@
 const cloudinary = require("../config/cloudinary");
 const Playroom = require("../models/Playroom");
+const ErrorResponse = require("../utils/errorResponse");
 const {
   uploadFileToCloudinary,
   safeRemoveFile,
@@ -8,28 +9,33 @@ const {
 // Upload slike za igraonicu
 exports.uploadPlayroomImage = async (req, res, next) => {
   try {
-    const { playroomId } = req.params;
+    const { playroomId } = req.validated.params;
 
     const playroom = await Playroom.findById(playroomId);
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate pravo da dodajete slike za ovu igraonicu",
-      });
+      throw new ErrorResponse(
+        "Nemate pravo da dodajete slike za ovu igraonicu",
+        403,
+      );
     }
 
     if (!req.file) {
       throw new ErrorResponse("Molimo odaberite sliku", 400);
+    }
+
+    if (!Array.isArray(playroom.slike)) {
+      playroom.slike = [];
+    }
+
+    if (playroom.slike.length >= 20) {
+      throw new ErrorResponse("Maksimalan broj slika za igraonicu je 20", 400);
     }
 
     const result = await uploadFileToCloudinary({
@@ -61,9 +67,19 @@ exports.uploadPlayroomImage = async (req, res, next) => {
       };
     }
 
-    await playroom.save();
+    try {
+      await playroom.save();
+    } catch (error) {
+      if (result.public_id) {
+        await cloudinary.uploader.destroy(result.public_id, {
+          resource_type: "image",
+        });
+      }
 
-    res.status(200).json({
+      throw error;
+    }
+
+    return res.status(200).json({
       success: true,
       data: {
         url: result.secure_url,
@@ -86,47 +102,49 @@ exports.uploadPlayroomImage = async (req, res, next) => {
 // Obriši sliku
 exports.deletePlayroomImage = async (req, res, next) => {
   try {
-    const { playroomId, imageUrl } = req.params;
+    const { playroomId } = req.validated.params;
+    const { publicId } = req.validated.body;
+
+    if (!publicId) {
+      throw new ErrorResponse("publicId slike je obavezan", 400);
+    }
 
     const playroom = await Playroom.findById(playroomId);
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
     if (
       playroom.vlasnikId.toString() !== req.user.id &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Nemate pravo da brišete slike za ovu igraonicu",
-      });
+      throw new ErrorResponse(
+        "Nemate pravo da brišete slike za ovu igraonicu",
+        403,
+      );
     }
 
-    const decodedUrl = decodeURIComponent(imageUrl);
+    if (!Array.isArray(playroom.slike)) {
+      throw new ErrorResponse("Igraonica nema slike", 404);
+    }
+
     const imageToDelete = playroom.slike.find(
-      (image) => image.url === decodedUrl,
+      (image) => image.publicId === publicId,
     );
 
     if (!imageToDelete) {
-      return res.status(404).json({
-        success: false,
-        message: "Slika nije pronađena",
-      });
+      throw new ErrorResponse("Slika nije pronađena", 404);
     }
 
-    if (imageToDelete.publicId) {
-      await cloudinary.uploader.destroy(imageToDelete.publicId, {
-        resource_type: "image",
-      });
-    }
+    await cloudinary.uploader.destroy(imageToDelete.publicId, {
+      resource_type: "image",
+    });
 
-    playroom.slike = playroom.slike.filter((image) => image.url !== decodedUrl);
+    playroom.slike = playroom.slike.filter(
+      (image) => image.publicId !== publicId,
+    );
 
-    if (playroom.profilnaSlika?.url === decodedUrl) {
+    if (playroom.profilnaSlika?.publicId === publicId) {
       if (playroom.slike.length > 0) {
         playroom.profilnaSlika = {
           url: playroom.slike[0].url,
@@ -142,7 +160,7 @@ exports.deletePlayroomImage = async (req, res, next) => {
 
     await playroom.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Slika je obrisana",
     });

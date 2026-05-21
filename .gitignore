@@ -5,6 +5,7 @@ backend/node_modules/
 
 # Uploads
 backend/uploads/
+backend/.tmp/
 
 # Environment variables
 .env

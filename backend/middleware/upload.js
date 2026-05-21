@@ -1,8 +1,9 @@
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 
-const uploadDir = path.join(__dirname, "../uploads/tmp");
+const uploadDir = path.join(__dirname, "../.tmp/uploads");
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -19,7 +20,11 @@ const storage = multer.diskStorage({
         .basename(file.originalname || "file", ext)
         .replace(/[^a-zA-Z0-9-_]/g, "_");
 
-      cb(null, `${Date.now()}-${safeBaseName}${ext}`);
+      const randomName = crypto.randomUUID();
+      cb(
+        null,
+        `${Date.now()}-${randomName}-${safeBaseName.slice(0, 50)}${ext}`,
+      );
     } catch (err) {
       cb(new Error("Greška pri kreiranju naziva fajla"));
     }
@@ -52,7 +57,7 @@ const imageFileFilter = (req, file, cb) => {
 
     return cb(
       new Error(
-        "Dozvoljeni su samo image fajlovi (jpg, jpeg, png, gif, webp, bmp, svg, avif, heic, heif, tif, tiff, ico).",
+        "Dozvoljeni su samo image fajlovi (jpg, jpeg, png, webp, avif).",
       ),
       false,
     );
@@ -74,7 +79,7 @@ const videoFileFilter = (req, file, cb) => {
     }
 
     return cb(
-      new Error("Dozvoljeni su samo video fajlovi (mp4, mov, avi, mkv, webm)."),
+      new Error("Dozvoljeni su samo video fajlovi (mp4, mov, webm)."),
       false,
     );
   } catch (err) {
