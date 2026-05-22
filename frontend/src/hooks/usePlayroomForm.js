@@ -45,6 +45,8 @@ export const DEFAULT_DANI = [
 ];
 
 const IMAGE_MAX_SIZE = 5 * 1024 * 1024;
+const IMAGE_MAX_COUNT = 10;
+const VIDEO_MAX_COUNT = 3;
 const VIDEO_MAX_SIZE = 20 * 1024 * 1024;
 const VIDEO_MAX_DURATION_SECONDS = 30;
 
@@ -54,6 +56,16 @@ const toNumberOrZero = (value) => {
 };
 
 const sanitizeText = (value) => (typeof value === "string" ? value.trim() : "");
+
+const createLocalMediaId = (file) =>
+  `${Date.now()}-${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`;
+
+const createLocalImagePreview = (file) => ({
+  _localId: createLocalMediaId(file),
+  _localFile: file,
+  url: URL.createObjectURL(file),
+  publicId: "",
+});
 
 const getVideoDuration = (file) =>
   new Promise((resolve, reject) => {
@@ -76,6 +88,8 @@ const getVideoDuration = (file) =>
   });
 
 export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
+  const playroomId = initialData?._id || "";
+  const isEditMode = Boolean(playroomId);
   const initialFormData = useMemo(
     () => ({
       naziv: initialData?.naziv || "",
@@ -172,6 +186,10 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
   );
   const [uploading, setUploading] = useState(false);
 
+  const [pendingProfilnaFile, setPendingProfilnaFile] = useState(null);
+  const [pendingImageFiles, setPendingImageFiles] = useState([]);
+  const [pendingVideoItems, setPendingVideoItems] = useState([]);
+
   const [drustveneMreze, setDrustveneMreze] = useState({
     ...DEFAULT_DRUSTVENE_MREZE,
     ...(initialData?.drustveneMreze || {}),
@@ -245,6 +263,10 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
     );
     setUploading(false);
 
+    setPendingProfilnaFile(null);
+    setPendingImageFiles([]);
+    setPendingVideoItems([]);
+
     setDrustveneMreze({
       ...DEFAULT_DRUSTVENE_MREZE,
       ...(initialData?.drustveneMreze || {}),
@@ -277,7 +299,7 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
 
     if (!files.length) return;
 
-    const remainingSlots = Math.max(0, 3 - videoGalerija.length);
+    const remainingSlots = Math.max(0, VIDEO_MAX_COUNT - videoGalerija.length);
 
     if (remainingSlots === 0) {
       setError("Možete imati najviše 3 videa.");
@@ -334,13 +356,37 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
       return;
     }
 
-    if (videoGalerija.length >= 3) {
+    if (videoGalerija.length >= VIDEO_MAX_COUNT) {
       setError("Maksimalno 3 video snimka mogu biti dodata.");
       return;
     }
 
-    const remainingSlots = 3 - videoGalerija.length;
+    const remainingSlots = VIDEO_MAX_COUNT - videoGalerija.length;
     const filesToUpload = noviVideo.slice(0, remainingSlots);
+
+    if (!isEditMode) {
+      const videoItems = filesToUpload.map((file) => ({
+        file,
+        naziv: sanitizeText(videoNaziv) || file.name || "Video",
+        localId: createLocalMediaId(file),
+      }));
+
+      const previews = videoItems.map((item) => ({
+        _localId: item.localId,
+        _localFile: item.file,
+        url: URL.createObjectURL(item.file),
+        publicId: "",
+        naziv: item.naziv,
+        trajanje: 0,
+      }));
+
+      setPendingVideoItems((prev) => [...prev, ...videoItems]);
+      setVideoGalerija((prev) => [...prev, ...previews]);
+      setNoviVideo([]);
+      setVideoNaziv("");
+      setError("");
+      return;
+    }
 
     setUploadingVideo(true);
     setError("");
@@ -349,7 +395,11 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
       const uploadedVideos = [];
 
       for (const file of filesToUpload) {
-        const uploadedVideo = await uploadVideo(file);
+        const uploadedVideo = await uploadVideo(
+          playroomId,
+          file,
+          sanitizeText(videoNaziv) || file.name || "",
+        );
 
         if (uploadedVideo) {
           uploadedVideos.push({
@@ -375,7 +425,18 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
   };
 
   const handleRemoveVideo = (index) => {
-    setVideoGalerija((prev) => prev.filter((_, i) => i !== index));
+    setVideoGalerija((prev) => {
+      const item = prev[index];
+
+      if (item?._localFile && item?.url) {
+        URL.revokeObjectURL(item.url);
+        setPendingVideoItems((videos) =>
+          videos.filter((video) => video.file !== item._localFile),
+        );
+      }
+
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleChange = (e) => {
@@ -580,10 +641,22 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
         return;
       }
 
+      if (!isEditMode) {
+        if (profilnaSlika?._localFile && profilnaSlika.url) {
+          URL.revokeObjectURL(profilnaSlika.url);
+        }
+
+        const preview = createLocalImagePreview(file);
+        setPendingProfilnaFile(file);
+        setProfilnaSlika(preview);
+        e.target.value = "";
+        return;
+      }
+
       setUploading(true);
 
       try {
-        const uploaded = await uploadImage(file);
+        const uploaded = await uploadImage(playroomId, file);
         setProfilnaSlika(uploaded);
       } catch (err) {
         console.error("Greška pri uploadu slike:", err);
@@ -600,14 +673,39 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
       return;
     }
 
-    if (slike.length >= 10) {
+    if (slike.length >= IMAGE_MAX_COUNT) {
       setError("Maksimalno 10 slika može biti dodato.");
       e.target.value = "";
       return;
     }
 
-    const remainingSlots = 10 - slike.length;
+    const remainingSlots = IMAGE_MAX_COUNT - slike.length;
     const filesToUpload = files.slice(0, remainingSlots);
+
+    if (!isEditMode) {
+      const validFiles = [];
+
+      for (const file of filesToUpload) {
+        if (file.size > IMAGE_MAX_SIZE) {
+          setError(`Slika "${file.name}" je veća od 5 MB.`);
+          continue;
+        }
+
+        validFiles.push(file);
+      }
+
+      const previews = validFiles.map(createLocalImagePreview);
+
+      setPendingImageFiles((prev) => [...prev, ...validFiles]);
+      setSlike((prev) => [...prev, ...previews]);
+
+      if (files.length > remainingSlots) {
+        setError(`Možete dodati još samo ${remainingSlots} slika.`);
+      }
+
+      e.target.value = "";
+      return;
+    }
 
     setUploading(true);
 
@@ -618,7 +716,7 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
           continue;
         }
 
-        const uploaded = await uploadImage(file);
+        const uploaded = await uploadImage(playroomId, file);
         setSlike((prev) => [...prev, uploaded]);
       }
     } catch (err) {
@@ -640,10 +738,26 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
   };
 
   const removeImage = (index) => {
-    setSlike((prev) => prev.filter((_, i) => i !== index));
+    setSlike((prev) => {
+      const item = prev[index];
+
+      if (item?._localFile && item?.url) {
+        URL.revokeObjectURL(item.url);
+        setPendingImageFiles((files) =>
+          files.filter((file) => file !== item._localFile),
+        );
+      }
+
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const removeProfilna = () => {
+    if (profilnaSlika?._localFile && profilnaSlika?.url) {
+      URL.revokeObjectURL(profilnaSlika.url);
+    }
+
+    setPendingProfilnaFile(null);
     setProfilnaSlika(null);
   };
 
@@ -756,6 +870,16 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
       return;
     }
 
+    const safeProfilnaSlika = profilnaSlika?._localFile ? null : profilnaSlika;
+
+    const safeSlike = Array.isArray(slike)
+      ? slike.filter((item) => !item?._localFile)
+      : [];
+
+    const safeVideoGalerija = Array.isArray(videoGalerija)
+      ? videoGalerija.filter((item) => !item?._localFile)
+      : [];
+
     const submitData = {
       ...formData,
       naziv: sanitizeText(formData.naziv),
@@ -793,9 +917,14 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
         tip: u.tip || "fiksno",
       })),
       besplatnePogodnosti,
-      profilnaSlika,
-      slike,
-      videoGalerija,
+      profilnaSlika: safeProfilnaSlika,
+      slike: safeSlike,
+      videoGalerija: safeVideoGalerija,
+      _pendingMedia: {
+        profilnaSlikaFile: pendingProfilnaFile,
+        imageFiles: pendingImageFiles,
+        videoItems: pendingVideoItems,
+      },
       drustveneMreze: {
         instagram: sanitizeText(drustveneMreze.instagram),
         facebook: sanitizeText(drustveneMreze.facebook),

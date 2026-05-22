@@ -1,52 +1,66 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
-import api from "../services/api";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import api, {
+  clearAccessToken,
+  setAccessToken,
+  setUnauthorizedHandler,
+} from "../services/api";
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
 export const useAuth = () => useContext(AuthContext);
 
-const TOKEN_KEY = "accessToken";
-const USER_KEY = "user";
+const extractAuthPayload = (response) => {
+  const payload =
+    response?.data?.accessToken || response?.data?.user
+      ? response.data
+      : response;
+
+  return payload?.data?.accessToken || payload?.data?.user
+    ? payload.data
+    : payload;
+};
+
+const extractUserFromMeResponse = (response) =>
+  response?.data?.user ||
+  response?.data?.data?.user ||
+  response?.data?.data ||
+  null;
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    try {
-      const storedUser = localStorage.getItem(USER_KEY);
-      return storedUser ? JSON.parse(storedUser) : null;
-    } catch {
-      return null;
-    }
-  });
-
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const setAuthData = (userData, token) => {
+  const clearAuthData = useCallback(() => {
+    clearAccessToken();
+    setUser(null);
+    setError(null);
+  }, []);
+
+  const setAuthData = useCallback((userData, token) => {
     if (token) {
-      localStorage.setItem(TOKEN_KEY, token);
+      setAccessToken(token);
     }
 
     if (userData) {
-      localStorage.setItem(USER_KEY, JSON.stringify(userData));
       setUser(userData);
     }
-  };
+  }, []);
 
-  const clearAuthData = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    setUser(null);
-    setError(null);
-  };
-
-  const loadUser = async () => {
+  const loadUser = useCallback(async () => {
     try {
       const response = await api.get("/auth/me");
-      const loadedUser = response?.data?.user;
+      const loadedUser = extractUserFromMeResponse(response);
 
       if (loadedUser) {
         setUser(loadedUser);
-        localStorage.setItem(USER_KEY, JSON.stringify(loadedUser));
         return loadedUser;
       }
 
@@ -59,97 +73,161 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clearAuthData]);
+
+  const restoreSession = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      const refreshResponse = await api.post("/auth/refresh");
+      const authData = extractAuthPayload(refreshResponse);
+
+      const token = authData?.accessToken || authData?.token || null;
+
+      if (!token) {
+        clearAuthData();
+        return null;
+      }
+
+      setAccessToken(token);
+
+      if (authData?.user) {
+        setUser(authData.user);
+        return authData.user;
+      }
+
+      const meResponse = await api.get("/auth/me");
+      const loadedUser = extractUserFromMeResponse(meResponse);
+
+      if (loadedUser) {
+        setUser(loadedUser);
+        return loadedUser;
+      }
+
+      clearAuthData();
+      return null;
+    } catch {
+      clearAuthData();
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [clearAuthData]);
 
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const removeUnauthorizedHandler = setUnauthorizedHandler(() => {
+      clearAuthData();
+    });
 
-    if (!token) {
-      setLoading(false);
-      return;
-    }
+    restoreSession();
 
-    loadUser();
-  }, []);
+    return removeUnauthorizedHandler;
+  }, [clearAuthData, restoreSession]);
 
-  const handleAuthSuccess = (response, fallbackUserData = null) => {
-    const payload =
-      response?.data?.accessToken || response?.data?.user
-        ? response.data
-        : response;
+  const handleAuthSuccess = useCallback(
+    (response, fallbackUserData = null) => {
+      const authData = extractAuthPayload(response);
 
-    const authData =
-      payload?.data?.accessToken || payload?.data?.user
-        ? payload.data
-        : payload;
+      const token = authData?.accessToken || authData?.token || null;
+      const userDataRes = authData?.user
+        ? {
+            ...authData.user,
+            email: authData.user.email || fallbackUserData?.email || "",
+          }
+        : null;
 
-    const token = authData?.accessToken || authData?.token || null;
-    const userDataRes = authData?.user
-      ? {
-          ...authData.user,
-          email: authData.user.email || fallbackUserData?.email || "",
-        }
-      : null;
+      if (!token || !userDataRes) {
+        const message = "Nije moguće sačuvati prijavu korisnika.";
+        console.error("handleAuthSuccess: nedostaju token ili user", response);
+        setError(message);
 
-    if (!token || !userDataRes) {
-      console.error("handleAuthSuccess: nedostaju token ili user", response);
-      return {
-        success: false,
-        error: "Nije moguće sačuvati prijavu korisnika.",
-      };
-    }
+        return {
+          success: false,
+          error: message,
+        };
+      }
 
-    setAuthData(userDataRes, token);
+      setAuthData(userDataRes, token);
 
-    return { success: true, user: userDataRes };
-  };
+      return { success: true, user: userDataRes };
+    },
+    [setAuthData],
+  );
 
-  const handleAuthError = (err, fallbackMessage) => {
+  const handleAuthError = useCallback((err, fallbackMessage) => {
     const msg = err?.response?.data?.message || fallbackMessage;
     setError(msg);
     return { success: false, error: msg };
-  };
+  }, []);
 
-  const register = async (userData) => {
-    setError(null);
+  const register = useCallback(
+    async (userData) => {
+      setError(null);
 
-    try {
-      const pendingEmail = userData?.email?.trim().toLowerCase();
+      try {
+        const pendingEmail = userData?.email?.trim().toLowerCase();
 
-      if (pendingEmail) {
-        localStorage.setItem("pendingVerificationEmail", pendingEmail);
+        if (pendingEmail) {
+          localStorage.setItem("pendingVerificationEmail", pendingEmail);
+        }
+
+        const response = await api.post("/auth/register", userData);
+
+        return {
+          success: true,
+          message:
+            response?.data?.message ||
+            "Proverite email adresu radi potvrde naloga.",
+          user: response?.data?.user || null,
+        };
+      } catch (err) {
+        return handleAuthError(err, "Greška pri registraciji.");
       }
+    },
+    [handleAuthError],
+  );
 
-      const response = await api.post("/auth/register", userData);
+  const login = useCallback(
+    async (email, password) => {
+      setError(null);
 
-      return {
-        success: true,
-        message:
-          response?.data?.message ||
-          "Proverite email adresu radi potvrde naloga.",
-        user: response?.data?.user || null,
-      };
-    } catch (err) {
-      return handleAuthError(err, "Greška pri registraciji.");
-    }
-  };
+      try {
+        const response = await api.post("/auth/login", {
+          email,
+          password,
+        });
 
-  const login = async (email, password) => {
-    setError(null);
+        return handleAuthSuccess(response);
+      } catch (err) {
+        return handleAuthError(err, "Greška pri prijavi.");
+      }
+    },
+    [handleAuthError, handleAuthSuccess],
+  );
 
-    try {
-      const response = await api.post("/auth/login", {
-        email,
-        password,
-      });
+  const resendVerificationEmail = useCallback(
+    async (email) => {
+      setError(null);
 
-      return handleAuthSuccess(response);
-    } catch (err) {
-      return handleAuthError(err, "Greška pri prijavi.");
-    }
-  };
+      try {
+        const response = await api.post("/auth/resend-verification", {
+          email,
+        });
 
-  const logout = async () => {
+        return {
+          success: true,
+          message:
+            response?.data?.message ||
+            "Ako nalog postoji i nije potvrđen, poslali smo novi email.",
+        };
+      } catch (err) {
+        return handleAuthError(err, "Greška pri slanju verifikacionog emaila.");
+      }
+    },
+    [handleAuthError],
+  );
+
+  const logout = useCallback(async () => {
     try {
       await api.post("/auth/logout");
     } catch (err) {
@@ -157,73 +235,101 @@ export const AuthProvider = ({ children }) => {
     } finally {
       clearAuthData();
     }
-  };
+  }, [clearAuthData]);
 
-  const changePassword = async (payload) => {
-    setError(null);
+  const changePassword = useCallback(
+    async (payload) => {
+      setError(null);
 
-    try {
-      const response = await api.put("/auth/change-password", payload);
-      clearAuthData();
+      try {
+        const response = await api.put("/auth/change-password", payload);
+        clearAuthData();
 
-      return {
-        success: true,
-        message: response.data?.message || "Lozinka je promenjena.",
-      };
-    } catch (err) {
-      return handleAuthError(err, "Greška pri promeni lozinke.");
-    }
-  };
+        return {
+          success: true,
+          message: response.data?.message || "Lozinka je promenjena.",
+        };
+      } catch (err) {
+        return handleAuthError(err, "Greška pri promeni lozinke.");
+      }
+    },
+    [clearAuthData, handleAuthError],
+  );
 
-  const changeEmail = async (payload) => {
-    setError(null);
+  const changeEmail = useCallback(
+    async (payload) => {
+      setError(null);
 
-    try {
-      const response = await api.put("/auth/change-email", payload);
-      clearAuthData();
+      try {
+        const response = await api.put("/auth/change-email", payload);
+        clearAuthData();
 
-      return {
-        success: true,
-        message: response.data?.message || "Email je promenjen.",
-      };
-    } catch (err) {
-      return handleAuthError(err, "Greška pri promeni emaila.");
-    }
-  };
+        return {
+          success: true,
+          message: response.data?.message || "Email je promenjen.",
+        };
+      } catch (err) {
+        return handleAuthError(err, "Greška pri promeni emaila.");
+      }
+    },
+    [clearAuthData, handleAuthError],
+  );
 
-  const deleteAccount = async (payload) => {
-    setError(null);
+  const deleteAccount = useCallback(
+    async (payload) => {
+      setError(null);
 
-    try {
-      const response = await api.delete("/auth/delete-account", {
-        data: payload,
-      });
+      try {
+        const response = await api.delete("/auth/delete-account", {
+          data: payload,
+        });
 
-      clearAuthData();
+        clearAuthData();
 
-      return {
-        success: true,
-        message: response.data?.message || "Nalog je obrisan.",
-      };
-    } catch (err) {
-      return handleAuthError(err, "Greška pri brisanju naloga.");
-    }
-  };
+        return {
+          success: true,
+          message: response.data?.message || "Nalog je obrisan.",
+        };
+      } catch (err) {
+        return handleAuthError(err, "Greška pri brisanju naloga.");
+      }
+    },
+    [clearAuthData, handleAuthError],
+  );
 
-  const value = {
-    user,
-    loading,
-    error,
-    register,
-    login,
-    logout,
-    changePassword,
-    changeEmail,
-    deleteAccount,
-    loadUser,
-    handleAuthSuccess,
-    isAuthenticated: Boolean(user),
-  };
+  const value = useMemo(
+    () => ({
+      user,
+      loading,
+      error,
+      register,
+      login,
+      resendVerificationEmail,
+      logout,
+      changePassword,
+      changeEmail,
+      deleteAccount,
+      loadUser,
+      restoreSession,
+      handleAuthSuccess,
+      isAuthenticated: Boolean(user),
+    }),
+    [
+      user,
+      loading,
+      error,
+      register,
+      login,
+      resendVerificationEmail,
+      logout,
+      changePassword,
+      changeEmail,
+      deleteAccount,
+      loadUser,
+      restoreSession,
+      handleAuthSuccess,
+    ],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

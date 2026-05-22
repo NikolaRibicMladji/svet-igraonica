@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
 import "../styles/global.css";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
@@ -20,13 +19,19 @@ const Login = () => {
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [resending, setResending] = useState(false);
 
-  const { login, isAuthenticated, loading: authLoading, user } = useAuth();
+  const {
+    login,
+    resendVerificationEmail,
+    isAuthenticated,
+    loading: authLoading,
+    user,
+  } = useAuth();
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && user) {
       if (user.role === "vlasnik") {
         if (user.hasPlayroom) {
-          navigate("/my-playrooms", { replace: true });
+          navigate("/owner/dashboard", { replace: true });
         } else {
           navigate("/create-playroom", { replace: true });
         }
@@ -116,7 +121,7 @@ const Login = () => {
 
       if (role === "vlasnik") {
         if (result?.user?.hasPlayroom) {
-          navigate("/my-playrooms", { replace: true });
+          navigate("/owner/dashboard", { replace: true });
         } else {
           navigate("/create-playroom", { replace: true });
         }
@@ -159,23 +164,20 @@ const Login = () => {
     setSuccessMessage("");
     setShowResendVerification(false);
 
-    try {
-      const response = await api.post("/auth/resend-verification", {
-        email: normalizedEmail,
-      });
+    const result = await resendVerificationEmail(normalizedEmail);
 
+    if (result?.success) {
       setSuccessMessage(
-        response?.data?.message ||
+        result.message ||
           "Ako nalog postoji i nije potvrđen, poslali smo novi email.",
       );
-    } catch (err) {
+    } else {
       setServerError(
-        err?.response?.data?.message ||
-          "Greška pri slanju verifikacionog emaila.",
+        result?.error || "Greška pri slanju verifikacionog emaila.",
       );
-    } finally {
-      setResending(false);
     }
+
+    setResending(false);
   };
 
   return (

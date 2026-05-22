@@ -1,9 +1,63 @@
 import axios from "axios";
 
-const API_BASE_URL = (
-  process.env.REACT_APP_API_URL ||
-  "https://svet-igraonica-backend.onrender.com/api"
-).replace(/\/$/, "");
+const API_BASE_URL = process.env.REACT_APP_API_URL?.replace(/\/$/, "");
+
+if (!API_BASE_URL) {
+  throw new Error("Nedostaje REACT_APP_API_URL. Dodaj ga u .env.local fajl.");
+}
+
+let accessToken = null;
+let refreshPromise = null;
+let unauthorizedHandler = null;
+
+export const setAccessToken = (token) => {
+  accessToken = token || null;
+};
+
+export const getAccessToken = () => accessToken;
+
+export const clearAccessToken = () => {
+  accessToken = null;
+};
+
+export const setUnauthorizedHandler = (handler) => {
+  unauthorizedHandler = typeof handler === "function" ? handler : null;
+
+  return () => {
+    if (unauthorizedHandler === handler) {
+      unauthorizedHandler = null;
+    }
+  };
+};
+
+const isAuthRoute = (url = "") =>
+  url.includes("/auth/login") ||
+  url.includes("/auth/register") ||
+  url.includes("/auth/refresh") ||
+  url.includes("/auth/logout");
+
+const refreshAccessToken = async () => {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
+      .then((response) => {
+        const newAccessToken =
+          response.data?.accessToken || response.data?.data?.accessToken;
+
+        if (!newAccessToken) {
+          throw new Error("Refresh nije vratio novi access token.");
+        }
+
+        setAccessToken(newAccessToken);
+        return newAccessToken;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+};
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -12,10 +66,9 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
-
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (accessToken) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
 
     return config;
@@ -28,55 +81,37 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (!error.response) {
+    if (!error.response || !originalRequest) {
       return Promise.reject(error);
     }
 
-    if (
+    const shouldTryRefresh =
       error.response.status === 401 &&
-      originalRequest &&
       !originalRequest._retry &&
-      !originalRequest.url?.includes("/auth/login") &&
-      !originalRequest.url?.includes("/auth/register") &&
-      !originalRequest.url?.includes("/auth/refresh") &&
-      !originalRequest.url?.includes("/auth/logout")
-    ) {
-      originalRequest._retry = true;
+      !isAuthRoute(originalRequest.url);
 
-      try {
-        const refreshResponse = await axios.post(
-          `${API_BASE_URL}/auth/refresh`,
-          {},
-          { withCredentials: true },
-        );
-
-        const accessToken = refreshResponse.data?.accessToken;
-
-        if (!accessToken) {
-          throw new Error("Novi access token nije vraćen.");
-        }
-
-        localStorage.setItem("accessToken", accessToken);
-
-        originalRequest.headers = {
-          ...originalRequest.headers,
-          Authorization: `Bearer ${accessToken}`,
-        };
-
-        return api(originalRequest);
-      } catch (refreshError) {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("user");
-
-        if (window.location.pathname !== "/login") {
-          window.location.href = "/login";
-        }
-
-        return Promise.reject(refreshError);
-      }
+    if (!shouldTryRefresh) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    originalRequest._retry = true;
+
+    try {
+      const newAccessToken = await refreshAccessToken();
+
+      originalRequest.headers = originalRequest.headers || {};
+      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+      return api(originalRequest);
+    } catch (refreshError) {
+      clearAccessToken();
+
+      if (unauthorizedHandler) {
+        unauthorizedHandler();
+      }
+
+      return Promise.reject(refreshError);
+    }
   },
 );
 

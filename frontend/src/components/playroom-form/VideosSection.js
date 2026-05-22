@@ -1,4 +1,5 @@
 import React from "react";
+const VIDEO_MAX_COUNT = 3;
 
 const VideosSection = ({
   uploadingVideo,
@@ -12,11 +13,14 @@ const VideosSection = ({
 }) => {
   return (
     <div className="form-section">
-      <h3>🎥 Video galerija (maks. 3)</h3>
+      <h3>🎥 Video galerija (maks. {VIDEO_MAX_COUNT})</h3>
 
       <p className="section-hint">
         Dodaj video snimke sa rođendana, događaja ili prikaza igraonice (maks.
         20 MB velicina i 30 sekundi duzina videa).
+      </p>
+      <p className="section-hint">
+        Dodato: {videoGalerija.length}/{VIDEO_MAX_COUNT}
       </p>
 
       <div className="dynamic-input">
@@ -25,6 +29,7 @@ const VideosSection = ({
             type="text"
             placeholder="Naziv videa (npr. Rođendan 2024)"
             value={videoNaziv}
+            disabled={uploadingVideo || videoGalerija.length >= VIDEO_MAX_COUNT}
             onChange={(e) => setVideoNaziv(e.target.value)}
           />
 
@@ -33,7 +38,7 @@ const VideosSection = ({
             accept="video/*"
             multiple
             onChange={handleVideoChange}
-            disabled={uploadingVideo || videoGalerija.length >= 3}
+            disabled={uploadingVideo || videoGalerija.length >= VIDEO_MAX_COUNT}
           />
 
           <button
@@ -42,7 +47,7 @@ const VideosSection = ({
             disabled={
               noviVideo.length === 0 ||
               uploadingVideo ||
-              videoGalerija.length >= 3
+              videoGalerija.length >= VIDEO_MAX_COUNT
             }
           >
             {uploadingVideo ? "Uploadujem..." : "+ Dodaj"}
@@ -72,7 +77,6 @@ const VideosSection = ({
                     controls
                     className="video-preview-player"
                     src={video.url}
-                    style={{ width: "200px", borderRadius: "8px" }}
                   />
                   <div className="video-info">
                     <span className="video-name">
@@ -89,6 +93,7 @@ const VideosSection = ({
                     type="button"
                     onClick={() => handleRemoveVideo(idx)}
                     className="remove-video"
+                    disabled={uploadingVideo}
                   >
                     ✖ Obriši
                   </button>
@@ -98,7 +103,11 @@ const VideosSection = ({
           </div>
         )}
 
-        {videoGalerija.length >= 3 && (
+        {videoGalerija.length === 0 && (
+          <p className="section-hint">Još nema dodatih video snimaka.</p>
+        )}
+
+        {videoGalerija.length >= VIDEO_MAX_COUNT && (
           <p className="warning">Maksimalan broj video snimaka je dostignut.</p>
         )}
       </div>

@@ -1,4 +1,5 @@
 import React from "react";
+const IMAGE_MAX_COUNT = 10;
 
 const ImagesSection = ({
   uploading,
@@ -15,6 +16,11 @@ const ImagesSection = ({
       <div className="form-group">
         <label>Profilna slika</label>
         <small className="upload-hint">Maks. 5 MB po slici</small>
+        <small className="upload-hint">
+          Ako ne dodate profilnu sliku, prva uploadovana slika će biti korišćena
+          kao profilna.
+        </small>
+
         <input
           type="file"
           accept="image/*"
@@ -24,7 +30,7 @@ const ImagesSection = ({
         {profilnaSlika?.url && (
           <div className="uploaded-image">
             <img src={profilnaSlika.url} alt="Profilna slika" />
-            <button type="button" onClick={removeProfilna}>
+            <button type="button" onClick={removeProfilna} disabled={uploading}>
               ✖ Ukloni
             </button>
           </div>
@@ -32,14 +38,16 @@ const ImagesSection = ({
       </div>
 
       <div className="form-group">
-        <label>Ostale slike (maks. 10)</label>
-        <small className="upload-hint">Maks. 5 MB po slici</small>
+        <label>Ostale slike (maks. {IMAGE_MAX_COUNT})</label>
+        <small className="upload-hint">
+          Dodato: {slike.length}/{IMAGE_MAX_COUNT}
+        </small>
         <input
           type="file"
           accept="image/*"
           multiple
           onChange={(e) => handleFileChange(e, false)}
-          disabled={slike.length >= 10 || uploading}
+          disabled={slike.length >= IMAGE_MAX_COUNT || uploading}
         />
 
         <div className="image-list">
@@ -49,14 +57,24 @@ const ImagesSection = ({
               className="image-item"
             >
               <img src={img.url} alt={`Slika ${idx + 1}`} />
-              <button type="button" onClick={() => removeImage(idx)}>
+              <button
+                type="button"
+                onClick={() => removeImage(idx)}
+                disabled={uploading}
+              >
                 ✖
               </button>
             </div>
           ))}
         </div>
 
-        {slike.length >= 10 && <p className="warning">Maksimalno 10 slika.</p>}
+        {slike.length === 0 && (
+          <p className="upload-hint">Još nema dodatih slika.</p>
+        )}
+
+        {slike.length >= IMAGE_MAX_COUNT && (
+          <p className="warning">Maksimalno {IMAGE_MAX_COUNT} slika.</p>
+        )}
       </div>
     </div>
   );
