@@ -4,6 +4,11 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "../styles/Navbar.css";
+import {
+  validateChangeEmailForm,
+  validateChangePasswordForm,
+  validateDeleteAccountForm,
+} from "../utils/accountValidationUtils";
 
 const Navbar = () => {
   const {
@@ -285,8 +290,17 @@ const Navbar = () => {
                   className="account-form"
                   onSubmit={async (e) => {
                     e.preventDefault();
+                    if (submitting) return;
 
                     setFormError("");
+
+                    const validation = validateChangePasswordForm(passwordForm);
+
+                    if (!validation.success) {
+                      setFormError(validation.error);
+                      return;
+                    }
+
                     setSubmitting(true);
 
                     const result = await changePassword(passwordForm);
@@ -424,11 +438,20 @@ const Navbar = () => {
                   className="account-form"
                   onSubmit={async (e) => {
                     e.preventDefault();
+                    if (submitting) return;
 
                     setFormError("");
+
+                    const validation = validateChangeEmailForm(emailForm);
+
+                    if (!validation.success) {
+                      setFormError(validation.error);
+                      return;
+                    }
+
                     setSubmitting(true);
 
-                    const result = await changeEmail(emailForm);
+                    const result = await changeEmail(validation.value);
 
                     setSubmitting(false);
 
@@ -520,8 +543,17 @@ const Navbar = () => {
                   className="account-form"
                   onSubmit={async (e) => {
                     e.preventDefault();
+                    if (submitting) return;
 
                     setFormError("");
+
+                    const validation = validateDeleteAccountForm(deleteForm);
+
+                    if (!validation.success) {
+                      setFormError(validation.error);
+                      return;
+                    }
+
                     setSubmitting(true);
 
                     const result = await deleteAccount(deleteForm);

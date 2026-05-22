@@ -11,6 +11,9 @@ export const getAllPlayrooms = async (params = {}) => {
       query.append("minRating", params.minRating);
     }
     if (params.sortBy) query.append("sortBy", params.sortBy);
+    if (params.search && params.search.trim()) {
+      query.append("search", params.search.trim());
+    }
 
     const response = await api.get(`/playrooms?${query.toString()}`);
 

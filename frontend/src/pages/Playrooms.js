@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../services/api";
+import { getAllPlayrooms } from "../services/playroomService";
 import PlayroomFilters from "../components/PlayroomFilters";
 import PlayroomCoverFallback from "../components/PlayroomCoverFallback";
 import "../styles/Playrooms.css";
 import { normalizeText } from "../utils/normalizeText";
+import { getSafeExternalUrl } from "../utils/urlUtils";
 
 const Playrooms = () => {
   const [playrooms, setPlayrooms] = useState([]);
@@ -29,36 +30,21 @@ const Playrooms = () => {
     if (page === 1) setLoading(true);
     setError("");
 
-    const queryParams = new URLSearchParams();
-    queryParams.append("page", page);
-    queryParams.append("limit", 12);
-
-    if (filters.grad && filters.grad !== "svi") {
-      queryParams.append("grad", normalizeText(filters.grad));
-    }
-
-    if (filters.minRating && filters.minRating !== "sve") {
-      queryParams.append("minRating", String(filters.minRating));
-    }
-
-    if (filters.sortBy) {
-      queryParams.append("sortBy", filters.sortBy);
-    }
-    if (debouncedSearch && debouncedSearch.trim()) {
-      queryParams.append("search", debouncedSearch.trim());
-    }
-
     try {
-      const url = queryParams.toString()
-        ? `/playrooms?${queryParams.toString()}`
-        : "/playrooms";
+      const result = await getAllPlayrooms({
+        page,
+        limit: 12,
+        grad:
+          filters.grad && filters.grad !== "svi"
+            ? normalizeText(filters.grad)
+            : filters.grad,
+        minRating: filters.minRating,
+        sortBy: filters.sortBy,
+        search: debouncedSearch,
+      });
 
-      const response = await api.get(url);
-
-      if (response.data?.success) {
-        const incoming = Array.isArray(response.data.data)
-          ? response.data.data
-          : [];
+      if (result?.success) {
+        const incoming = Array.isArray(result.data) ? result.data : [];
 
         setPlayrooms((prev) => {
           if (page === 1) return incoming;
@@ -75,8 +61,8 @@ const Playrooms = () => {
           return merged;
         });
 
-        const totalValue = response.data.total || 0;
-        const pagesValue = response.data.pages || 1;
+        const totalValue = result.total || 0;
+        const pagesValue = result.pages || 1;
 
         setTotal(totalValue);
         setTotalPages(pagesValue);
@@ -86,7 +72,7 @@ const Playrooms = () => {
         setTotal(0);
         setTotalPages(1);
         setHasMore(false);
-        setError("Greška pri učitavanju igraonica.");
+        setError(result?.error || "Greška pri učitavanju igraonica.");
       }
     } catch (err) {
       console.error("Greška pri komunikaciji sa serverom:", err);
@@ -114,7 +100,7 @@ const Playrooms = () => {
     if (page > totalPages) {
       setPage(totalPages || 1);
     }
-  }, [totalPages]);
+  }, [page, totalPages]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -186,7 +172,6 @@ const Playrooms = () => {
             const value = e.target.value;
 
             setSearchTerm(value);
-            setDebouncedSearch(value);
             setPlayrooms([]);
             setPage(1);
             setHasMore(true);
@@ -213,7 +198,18 @@ const Playrooms = () => {
           <div className="playrooms-grid">
             {playrooms.map((playroom, index) => {
               const imageUrl = playroom.profilnaSlika?.url || "";
-
+              const instagramUrl = getSafeExternalUrl(
+                playroom.drustveneMreze?.instagram,
+              );
+              const tiktokUrl = getSafeExternalUrl(
+                playroom.drustveneMreze?.tiktok,
+              );
+              const facebookUrl = getSafeExternalUrl(
+                playroom.drustveneMreze?.facebook,
+              );
+              const websiteUrl = getSafeExternalUrl(
+                playroom.drustveneMreze?.website,
+              );
               const ratingValue = Number(playroom.rating || 0);
               const filledStars = Math.max(
                 0,
@@ -264,9 +260,9 @@ const Playrooms = () => {
 
                       {/* DRUŠTVENE MREŽE */}
                       <div className="social-row">
-                        {playroom.drustveneMreze?.instagram && (
+                        {instagramUrl && (
                           <a
-                            href={playroom.drustveneMreze.instagram}
+                            href={instagramUrl}
                             target="_blank"
                             rel="noreferrer"
                             className="social-item"
@@ -275,9 +271,9 @@ const Playrooms = () => {
                           </a>
                         )}
 
-                        {playroom.drustveneMreze?.tiktok && (
+                        {tiktokUrl && (
                           <a
-                            href={playroom.drustveneMreze.tiktok}
+                            href={tiktokUrl}
                             target="_blank"
                             rel="noreferrer"
                             className="social-item"
@@ -286,9 +282,9 @@ const Playrooms = () => {
                           </a>
                         )}
 
-                        {playroom.drustveneMreze?.facebook && (
+                        {facebookUrl && (
                           <a
-                            href={playroom.drustveneMreze.facebook}
+                            href={facebookUrl}
                             target="_blank"
                             rel="noreferrer"
                             className="social-item"
@@ -297,14 +293,14 @@ const Playrooms = () => {
                           </a>
                         )}
 
-                        {playroom.drustveneMreze?.website && (
+                        {websiteUrl && (
                           <a
-                            href={playroom.drustveneMreze.website}
+                            href={websiteUrl}
                             target="_blank"
                             rel="noreferrer"
                             className="social-item website-link"
                           >
-                            Veb sajt
+                            Web sajt
                           </a>
                         )}
                       </div>

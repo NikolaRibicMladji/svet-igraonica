@@ -1,12 +1,18 @@
 import React, { useMemo, useState } from "react";
+import { getSafeExternalUrl } from "../utils/urlUtils";
 
 const normalizeVideo = (video) => {
   if (!video) return null;
 
+  const url = getSafeExternalUrl(video.url || video.secure_url || video.path);
+  const thumbnail = getSafeExternalUrl(video.thumbnail);
+
+  if (!url) return null;
+
   return {
-    url: video.url || video.secure_url || video.path || "",
-    thumbnail: video.thumbnail || "",
-    naziv: video.naziv || "",
+    url,
+    thumbnail,
+    naziv: String(video.naziv || "").trim(),
   };
 };
 
@@ -36,7 +42,6 @@ const VideoPlayer = ({ video }) => {
             }
           }}
           aria-label={`Pokreni video ${normalizedVideo.naziv || "video"}`}
-          style={{ cursor: "pointer" }}
         >
           {normalizedVideo.thumbnail ? (
             <img
@@ -58,7 +63,6 @@ const VideoPlayer = ({ video }) => {
           autoPlay
           className="video-player-inline"
           src={normalizedVideo.url}
-          style={{ width: "100%", aspectRatio: "16/9" }}
         />
       )}
 

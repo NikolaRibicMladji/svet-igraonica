@@ -7,6 +7,7 @@ import ImageModal from "../components/ImageModal";
 import Reviews from "../components/Reviews";
 import VideoPlayer from "../components/VideoPlayer";
 import PlayroomCoverFallback from "../components/PlayroomCoverFallback";
+import { getSafeExternalUrl } from "../utils/urlUtils";
 
 const DAY_LABELS = {
   ponedeljak: "Ponedeljak",
@@ -127,6 +128,11 @@ const PlayroomDetails = () => {
     const naziv = normalizeText(c.naziv);
     return naziv !== "dete" && naziv !== "roditelj";
   });
+
+  const instagramUrl = getSafeExternalUrl(playroom.drustveneMreze?.instagram);
+  const facebookUrl = getSafeExternalUrl(playroom.drustveneMreze?.facebook);
+  const tiktokUrl = getSafeExternalUrl(playroom.drustveneMreze?.tiktok);
+  const websiteUrl = getSafeExternalUrl(playroom.drustveneMreze?.website);
 
   const getCenaTipLabel = (tip) => {
     if (tip === "po_osobi") return "po osobi";
@@ -277,9 +283,9 @@ const PlayroomDetails = () => {
           <div className="detail-item full-width">
             <label>🌐 Društvene mreže</label>
             <div className="social-links-manage">
-              {playroom.drustveneMreze.instagram && (
+              {instagramUrl && (
                 <a
-                  href={playroom.drustveneMreze.instagram}
+                  href={instagramUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="social-link-small instagram"
@@ -288,9 +294,9 @@ const PlayroomDetails = () => {
                 </a>
               )}
 
-              {playroom.drustveneMreze.facebook && (
+              {facebookUrl && (
                 <a
-                  href={playroom.drustveneMreze.facebook}
+                  href={facebookUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="social-link-small facebook"
@@ -299,9 +305,9 @@ const PlayroomDetails = () => {
                 </a>
               )}
 
-              {playroom.drustveneMreze.tiktok && (
+              {tiktokUrl && (
                 <a
-                  href={playroom.drustveneMreze.tiktok}
+                  href={tiktokUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="social-link-small tiktok"
@@ -310,14 +316,14 @@ const PlayroomDetails = () => {
                 </a>
               )}
 
-              {playroom.drustveneMreze.website && (
+              {websiteUrl && (
                 <a
-                  href={playroom.drustveneMreze.website}
+                  href={websiteUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="social-link-small website"
                 >
-                  Veb sajt
+                  Web sajt
                 </a>
               )}
             </div>

@@ -1,27 +1,36 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "../styles/ImageGallery.css";
+import { getSafeExternalUrl } from "../utils/urlUtils";
 
 const normalizeImage = (image) => {
   if (!image) return null;
 
   if (typeof image === "string") {
+    const url = getSafeExternalUrl(image);
+
+    if (!url) return null;
+
     return {
-      url: image,
+      url,
       isMain: false,
       width: null,
       height: null,
       size: null,
-      public_id: image,
+      public_id: url,
     };
   }
 
+  const url = getSafeExternalUrl(image.url || image.secure_url || image.path);
+
+  if (!url) return null;
+
   return {
-    url: image.url || image.secure_url || image.path || "",
+    url,
     isMain: Boolean(image.isMain),
     width: image.width || null,
     height: image.height || null,
     size: image.size || null,
-    public_id: image.public_id || image.id || image.url || "",
+    public_id: image.public_id || image.id || url,
   };
 };
 
@@ -96,6 +105,7 @@ const ImageGallery = ({ images = [], playroomName = "Igraonica" }) => {
         tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
             openModal(mainImage);
           }
         }}
@@ -125,6 +135,7 @@ const ImageGallery = ({ images = [], playroomName = "Igraonica" }) => {
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
                   setSelectedImage(image);
                 }
               }}

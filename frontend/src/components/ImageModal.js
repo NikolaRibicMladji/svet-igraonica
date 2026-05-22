@@ -1,18 +1,27 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import "../styles/ImageModal.css";
+import { getSafeExternalUrl } from "../utils/urlUtils";
 
 const normalizeImage = (image) => {
   if (!image) return null;
 
   if (typeof image === "string") {
+    const url = getSafeExternalUrl(image);
+
+    if (!url) return null;
+
     return {
-      url: image,
+      url,
       alt: "",
     };
   }
 
+  const url = getSafeExternalUrl(image.url || image.secure_url || image.path);
+
+  if (!url) return null;
+
   return {
-    url: image.url || image.secure_url || image.path || "",
+    url,
     alt: image.alt || "",
   };
 };
@@ -24,26 +33,29 @@ const ImageModal = ({ images = [], currentIndex = 0, onClose }) => {
       .filter((img) => img && img.url);
   }, [images]);
 
-  const getSafeIndex = (value) => {
-    if (!normalizedImages.length) return 0;
-    if (value < 0) return normalizedImages.length - 1;
-    if (value >= normalizedImages.length) return 0;
-    return value;
-  };
+  const getSafeIndex = useCallback(
+    (value) => {
+      if (!normalizedImages.length) return 0;
+      if (value < 0) return normalizedImages.length - 1;
+      if (value >= normalizedImages.length) return 0;
+      return value;
+    },
+    [normalizedImages.length],
+  );
 
   const [index, setIndex] = useState(getSafeIndex(currentIndex));
 
   useEffect(() => {
     setIndex(getSafeIndex(currentIndex));
-  }, [currentIndex, normalizedImages.length]);
+  }, [currentIndex, getSafeIndex]);
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     setIndex((prev) => (prev > 0 ? prev - 1 : normalizedImages.length - 1));
-  };
+  }, [normalizedImages.length]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     setIndex((prev) => (prev < normalizedImages.length - 1 ? prev + 1 : 0));
-  };
+  }, [normalizedImages.length]);
 
   useEffect(() => {
     if (!normalizedImages.length) return;
@@ -61,7 +73,7 @@ const ImageModal = ({ images = [], currentIndex = 0, onClose }) => {
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "";
     };
-  }, [normalizedImages.length, onClose]);
+  }, [handlePrev, handleNext, normalizedImages.length, onClose]);
 
   if (!normalizedImages.length) return null;
 
