@@ -303,7 +303,7 @@ const Book = () => {
     } finally {
       setLoadingSlots(false);
     }
-  }, [id, selectedDate]);
+  }, [id, selectedDate, isOwnerBooking]);
 
   useEffect(() => {
     if (isOwnerBooking && prefillStart && prefillEnd) {
@@ -763,7 +763,52 @@ const Book = () => {
       trajanjeTermina,
     ],
   );
+
+  const isOverlapBookingError = (failure) => {
+    const status = failure?.status || failure?.response?.status;
+    const message =
+      failure?.error ||
+      failure?.response?.data?.message ||
+      failure?.message ||
+      "";
+
+    const normalizedMessage = normalizeText(message);
+
+    return (
+      status === 409 ||
+      normalizedMessage.includes("preklap") ||
+      normalizedMessage.includes("zauzet") ||
+      normalizedMessage.includes("overlap")
+    );
+  };
+
+  const getBookingFailureMessage = (failure) => {
+    if (isOverlapBookingError(failure)) {
+      return "Termin je u međuvremenu zauzet. Izaberite drugi slobodan termin.";
+    }
+
+    return (
+      failure?.error ||
+      failure?.response?.data?.message ||
+      failure?.message ||
+      "Rezervacija nije uspela."
+    );
+  };
+
+  const handleBookingFailure = async (failure) => {
+    const message = getBookingFailureMessage(failure);
+
+    if (isOverlapBookingError(failure)) {
+      await loadTimeSlots();
+    }
+
+    setError(message);
+    scrollToField(startTimeRef);
+  };
+
   const handleBook = async () => {
+    if (submitting) return;
+
     setError("");
 
     if (!selectedStartTime || !selectedEndTime) {
@@ -960,16 +1005,10 @@ const Book = () => {
         await loadTimeSlots();
         navigate("/booking-success");
       } else {
-        setError(result?.error || "Rezervacija nije uspela.");
-        scrollToField(startTimeRef);
+        await handleBookingFailure(result);
       }
     } catch (err) {
-      setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Rezervacija nije uspela.",
-      );
-      scrollToField(startTimeRef);
+      await handleBookingFailure(err);
     } finally {
       setSubmitting(false);
     }
@@ -1658,6 +1697,7 @@ const Book = () => {
                 </div>
 
                 <button
+                  type="button"
                   className="btn-book"
                   onClick={handleBook}
                   disabled={submitting}

@@ -120,6 +120,7 @@ export const createBooking = async (data) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error:
         error.response?.data?.message || "Greška pri kreiranju rezervacije.",
     };
@@ -324,6 +325,7 @@ export const createGuestBooking = async (data) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error: error.response?.data?.message || "Greška pri guest rezervaciji.",
     };
   }
@@ -347,6 +349,7 @@ export const getAvailableTimeSlots = async (playroomId, datum = null) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error:
         error.response?.data?.message ||
         "Greška pri dohvatanju slobodnih termina.",

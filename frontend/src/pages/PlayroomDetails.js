@@ -6,6 +6,7 @@ import "../styles/PlayroomDetails.css";
 import ImageModal from "../components/ImageModal";
 import Reviews from "../components/Reviews";
 import VideoPlayer from "../components/VideoPlayer";
+import PlayroomCoverFallback from "../components/PlayroomCoverFallback";
 
 const DAY_LABELS = {
   ponedeljak: "Ponedeljak",
@@ -145,17 +146,19 @@ const PlayroomDetails = () => {
       </button>
 
       <div className="details-card">
-        {playroom.profilnaSlika?.url && (
-          <div className="profile-image-container">
-            <div className="profile-image-wrapper">
+        <div className="profile-image-container">
+          <div className="profile-image-wrapper">
+            {playroom.profilnaSlika?.url ? (
               <img
                 src={playroom.profilnaSlika.url}
                 alt={playroom.naziv}
                 className="profile-image-detail"
               />
-            </div>
+            ) : (
+              <PlayroomCoverFallback naziv={playroom.naziv} />
+            )}
           </div>
-        )}
+        </div>
 
         <div className="details-header">
           <h1>{playroom.naziv}</h1>
@@ -170,17 +173,13 @@ const PlayroomDetails = () => {
               {ratingValue.toFixed(1)}
             </span>
 
-            <span
+            <button
+              type="button"
               className="review-count-link-large"
               onClick={scrollToReviews}
-              style={{
-                cursor: "pointer",
-                color: "#2196f3",
-                textDecoration: "underline",
-              }}
             >
               ({playroom.reviewCount || 0} recenzija)
-            </span>
+            </button>
           </div>
         </div>
 
@@ -330,13 +329,15 @@ const PlayroomDetails = () => {
             <h3>📸 Galerija slika</h3>
             <div className="gallery-grid">
               {galleryImages.map((img, idx) => (
-                <div
+                <button
+                  type="button"
                   key={img.publicId || img.public_id || img.url || idx}
                   className="gallery-item"
                   onClick={() => openGalleryModal(idx)}
+                  aria-label={`Otvori sliku ${idx + 1}`}
                 >
                   <img src={img.url} alt={`Slika ${idx + 1}`} />
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -364,15 +365,7 @@ const PlayroomDetails = () => {
             </div>
           </div>
         ) : (
-          <div
-            style={{
-              margin: "20px 0",
-              padding: "20px",
-              background: "#fff3e0",
-              borderRadius: "12px",
-              textAlign: "center",
-            }}
-          >
+          <div className="details-empty-video">
             <p>📹 Još nema dodatih video snimaka za ovu igraonicu.</p>
           </div>
         )}

@@ -79,7 +79,9 @@ const ManagePlayroom = () => {
     setMessage("");
 
     try {
-      const result = await updatePlayroom(playroom._id, formData);
+      const { _pendingMedia, ...playroomPayload } = formData;
+
+      const result = await updatePlayroom(playroom._id, playroomPayload);
 
       if (result?.success) {
         setMessage(result?.message || "Podaci su uspešno ažurirani.");
@@ -336,11 +338,6 @@ const ManagePlayroom = () => {
                           controls
                           className="video-manage-player"
                           src={video.url}
-                          style={{
-                            width: "200px",
-                            borderRadius: "8px",
-                            background: "#000",
-                          }}
                         />
                         <div className="video-manage-info">
                           <span className="video-manage-name">
