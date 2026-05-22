@@ -167,11 +167,14 @@ export const AuthProvider = ({ children }) => {
       try {
         const pendingEmail = userData?.email?.trim().toLowerCase();
 
+        const response = await api.post("/auth/register", {
+          ...userData,
+          email: pendingEmail,
+        });
+
         if (pendingEmail) {
           localStorage.setItem("pendingVerificationEmail", pendingEmail);
         }
-
-        const response = await api.post("/auth/register", userData);
 
         return {
           success: true,
@@ -193,7 +196,9 @@ export const AuthProvider = ({ children }) => {
 
       try {
         const response = await api.post("/auth/login", {
-          email,
+          email: String(email || "")
+            .trim()
+            .toLowerCase(),
           password,
         });
 
@@ -211,7 +216,9 @@ export const AuthProvider = ({ children }) => {
 
       try {
         const response = await api.post("/auth/resend-verification", {
-          email,
+          email: String(email || "")
+            .trim()
+            .toLowerCase(),
         });
 
         return {

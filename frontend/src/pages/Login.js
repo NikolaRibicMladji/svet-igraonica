@@ -4,9 +4,43 @@ import { useAuth } from "../context/AuthContext";
 import "../styles/global.css";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
+const AUTH_REDIRECT_BLOCKLIST = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+];
+
+const getDefaultRedirectPath = (user) => {
+  if (user?.role === "vlasnik") {
+    return user?.hasPlayroom ? "/owner/dashboard" : "/create-playroom";
+  }
+
+  if (user?.role === "admin") {
+    return "/admin";
+  }
+
+  return "/";
+};
+
+const getPostLoginRedirectPath = (user, from) => {
+  const safeFrom = typeof from === "string" ? from : "";
+
+  const canUseFrom =
+    safeFrom.startsWith("/") &&
+    !AUTH_REDIRECT_BLOCKLIST.some((path) => safeFrom.startsWith(path));
+
+  if (canUseFrom) {
+    return safeFrom;
+  }
+
+  return getDefaultRedirectPath(user);
+};
+
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const from = location.state?.from || "";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,19 +63,9 @@ const Login = () => {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && user) {
-      if (user.role === "vlasnik") {
-        if (user.hasPlayroom) {
-          navigate("/owner/dashboard", { replace: true });
-        } else {
-          navigate("/create-playroom", { replace: true });
-        }
-      } else if (user.role === "admin") {
-        navigate("/admin", { replace: true });
-      } else {
-        navigate("/", { replace: true });
-      }
+      navigate(getPostLoginRedirectPath(user, from), { replace: true });
     }
-  }, [authLoading, isAuthenticated, user, navigate]);
+  }, [authLoading, isAuthenticated, user, from, navigate]);
 
   useEffect(() => {
     if (location.state?.resetSuccess) {
@@ -68,7 +92,7 @@ const Login = () => {
 
     if (!email.trim()) {
       newErrors.email = "Email adresa je obavezna.";
-    } else if (!validateEmail(email.trim())) {
+    } else if (!validateEmail(email.trim().toLowerCase())) {
       newErrors.email = "Unesite ispravnu email adresu.";
     }
 
@@ -114,22 +138,10 @@ const Login = () => {
 
     setSubmitting(true);
 
-    const result = await login(email.trim(), password);
+    const result = await login(email.trim().toLowerCase(), password);
 
     if (result?.success) {
-      const role = result?.user?.role;
-
-      if (role === "vlasnik") {
-        if (result?.user?.hasPlayroom) {
-          navigate("/owner/dashboard", { replace: true });
-        } else {
-          navigate("/create-playroom", { replace: true });
-        }
-      } else if (role === "admin") {
-        navigate("/admin", { replace: true });
-      } else {
-        navigate("/", { replace: true });
-      }
+      navigate(getPostLoginRedirectPath(result.user, from), { replace: true });
     } else {
       const errorMessage = result?.error || "Greška pri prijavi.";
 

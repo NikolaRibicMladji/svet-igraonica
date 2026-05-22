@@ -8,8 +8,7 @@ import React, {
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   getAvailableTimeSlots,
-  createBooking,
-  createGuestBooking,
+  submitBooking,
 } from "../services/bookingService";
 import { getPlayroomById } from "../services/playroomService";
 import { useAuth } from "../context/AuthContext";
@@ -575,21 +574,13 @@ const Book = () => {
         napomena,
       });
 
-      let result;
-
-      if (isAuthenticated) {
-        result = await createBooking({
-          ...bookingPayload,
-          acceptedTerms,
-        });
-      } else {
-        result = await createGuestBooking({
-          ...bookingPayload,
-          password: korisnikPodaci.password,
-          confirmPassword: korisnikPodaci.confirmPassword,
-          acceptedTerms,
-        });
-      }
+      const result = await submitBooking({
+        isAuthenticated,
+        bookingPayload,
+        password: korisnikPodaci.password,
+        confirmPassword: korisnikPodaci.confirmPassword,
+        acceptedTerms,
+      });
 
       if (result?.success) {
         if (!isAuthenticated) {

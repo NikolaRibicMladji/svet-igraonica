@@ -331,6 +331,28 @@ export const createGuestBooking = async (data) => {
   }
 };
 
+export const submitBooking = async ({
+  isAuthenticated = false,
+  bookingPayload,
+  password = "",
+  confirmPassword = "",
+  acceptedTerms = false,
+}) => {
+  if (isAuthenticated) {
+    return createBooking({
+      ...bookingPayload,
+      acceptedTerms,
+    });
+  }
+
+  return createGuestBooking({
+    ...bookingPayload,
+    password,
+    confirmPassword,
+    acceptedTerms,
+  });
+};
+
 export const getAvailableTimeSlots = async (playroomId, datum = null) => {
   try {
     let url = `/timeslots/playroom/${playroomId}/available`;
