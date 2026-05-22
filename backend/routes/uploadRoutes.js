@@ -7,6 +7,8 @@ const ROLES = require("../constants/roles");
 const {
   uploadPlayroomImageSchema,
   deletePlayroomImageSchema,
+  uploadPlayroomVideoSchema,
+  deletePlayroomVideoSchema,
 } = require("../validations/uploadValidation");
 const upload = require("../middleware/upload");
 
@@ -15,7 +17,10 @@ const {
   deletePlayroomImage,
 } = require("../controllers/uploadController");
 
-const { uploadVideo } = require("../controllers/videoController");
+const {
+  uploadPlayroomVideo,
+  deletePlayroomVideo,
+} = require("../controllers/videoController");
 
 // 🔒 sve rute zahtevaju login + vlasnik/admin
 router.use(protect);
@@ -37,6 +42,17 @@ router.delete(
 );
 
 // 🎥 upload video
-router.post("/video", upload.singleVideo("video"), uploadVideo);
+router.post(
+  "/playroom/:playroomId/video",
+  validate(uploadPlayroomVideoSchema),
+  upload.singleVideo("video"),
+  uploadPlayroomVideo,
+);
+
+router.delete(
+  "/playroom/:playroomId/video",
+  validate(deletePlayroomVideoSchema),
+  deletePlayroomVideo,
+);
 
 module.exports = router;

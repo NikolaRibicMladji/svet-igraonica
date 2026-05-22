@@ -1,7 +1,9 @@
+const logger = require("../utils/logger");
+
 const errorHandler = (err, req, res, next) => {
   const isDevelopment = process.env.NODE_ENV === "development";
 
-  console.error("❌ ERROR:", {
+  logger.error("ERROR:", {
     requestId: req.requestId,
     message: err.message,
     stack: isDevelopment ? err.stack : undefined,
@@ -104,7 +106,7 @@ const errorHandler = (err, req, res, next) => {
     errors,
     ...(isDevelopment && {
       requestId: req.requestId,
-      stack: err.stack,
+      ...(statusCode >= 500 && { stack: err.stack }),
     }),
   });
 };

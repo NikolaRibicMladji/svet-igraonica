@@ -12,6 +12,7 @@ const {
   updatePlayroomSchema,
   deactivatePlayroomSchema,
   playroomIdParamSchema,
+  playroomListQuerySchema,
 } = require("../validations/playroomValidation");
 
 const {
@@ -29,7 +30,7 @@ const {
 } = require("../controllers/playroomController");
 
 // 🌐 JAVNE RUTE
-router.get("/", getAllPlayrooms);
+router.get("/", validate(playroomListQuerySchema), getAllPlayrooms);
 router.get("/filter-cities", getFilterCities);
 
 // 🔒 PRIVATNE - moje igraonice

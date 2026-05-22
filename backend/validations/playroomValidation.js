@@ -75,36 +75,6 @@ const radnoVremeSchema = z.object({
   nedelja: workingDaySchema.optional(),
 });
 
-const imageSchema = z.object({
-  url: z.string().trim().url("URL slike nije validan"),
-  publicId: z.string().trim().min(1, "Public ID slike je obavezan"),
-  width: z.number().min(1).max(10000).optional(),
-  height: z.number().min(1).max(10000).optional(),
-  size: z
-    .number()
-    .max(10 * 1024 * 1024)
-    .optional(),
-  format: z.string().trim().optional(),
-});
-
-const profileImageSchema = z
-  .object({
-    url: z.string().trim().optional().default(""),
-    publicId: z.string().trim().optional().default(""),
-  })
-  .optional()
-  .nullable();
-
-const videoSchema = z.object({
-  url: z
-    .union([z.string().trim().url("URL videa nije validan"), z.literal("")])
-    .optional(),
-  publicId: z.string().trim().optional().default(""),
-  thumbnail: z.string().trim().optional().default(""),
-  naziv: z.string().trim().max(150).optional().default(""),
-  trajanje: z.number().min(0).optional(),
-});
-
 const optionalUrlSchema = z
   .union([z.string().trim().url("URL nije validan"), z.literal("")])
   .optional()
@@ -178,20 +148,6 @@ const basePlayroomBodySchema = z.object({
     .optional()
     .default([]),
 
-  profilnaSlika: profileImageSchema,
-
-  slike: z
-    .array(imageSchema)
-    .max(10, "Maksimalno 10 slika")
-    .optional()
-    .default([]),
-
-  videoGalerija: z
-    .array(videoSchema)
-    .max(3, "Maksimalno 3 videa")
-    .optional()
-    .default([]),
-
   drustveneMreze: socialLinksSchema,
   radnoVreme: radnoVremeSchema.optional().default({}),
 });
@@ -241,12 +197,14 @@ const updatePlayroomSchema = z.object({
 });
 
 const deactivatePlayroomSchema = z.object({
-  body: z.object({
-    password: z
-      .string()
-      .min(1, "Lozinka je obavezna")
-      .max(128, "Lozinka je predugačka"),
-  }),
+  body: z
+    .object({
+      password: z
+        .string()
+        .min(1, "Lozinka je obavezna")
+        .max(128, "Lozinka je predugačka"),
+    })
+    .strict(),
 
   params: z.object({
     id: objectIdSchema,
@@ -263,9 +221,26 @@ const playroomIdParamSchema = z.object({
   query: z.object({}).optional(),
 });
 
+const playroomListQuerySchema = z.object({
+  body: z.object({}).optional(),
+  params: z.object({}).optional(),
+  query: z.object({
+    grad: z.string().trim().max(100).optional(),
+    search: z.string().trim().max(100).optional(),
+    sortBy: z.enum(["newest", "rating"]).optional().default("newest"),
+    minRating: z
+      .union([z.literal("sve"), z.coerce.number().int().min(1).max(5)])
+      .optional()
+      .default("sve"),
+    page: z.coerce.number().int().min(1).optional().default(1),
+    limit: z.coerce.number().int().min(1).max(50).optional().default(12),
+  }),
+});
+
 module.exports = {
   createPlayroomSchema,
   updatePlayroomSchema,
   deactivatePlayroomSchema,
   playroomIdParamSchema,
+  playroomListQuerySchema,
 };

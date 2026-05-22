@@ -1,5 +1,6 @@
 const Playroom = require("../models/Playroom");
-const mongoose = require("mongoose");
+const ErrorResponse = require("../utils/errorResponse");
+const { getNowInAppTimezone } = require("../utils/dateTime");
 const User = require("../models/User");
 const PLAYROOM_STATUS = require("../constants/playroomStatus");
 const {
@@ -22,9 +23,10 @@ exports.getUnverifiedPlayrooms = async (req, res, next) => {
       status: PLAYROOM_STATUS.U_IZRADI,
     })
       .populate("vlasnikId", "ime prezime email telefon")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: playrooms.length,
       data: playrooms,
@@ -39,25 +41,27 @@ exports.getUnverifiedPlayrooms = async (req, res, next) => {
 // @access  Private (admin)
 exports.getAllUsers = async (req, res, next) => {
   try {
-    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-    const limit = Math.max(parseInt(req.query.limit, 10) || 10, 1);
-    const skip = (page - 1) * limit;
+    const { page, limit } = req.validated.query;
+    const safeLimit = Math.min(limit, 50);
+    const skip = (page - 1) * safeLimit;
 
     const [users, total] = await Promise.all([
       User.find()
         .select("-password -__v")
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(limit),
+        .limit(safeLimit)
+        .lean(),
       User.countDocuments(),
     ]);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: users.length,
       total,
       page,
-      pages: Math.ceil(total / limit),
+      limit: safeLimit,
+      pages: Math.ceil(total / safeLimit),
       data: users,
     });
   } catch (error) {
@@ -70,14 +74,17 @@ exports.getAllUsers = async (req, res, next) => {
 // @access  Private (admin)
 exports.verifyPlayroom = async (req, res, next) => {
   try {
-    const result = await verifyPlayroomAndGenerateSlots(req.params.id);
-    const owner = await User.findById(result.playroom.vlasnikId);
+    const { id } = req.validated.params;
+    const result = await verifyPlayroomAndGenerateSlots(id);
+    const owner = await User.findById(result.playroom.vlasnikId).select(
+      "ime prezime email",
+    );
 
     if (owner?.email) {
       await sendPlayroomApprovedEmail(result.playroom, owner);
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: result.playroom,
       message: `Igraonica je verifikovana. ${
@@ -94,44 +101,30 @@ exports.verifyPlayroom = async (req, res, next) => {
 // @access  Private (admin)
 exports.rejectPlayroom = async (req, res, next) => {
   try {
-    const { reason } = req.body;
+    const { id } = req.validated.params;
+    const { reason } = req.validated.body;
 
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Nevalidan ID igraonice.",
-      });
-    }
-
-    if (!reason || reason.trim().length < 5) {
-      return res.status(400).json({
-        success: false,
-        message: "Razlog odbijanja je obavezan.",
-      });
-    }
-
-    const playroom = await Playroom.findById(req.params.id);
+    const playroom = await Playroom.findById(id);
 
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena.",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena.", 404);
     }
 
     playroom.status = PLAYROOM_STATUS.ODBIJEN;
     playroom.verifikovan = false;
     playroom.razlogOdbijanja = reason.trim();
-    playroom.odbijenAt = new Date();
+    playroom.odbijenAt = getNowInAppTimezone();
 
     await playroom.save();
-    const owner = await User.findById(playroom.vlasnikId);
+    const owner = await User.findById(playroom.vlasnikId).select(
+      "ime prezime email",
+    );
 
     if (owner?.email) {
       await sendPlayroomRejectedEmail(playroom, owner, reason.trim());
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Igraonica je odbijena.",
       data: playroom,
@@ -146,13 +139,11 @@ exports.rejectPlayroom = async (req, res, next) => {
 // @access  Private (admin)
 exports.resendVerificationEmail = async (req, res, next) => {
   try {
-    const playroom = await Playroom.findById(req.params.id);
+    const { id } = req.validated.params;
+    const playroom = await Playroom.findById(id);
 
     if (!playroom) {
-      return res.status(404).json({
-        success: false,
-        message: "Igraonica nije pronađena.",
-      });
+      throw new ErrorResponse("Igraonica nije pronađena.", 404);
     }
 
     const owner = await User.findById(playroom.vlasnikId).select(
@@ -160,15 +151,12 @@ exports.resendVerificationEmail = async (req, res, next) => {
     );
 
     if (!owner?.email) {
-      return res.status(400).json({
-        success: false,
-        message: "Vlasnik nema email.",
-      });
+      throw new ErrorResponse("Vlasnik nema email.", 400);
     }
 
     await sendPlayroomVerificationNotification(playroom, owner);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Email za verifikaciju je ponovo poslat adminu.",
     });

@@ -29,7 +29,29 @@ const deletePlayroomImageSchema = z.object({
   query: z.object({}).optional(),
 });
 
+const uploadPlayroomVideoSchema = z.object({
+  body: z.object({}).optional(),
+  params: z.object({
+    playroomId: objectId,
+  }),
+  query: z.object({}).optional(),
+});
+
+const deletePlayroomVideoSchema = z.object({
+  body: z
+    .object({
+      publicId: cloudinaryPublicId,
+    })
+    .strict(),
+  params: z.object({
+    playroomId: objectId,
+  }),
+  query: z.object({}).optional(),
+});
+
 module.exports = {
   uploadPlayroomImageSchema,
   deletePlayroomImageSchema,
+  uploadPlayroomVideoSchema,
+  deletePlayroomVideoSchema,
 };

@@ -1,6 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
@@ -115,9 +114,6 @@ const passwordResetLimiter = createLimiter({
   message: "Previše zahteva za reset lozinke. Pokušajte ponovo kasnije.",
 });
 
-// Static files
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
 // Health check
 app.get("/api/health", (req, res) => {
   res.status(200).json({
@@ -134,6 +130,7 @@ app.use("/api/auth/resend-verification", authLimiter);
 app.use("/api/auth/refresh", refreshLimiter);
 app.use("/api/auth/forgot-password", passwordResetLimiter);
 app.use("/api/auth/reset-password", passwordResetLimiter);
+app.use("/api/auth/verify-email", authLimiter);
 
 // API rute
 app.use("/api/auth", require("./routes/authRoutes"));

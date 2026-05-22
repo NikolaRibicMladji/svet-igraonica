@@ -156,13 +156,17 @@ exports.createPlayroom = async (req, res, next) => {
 // @access  Public
 exports.getAllPlayrooms = async (req, res, next) => {
   try {
-    const { grad, minRating, sortBy, search } = req.query;
-    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-    const limit = Math.min(
-      Math.max(parseInt(req.query.limit, 10) || 12, 1),
-      50,
-    );
-    const skip = (page - 1) * limit;
+    const {
+      grad,
+      minRating,
+      sortBy,
+      search,
+      page = 1,
+      limit = 12,
+    } = req.validated.query;
+
+    const safeLimit = Math.min(limit, 50);
+    const skip = (page - 1) * safeLimit;
 
     const query = {
       verifikovan: true,
@@ -186,7 +190,7 @@ exports.getAllPlayrooms = async (req, res, next) => {
     }
 
     if (minRating && minRating !== "sve") {
-      query.rating = { $gte: parseInt(minRating, 10) };
+      query.rating = { $gte: Number(minRating) };
     }
 
     let sort = { createdAt: -1 };
@@ -202,17 +206,18 @@ exports.getAllPlayrooms = async (req, res, next) => {
         )
         .sort(sort)
         .skip(skip)
-        .limit(limit)
+        .limit(safeLimit)
         .lean(),
       Playroom.countDocuments(query),
     ]);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: playrooms.length,
       total,
       page,
-      pages: Math.ceil(total / limit),
+      limit: safeLimit,
+      pages: Math.ceil(total / safeLimit),
       data: playrooms,
     });
   } catch (error) {
@@ -225,20 +230,14 @@ exports.getAllPlayrooms = async (req, res, next) => {
 // @access  Public
 exports.getPlayroomById = async (req, res, next) => {
   try {
-    const playroom = await Playroom.findById(req.params.id);
+    const { id } = req.validated.params;
+    const playroom = await Playroom.findById(id);
 
     if (!playroom) {
       throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
 
-    const isAdmin = req.user?.role === "admin";
-    const isOwner = playroom.vlasnikId?.toString() === req.user?.id;
-
-    if (
-      (!playroom.verifikovan || playroom.status !== PLAYROOM_STATUS.AKTIVAN) &&
-      !isAdmin &&
-      !isOwner
-    ) {
+    if (!playroom.verifikovan || playroom.status !== PLAYROOM_STATUS.AKTIVAN) {
       throw new ErrorResponse("Ova igraonica nije javno dostupna", 403);
     }
 
@@ -253,16 +252,14 @@ exports.getPlayroomById = async (req, res, next) => {
     delete data.gradNormalized;
     delete data.adresaNormalized;
 
-    if (!isAdmin && !isOwner) {
-      delete data.razlogOdbijanja;
-      delete data.odbijenAt;
-      delete data.deactivatedAt;
-    }
+    delete data.razlogOdbijanja;
+    delete data.odbijenAt;
+    delete data.deactivatedAt;
 
     // ❌ ukloni email ako NE želiš javno
     // delete data.kontaktEmail;
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data,
     });
@@ -276,11 +273,11 @@ exports.getPlayroomById = async (req, res, next) => {
 // @access  Private (vlasnik)
 exports.getMyPlayrooms = async (req, res, next) => {
   try {
-    const playrooms = await Playroom.find({ vlasnikId: req.user.id }).sort({
-      createdAt: -1,
-    });
+    const playrooms = await Playroom.find({ vlasnikId: req.user.id })
+      .sort({ createdAt: -1 })
+      .lean();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: playrooms.length,
       data: playrooms,
@@ -296,7 +293,8 @@ exports.getMyPlayrooms = async (req, res, next) => {
 exports.updatePlayroom = async (req, res, next) => {
   try {
     const body = req.validated.body;
-    let playroom = await Playroom.findById(req.params.id);
+    const { id } = req.validated.params;
+    let playroom = await Playroom.findById(id);
 
     if (!playroom) {
       throw new ErrorResponse("Igraonica nije pronađena", 404);
@@ -368,9 +366,6 @@ exports.updatePlayroom = async (req, res, next) => {
       paketi: body.paketi,
       dodatneUsluge: body.dodatneUsluge,
       besplatnePogodnosti: body.besplatnePogodnosti,
-      profilnaSlika: body.profilnaSlika,
-      slike: body.slike,
-      videoGalerija: body.videoGalerija,
       drustveneMreze: body.drustveneMreze,
     };
 
@@ -420,7 +415,7 @@ exports.updatePlayroom = async (req, res, next) => {
       }
     }
 
-    playroom = await Playroom.findByIdAndUpdate(req.params.id, updateData, {
+    playroom = await Playroom.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
     });
@@ -439,14 +434,24 @@ exports.updatePlayroom = async (req, res, next) => {
       syncResult = await syncTimeSlotsWithWorkingHours(playroom._id);
 
       if (!syncResult.success) {
-        throw new ErrorResponse(
-          syncResult.message || "Greška pri sinhronizaciji termina",
-          400,
+        logger.error(
+          "Greška pri sinhronizaciji termina nakon update-a igraonice:",
+          {
+            playroomId: playroom._id,
+            message: syncResult.message,
+          },
         );
+
+        syncResult = {
+          ...syncResult,
+          warning:
+            syncResult.message ||
+            "Igraonica je ažurirana, ali termini nisu sinhronizovani.",
+        };
       }
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: playroom,
       message: "Igraonica je uspešno ažurirana",
@@ -462,7 +467,8 @@ exports.updatePlayroom = async (req, res, next) => {
 // @access  Private (vlasnik ili admin)
 exports.deletePlayroom = async (req, res, next) => {
   try {
-    const playroom = await Playroom.findById(req.params.id);
+    const { id } = req.validated.params;
+    const playroom = await Playroom.findById(id);
 
     if (!playroom) {
       throw new ErrorResponse("Igraonica nije pronađena", 404);
@@ -503,7 +509,7 @@ exports.deletePlayroom = async (req, res, next) => {
     await TimeSlot.deleteMany({ playroomId: playroom._id });
     await playroom.deleteOne();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Igraonica i svi njeni termini su obrisani",
     });
@@ -517,7 +523,8 @@ exports.deletePlayroom = async (req, res, next) => {
 // @access  Private (vlasnik)
 exports.deactivatePlayroom = async (req, res, next) => {
   try {
-    const playroom = await Playroom.findById(req.params.id);
+    const { id } = req.validated.params;
+    const playroom = await Playroom.findById(id);
 
     if (!playroom) {
       throw new ErrorResponse("Igraonica nije pronađena", 404);
@@ -600,9 +607,10 @@ exports.deactivatePlayroom = async (req, res, next) => {
 // @access  Private (admin)
 exports.verifyPlayroom = async (req, res, next) => {
   try {
-    const result = await verifyPlayroomAndGenerateSlots(req.params.id);
+    const { id } = req.validated.params;
+    const result = await verifyPlayroomAndGenerateSlots(id);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: result.playroom,
       message: `Igraonica je verifikovana. ${
@@ -619,7 +627,8 @@ exports.verifyPlayroom = async (req, res, next) => {
 // @access  Private (vlasnik ili admin)
 exports.regenerateTimeSlots = async (req, res, next) => {
   try {
-    const playroom = await Playroom.findById(req.params.id);
+    const { id } = req.validated.params;
+    const playroom = await Playroom.findById(id);
 
     if (!playroom) {
       throw new ErrorResponse("Igraonica nije pronađena", 404);
@@ -635,9 +644,9 @@ exports.regenerateTimeSlots = async (req, res, next) => {
       );
     }
 
-    const result = await regenerateSlotsForPlayroom(req.params.id);
+    const result = await regenerateSlotsForPlayroom(id);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: `Termini su sinhronizovani. Novo: ${
         result.createdCount || 0
@@ -656,7 +665,7 @@ exports.regenerateTimeSlots = async (req, res, next) => {
 // @access  Private (Vlasnik)
 exports.getOwnerStats = async (req, res, next) => {
   try {
-    const playroomId = req.params.id;
+    const { id: playroomId } = req.validated.params;
 
     const playroom = await Playroom.findById(playroomId);
     if (!playroom) {
@@ -726,7 +735,7 @@ exports.getOwnerStats = async (req, res, next) => {
             totalRevenue: 0,
           };
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: {
         playroomName: playroom.naziv,
@@ -782,7 +791,7 @@ exports.getFilterCities = async (req, res, next) => {
       a.localeCompare(b, "sr", { sensitivity: "base" }),
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: uniqueCities,
     });

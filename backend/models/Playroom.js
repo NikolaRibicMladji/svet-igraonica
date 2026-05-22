@@ -154,28 +154,51 @@ const videoSchema = new mongoose.Schema(
   {
     url: {
       type: String,
+      required: true,
       trim: true,
     },
+
     publicId: {
       type: String,
+      required: true,
       trim: true,
     },
+
     thumbnail: {
       type: String,
+      default: "",
       trim: true,
     },
-    naziv: {
-      type: String,
-      trim: true,
-      maxlength: 150,
-    },
-    trajanje: {
+
+    duration: {
       type: Number,
+      default: 0,
       min: 0,
     },
-    createdAt: {
-      type: Date,
-      default: Date.now,
+
+    width: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    height: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    format: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 30,
+    },
+
+    size: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
   },
   { _id: false },
@@ -336,13 +359,13 @@ const PlayroomSchema = new mongoose.Schema(
 
     slike: {
       type: [slikaSchema],
-      validate: [(arr) => arr.length <= 30, "Maksimalno 30 slika"],
+      validate: [(arr) => arr.length <= 20, "Maksimalno 20 slika"],
       default: [],
     },
 
     videoGalerija: {
       type: [videoSchema],
-      validate: [(arr) => arr.length <= 10, "Maksimalno 10 videa"],
+      validate: [(arr) => arr.length <= 3, "Maksimalno 3 videa"],
       default: [],
     },
 
