@@ -7,38 +7,35 @@ const emailLogSchema = new mongoose.Schema(
       required: true,
       trim: true,
       lowercase: true,
+      index: true,
     },
 
     subject: {
       type: String,
       required: true,
       trim: true,
+      maxlength: 300,
     },
 
     type: {
       type: String,
       required: true,
-      enum: [
-        "booking_confirmation",
-        "booking_owner",
-        "booking_cancellation",
-        "booking_cancellation_owner",
-        "playroom_verification",
-        "playroom_approved",
-        "playroom_rejected",
-        "email_verification",
-      ],
+      trim: true,
+      maxlength: 100,
+      index: true,
     },
 
     status: {
       type: String,
       enum: ["success", "failed"],
       default: "success",
+      index: true,
     },
 
     error: {
       type: String,
       default: null,
+      maxlength: 2000,
     },
 
     bookingId: {
@@ -61,5 +58,6 @@ const emailLogSchema = new mongoose.Schema(
 emailLogSchema.index({ type: 1, status: 1, createdAt: -1 });
 emailLogSchema.index({ bookingId: 1, createdAt: -1 });
 emailLogSchema.index({ playroomId: 1, createdAt: -1 });
+emailLogSchema.index({ to: 1, createdAt: -1 });
 
 module.exports = mongoose.model("EmailLog", emailLogSchema);

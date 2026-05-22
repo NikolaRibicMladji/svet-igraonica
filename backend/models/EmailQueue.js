@@ -14,16 +14,20 @@ const EmailQueueSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: 300,
     },
 
     html: {
       type: String,
       required: true,
+      maxlength: 100000,
     },
 
     type: {
       type: String,
       required: true,
+      trim: true,
+      maxlength: 100,
       index: true,
     },
 
@@ -65,6 +69,7 @@ const EmailQueueSchema = new mongoose.Schema(
     lastError: {
       type: String,
       default: null,
+      maxlength: 2000,
     },
 
     sentAt: {
@@ -92,5 +97,11 @@ EmailQueueSchema.index(
     },
   },
 );
+
+EmailQueueSchema.index({
+  status: 1,
+  updatedAt: 1,
+  attempts: 1,
+});
 
 module.exports = mongoose.model("EmailQueue", EmailQueueSchema);

@@ -1,19 +1,33 @@
 const dotenv = require("dotenv");
 const path = require("path");
+const mongoose = require("mongoose");
 
-// Učitaj .env iz root foldera
+// Učitaj .env iz root foldera projekta
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const connectDB = require("../config/db");
 const { generateAllTimeSlots } = require("../utils/generateTimeSlots");
 
+const parseDays = () => {
+  const value = Number(process.argv[2] || 30);
+
+  if (!Number.isInteger(value) || value < 1 || value > 90) {
+    throw new Error("Broj dana mora biti ceo broj između 1 i 90");
+  }
+
+  return value;
+};
+
 const run = async () => {
+  let exitCode = 0;
+
   try {
+    const days = parseDays();
+
     console.log("🔌 Povezujem se na bazu...");
     await connectDB();
     console.log("✅ Povezano!\n");
 
-    const days = 30;
     console.log(`📅 Generišem termine za narednih ${days} dana...\n`);
 
     const result = await generateAllTimeSlots(days);
@@ -24,6 +38,7 @@ const run = async () => {
 
     if (Array.isArray(result.results) && result.results.length > 0) {
       console.log("\n📋 Detalji po igraonicama:");
+
       result.results.forEach((r) => {
         console.log(
           `   • ${r.naziv}: ${r.createdCount || 0} novih, ${
@@ -33,11 +48,19 @@ const run = async () => {
       });
     }
   } catch (error) {
+    exitCode = 1;
     console.error("❌ Greška:", error.message);
-    process.exit(1);
   } finally {
-    console.log("\n🏁 Završeno.");
-    process.exit(0);
+    try {
+      await mongoose.connection.close(false);
+      console.log("\n🔌 MongoDB konekcija zatvorena.");
+    } catch (closeError) {
+      exitCode = 1;
+      console.error("❌ Greška pri zatvaranju konekcije:", closeError.message);
+    }
+
+    console.log("🏁 Završeno.");
+    process.exit(exitCode);
   }
 };
 

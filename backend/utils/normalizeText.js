@@ -95,7 +95,7 @@ const normalizeText = (text = "") => {
 };
 
 const normalizeDisplayText = (text = "") => {
-  const latin = toLatin(text).trim().replace(/\s+/g, " ");
+  const latin = toLatin(text).trim().replace(/\s+/g, " ").toLowerCase();
 
   return latin
     .split(" ")

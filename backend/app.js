@@ -141,7 +141,6 @@ app.use("/api/bookings", apiLimiter, require("./routes/bookingRoutes"));
 app.use("/api/admin", apiLimiter, require("./routes/adminRoutes"));
 app.use("/api/reviews", apiLimiter, require("./routes/reviewRoutes"));
 app.use("/api/upload", apiLimiter, require("./routes/uploadRoutes"));
-app.use("/api/temp-upload", apiLimiter, require("./routes/tempUploadRoutes"));
 
 // Root ruta
 app.get("/", (req, res) => {

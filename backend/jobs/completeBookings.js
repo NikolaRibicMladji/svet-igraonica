@@ -3,6 +3,7 @@ const Booking = require("../models/Booking");
 const mongoose = require("mongoose");
 const BOOKING_STATUS = require("../constants/bookingStatus");
 const TimeSlot = require("../models/TimeSlot");
+const logger = require("../utils/logger");
 const {
   APP_TIMEZONE,
   getNowInAppTimezone,
@@ -11,14 +12,23 @@ const {
   endOfDayInAppTimezone,
 } = require("../utils/dateTime");
 
+let isRunning = false;
+
 // Funkcija za završavanje termina koji su prošli
 const completeExpiredBookings = async () => {
+  if (isRunning) {
+    logger.warn("Complete bookings job već radi, preskačem ovaj ciklus");
+    return;
+  }
+
+  isRunning = true;
+
   try {
     const now = getNowInAppTimezone();
     const startOfToday = startOfDayInAppTimezone(now);
     const endOfToday = endOfDayInAppTimezone(now);
 
-    console.log(
+    logger.info(
       `🔍 Proveravam termine koji su završeni... (${now.toLocaleString("sr-RS")})`,
     );
 
@@ -38,10 +48,12 @@ const completeExpiredBookings = async () => {
           vremeDo: { $lte: todayTime },
         },
       ],
-    }).select("_id datum vremeDo timeSlotId");
+    })
+      .select("_id datum vremeDo timeSlotId")
+      .lean();
 
     if (!candidateBookings.length) {
-      console.log("📭 Nema termina za završavanje");
+      logger.info("📭 Nema termina za završavanje");
       return;
     }
 
@@ -61,14 +73,18 @@ const completeExpiredBookings = async () => {
     });
 
     if (!expiredBookings.length) {
-      console.log("📭 Nema termina za završavanje");
+      logger.info("📭 Nema termina za završavanje");
       return;
     }
 
     const bookingIds = expiredBookings.map((booking) => booking._id);
-    const slotIds = expiredBookings
-      .map((booking) => booking.timeSlotId)
-      .filter(Boolean);
+    const slotIds = [
+      ...new Set(
+        expiredBookings
+          .map((booking) => booking.timeSlotId?.toString())
+          .filter(Boolean),
+      ),
+    ];
 
     const session = await mongoose.startSession();
 
@@ -86,7 +102,10 @@ const completeExpiredBookings = async () => {
             zavrsenoAt: now,
           },
         },
-        { session },
+        {
+          session,
+          runValidators: true,
+        },
       );
 
       if (slotIds.length > 0) {
@@ -98,13 +117,16 @@ const completeExpiredBookings = async () => {
           {
             $set: { zauzeto: false },
           },
-          { session },
+          {
+            session,
+            runValidators: true,
+          },
         );
       }
 
       await session.commitTransaction();
 
-      console.log(
+      logger.info(
         `📊 Završeno ${
           bookingUpdateResult.modifiedCount || expiredBookings.length
         } termina`,
@@ -113,10 +135,14 @@ const completeExpiredBookings = async () => {
       await session.abortTransaction();
       throw error;
     } finally {
-      session.endSession();
+      await session.endSession();
     }
   } catch (error) {
-    console.error("❌ Greška pri završavanju termina:", error.message);
+    logger.error("Greška pri završavanju termina", {
+      message: error.message,
+    });
+  } finally {
+    isRunning = false;
   }
 };
 
@@ -127,7 +153,7 @@ completeExpiredBookings();
 cron.schedule(
   "*/10 * * * *",
   () => {
-    console.log(
+    logger.info(
       `⏰ Cron job: Provera termina za završavanje... [${APP_TIMEZONE}]`,
     );
     completeExpiredBookings();
@@ -137,7 +163,7 @@ cron.schedule(
   },
 );
 
-console.log(
+logger.info(
   `📅 Cron job za završavanje termina aktivan (svakih 10 minuta) | timezone: ${APP_TIMEZONE}`,
 );
 

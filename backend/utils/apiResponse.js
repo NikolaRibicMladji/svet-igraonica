@@ -13,20 +13,6 @@ const successResponse = (
   });
 };
 
-const errorResponse = (
-  res,
-  message = "Greška",
-  status = 500,
-  errors = null,
-) => {
-  return res.status(status).json({
-    success: false,
-    message,
-    ...(errors && { errors }),
-  });
-};
-
 module.exports = {
   successResponse,
-  errorResponse,
 };
