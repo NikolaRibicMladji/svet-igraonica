@@ -15,32 +15,35 @@ import { getPlayroomById } from "../services/playroomService";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import "../styles/Book.css";
-import { normalizeText } from "../utils/normalizeText";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
-
-const getLocalDate = () => {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const formatDateForBackend = (date) => {
-  if (!date) return "";
-
-  // date je već YYYY-MM-DD string
-  // ne koristiti toISOString zbog timezone shift problema
-  if (typeof date === "string") {
-    return date;
-  }
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-};
+import BookingSelectedSlotSummary from "../components/booking/BookingSelectedSlotSummary";
+import {
+  formatDateForBackend,
+  getLocalDate,
+  getSlotDurationHours,
+  getSlotDurationLabel,
+  minutesToTime,
+  timeToMinutes,
+} from "../utils/bookingUtils";
+import { calculateBookingTotal } from "../utils/bookingPriceUtils";
+import {
+  buildAvailabilitySegments,
+  buildEndDropdownItems,
+  buildStartDropdownItems,
+} from "../utils/bookingAvailabilityUtils";
+import {
+  getBookingFailureMessage,
+  isOverlapBookingError,
+} from "../utils/bookingValidationUtils";
+import { validateBookingSubmit } from "../utils/bookingSubmitValidationUtils";
+import { buildBookingPayload } from "../utils/bookingPayloadUtils";
+import BookingSubmitButton from "../components/booking/BookingSubmitButton";
+import BookingOrderSummary from "../components/booking/BookingOrderSummary";
+import BookingUserFields from "../components/booking/BookingUserFields";
+import BookingDetailsFields from "../components/booking/BookingDetailsFields";
+import BookingPricingOptions from "../components/booking/BookingPricingOptions";
+import BookingDateSelector from "../components/booking/BookingDateSelector";
+import BookingFreeFeatures from "../components/booking/BookingFreeFeatures";
+import BookingAvailabilitySection from "../components/booking/BookingAvailabilitySection";
 
 const Book = () => {
   const { id } = useParams();
@@ -104,27 +107,6 @@ const Book = () => {
     password: "",
     confirmPassword: "",
   });
-
-  const formatDateShortLat = (date) => {
-    if (!date) return "";
-
-    return new Intl.DateTimeFormat("sr-Latn-RS", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    }).format(new Date(date));
-  };
-
-  const formatDateLat = (date) => {
-    if (!date) return "";
-
-    return new Intl.DateTimeFormat("sr-Latn-RS", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }).format(new Date(date));
-  };
 
   const hasPerPersonPricing = useMemo(() => {
     const izabraneCene = Array.isArray(playroom?.cene)
@@ -383,417 +365,92 @@ const Book = () => {
     }, 400);
   };
 
-  const selectedCene = Array.isArray(playroom?.cene)
-    ? playroom.cene.filter((c) => selectedCenaIds.includes(String(c._id)))
-    : [];
+  const selectedCene = useMemo(
+    () =>
+      Array.isArray(playroom?.cene)
+        ? playroom.cene.filter((c) => selectedCenaIds.includes(String(c._id)))
+        : [],
+    [playroom?.cene, selectedCenaIds],
+  );
 
-  const selectedPaket = Array.isArray(playroom?.paketi)
-    ? playroom.paketi.find((p) => String(p._id) === String(selectedPaketId))
-    : null;
+  const selectedPaket = useMemo(
+    () =>
+      Array.isArray(playroom?.paketi)
+        ? playroom.paketi.find((p) => String(p._id) === String(selectedPaketId))
+        : null,
+    [playroom?.paketi, selectedPaketId],
+  );
 
-  const selectedUsluge = Array.isArray(playroom?.dodatneUsluge)
-    ? playroom.dodatneUsluge.filter((u) =>
-        selectedUslugeIds.includes(String(u._id)),
-      )
-    : [];
+  const selectedUsluge = useMemo(
+    () =>
+      Array.isArray(playroom?.dodatneUsluge)
+        ? playroom.dodatneUsluge.filter((u) =>
+            selectedUslugeIds.includes(String(u._id)),
+          )
+        : [],
+    [playroom?.dodatneUsluge, selectedUslugeIds],
+  );
 
   const isFiksno = playroom?.rezimRezervacije === "fiksno";
   const trajanjeTermina = Number(playroom?.trajanjeTermina) || 60;
 
-  const timeToMinutes = (time) => {
-    const [h, m] = String(time || "00:00")
-      .split(":")
-      .map(Number);
-    return h * 60 + m;
-  };
-
-  const minutesToTime = (minutes) => {
-    const safeMinutes = Math.max(0, Number(minutes) || 0);
-    const hour = Math.floor(safeMinutes / 60);
-    const minute = safeMinutes % 60;
-
-    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-  };
-
-  const slotDurationHours = useMemo(() => {
-    if (!selectedStartTime || !selectedEndTime) return 1;
-
-    const startMinutes = timeToMinutes(selectedStartTime);
-    const endMinutes = timeToMinutes(selectedEndTime);
-    const diff = endMinutes - startMinutes;
-
-    if (!Number.isFinite(diff) || diff <= 0) return 1;
-
-    return diff / 60;
-  }, [selectedStartTime, selectedEndTime]);
-
-  const slotDurationLabel = useMemo(() => {
-    if (!selectedStartTime || !selectedEndTime) return "";
-
-    const startMinutes = timeToMinutes(selectedStartTime);
-    const endMinutes = timeToMinutes(selectedEndTime);
-    const diff = endMinutes - startMinutes;
-
-    if (!Number.isFinite(diff) || diff <= 0) return "";
-
-    const sati = Math.floor(diff / 60);
-    const minuti = diff % 60;
-
-    if (sati > 0 && minuti > 0) {
-      return `${sati}h ${minuti}min`;
-    }
-
-    if (sati > 0) {
-      return `${sati}h`;
-    }
-
-    return `${minuti}min`;
-  }, [selectedStartTime, selectedEndTime]);
-
-  const calculateTotal = useCallback(() => {
-    let total = 0;
-    const trajanjeSati = slotDurationHours;
-
-    if (Array.isArray(selectedCene)) {
-      selectedCene.forEach((c) => {
-        if (c.tip === "fiksno") {
-          total += Number(c.cena) || 0;
-        }
-
-        if (c.tip === "po_satu") {
-          total += (Number(c.cena) || 0) * trajanjeSati;
-        }
-
-        if (c.tip === "po_osobi") {
-          const broj = brojDece === "" ? 0 : Number(brojDece);
-
-          total += (Number(c.cena) || 0) * broj;
-        }
-      });
-    }
-
-    if (selectedPaket) {
-      if (selectedPaket.tip === "fiksno" || !selectedPaket.tip) {
-        total += Number(selectedPaket.cena) || 0;
-      }
-
-      if (selectedPaket.tip === "po_osobi") {
-        const broj = brojDece === "" ? 0 : Number(brojDece);
-        total += (Number(selectedPaket.cena) || 0) * broj;
-      }
-
-      if (selectedPaket.tip === "po_satu") {
-        total += (Number(selectedPaket.cena) || 0) * slotDurationHours;
-      }
-    }
-
-    selectedUsluge.forEach((u) => {
-      if (u.tip === "fiksno") {
-        total += Number(u.cena) || 0;
-      }
-
-      if (u.tip === "po_osobi") {
-        const broj = brojDece === "" ? 0 : Number(brojDece);
-        total += (Number(u.cena) || 0) * broj;
-      }
-
-      if (u.tip === "po_satu") {
-        total += (Number(u.cena) || 0) * trajanjeSati;
-      }
-    });
-
-    return total;
-  }, [
-    selectedCene,
-    selectedPaket,
-    selectedUsluge,
-    brojDece,
-    slotDurationHours,
-  ]);
-
-  const totalPrice = useMemo(() => calculateTotal(), [calculateTotal]);
-
-  const isToday = (date) => {
-    if (!date) return false;
-
-    const today = new Date();
-
-    const todayString = [
-      today.getFullYear(),
-      String(today.getMonth() + 1).padStart(2, "0"),
-      String(today.getDate()).padStart(2, "0"),
-    ].join("-");
-
-    return date === todayString;
-  };
-
-  const isPastTime = (time) => {
-    if (!selectedDate || !isToday(selectedDate)) {
-      return false;
-    }
-
-    const now = new Date();
-
-    const [year, month, day] = selectedDate.split("-").map(Number);
-    const [hours, minutes] = String(time || "00:00")
-      .split(":")
-      .map(Number);
-
-    const slotDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
-
-    return slotDate <= now;
-  };
-
-  const isQuarterHour = (time) => {
-    const [h, m] = String(time || "00:00")
-      .split(":")
-      .map(Number);
-
-    if (!Number.isFinite(h) || !Number.isFinite(m)) return false;
-
-    return [0, 15, 30, 45].includes(m);
-  };
-
-  const generateQuarterHourOptions = (startTime, endTime) => {
-    if (!startTime || !endTime) return [];
-
-    const startMinutes = timeToMinutes(startTime);
-    const endMinutes = timeToMinutes(endTime);
-
-    const options = [];
-
-    for (let current = startMinutes; current <= endMinutes; current += 15) {
-      const hours = String(Math.floor(current / 60)).padStart(2, "0");
-      const minutes = String(current % 60).padStart(2, "0");
-      options.push(`${hours}:${minutes}`);
-    }
-
-    return options;
-  };
-
-  const doesOverlapBusyInterval = (start, end) => {
-    const busyIntervals = Array.isArray(availability?.busyIntervals)
-      ? availability.busyIntervals
-      : [];
-
-    const startMinutes = timeToMinutes(start);
-    const endMinutes = timeToMinutes(end);
-
-    return busyIntervals.some((interval) => {
-      const busyStart = timeToMinutes(interval.vremeOd);
-      const busyEnd = timeToMinutes(interval.vremeDo);
-
-      return startMinutes < busyEnd && endMinutes > busyStart;
-    });
-  };
-
-  const buildAvailabilitySegments = () => {
-    if (!availability?.workingHours) return [];
-
-    const workingStart = timeToMinutes(availability.workingHours.vremeOd);
-    const workingEnd = timeToMinutes(availability.workingHours.vremeDo);
-
-    const busyIntervals = Array.isArray(availability?.busyIntervals)
-      ? [...availability.busyIntervals].sort(
-          (a, b) => timeToMinutes(a.vremeOd) - timeToMinutes(b.vremeOd),
-        )
-      : [];
-
-    const segments = [];
-    let cursor = workingStart;
-
-    for (const interval of busyIntervals) {
-      const busyStart = timeToMinutes(interval.vremeOd);
-      const busyEnd = timeToMinutes(interval.vremeDo);
-      const originalBusyEnd = timeToMinutes(
-        interval.originalVremeDo || interval.vremeDo,
-      );
-
-      if (busyStart > cursor) {
-        segments.push({
-          tip: "slobodno",
-          vremeOd: minutesToTime(cursor),
-          vremeDo: minutesToTime(busyStart),
-        });
-      }
-
-      segments.push({
-        tip: "zauzeto",
-        vremeOd: interval.vremeOd,
-        vremeDo: interval.vremeDo,
-        pripremaOd: interval.hasPreparationBuffer
-          ? minutesToTime(originalBusyEnd)
-          : null,
-        pripremaDo: interval.hasPreparationBuffer ? interval.vremeDo : null,
-      });
-
-      cursor = Math.max(cursor, busyEnd);
-    }
-
-    if (cursor < workingEnd) {
-      segments.push({
-        tip: "slobodno",
-        vremeOd: minutesToTime(cursor),
-        vremeDo: minutesToTime(workingEnd),
-      });
-    }
-
-    return segments;
-  };
-
-  const buildStartDropdownItems = () => {
-    if (!availability?.workingHours) return [];
-
-    const items = [];
-
-    availabilitySegments.forEach((segment, index) => {
-      if (segment.tip === "zauzeto") {
-        items.push({
-          type: "busy",
-          key: `busy-${index}-${segment.vremeOd}-${segment.vremeDo}`,
-          label: `❌ ${segment.vremeOd}-${segment.vremeDo}`,
-        });
-        return;
-      }
-
-      const intervalOptions = generateQuarterHourOptions(
-        segment.vremeOd,
-        segment.vremeDo,
-      ).slice(0, -1);
-
-      intervalOptions.forEach((time) => {
-        const startMinutes = timeToMinutes(time);
-        const endMinutes =
-          startMinutes +
-          (playroom?.rezimRezervacije === "fiksno"
-            ? Number(playroom?.trajanjeTermina) || 60
-            : 15);
-
-        const calculatedEndTime = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
-
-        const isValid =
-          timeToMinutes(calculatedEndTime) <=
-            timeToMinutes(availability.workingHours.vremeDo) &&
-          !doesOverlapBusyInterval(time, calculatedEndTime);
-
-        if (isValid) {
-          const isPast = isPastTime(time);
-
-          if (!isPast) {
-            items.push({
-              type: "free",
-              key: `free-${index}-${time}`,
-              value: time,
-              label: `✅ ${time}`,
-            });
-          }
-        }
-      });
-    });
-
-    return items;
-  };
-
-  const buildEndDropdownItems = () => {
-    if (!availability?.workingHours || !selectedStartTime) return [];
-
-    const items = [];
-
-    availabilitySegments.forEach((segment, index) => {
-      if (segment.tip === "zauzeto") {
-        items.push({
-          type: "busy",
-          key: `end-busy-${index}-${segment.vremeOd}-${segment.vremeDo}`,
-          label: `❌ ${segment.vremeOd}-${segment.vremeDo}`,
-        });
-        return;
-      }
-
-      const intervalOptions = generateQuarterHourOptions(
-        segment.vremeOd,
-        segment.vremeDo,
-      );
-
-      intervalOptions.forEach((time) => {
-        const startMinutes = timeToMinutes(selectedStartTime);
-        const endMinutes = timeToMinutes(time);
-
-        if (endMinutes <= startMinutes) return;
-        if (endMinutes > timeToMinutes(availability.workingHours.vremeDo))
-          return;
-
-        if (playroom?.rezimRezervacije === "fiksno") {
-          if (endMinutes !== startMinutes + trajanjeTermina) return;
-        }
-
-        if (!doesOverlapBusyInterval(selectedStartTime, time)) {
-          const isPast = isPastTime(time);
-
-          if (!isPast) {
-            items.push({
-              type: "free",
-              key: `end-free-${index}-${time}`,
-              value: time,
-              label: `✅ ${time}`,
-            });
-          }
-        }
-      });
-    });
-
-    return items;
-  };
+  const slotDurationHours = useMemo(
+    () => getSlotDurationHours(selectedStartTime, selectedEndTime),
+    [selectedStartTime, selectedEndTime],
+  );
+
+  const slotDurationLabel = useMemo(
+    () => getSlotDurationLabel(selectedStartTime, selectedEndTime),
+    [selectedStartTime, selectedEndTime],
+  );
+
+  const totalPrice = useMemo(
+    () =>
+      calculateBookingTotal({
+        selectedCene,
+        selectedPaket,
+        selectedUsluge,
+        brojDece,
+        slotDurationHours,
+      }),
+    [selectedCene, selectedPaket, selectedUsluge, brojDece, slotDurationHours],
+  );
 
   const availabilitySegments = useMemo(
-    () => buildAvailabilitySegments(),
-    [availability, playroom],
+    () => buildAvailabilitySegments(availability),
+    [availability],
   );
+
   const startDropdownItems = useMemo(
-    () => buildStartDropdownItems(),
+    () =>
+      buildStartDropdownItems({
+        availability,
+        availabilitySegments,
+        playroom,
+        selectedDate,
+      }),
     [availability, availabilitySegments, playroom, selectedDate],
   );
 
   const endDropdownItems = useMemo(
-    () => buildEndDropdownItems(),
+    () =>
+      buildEndDropdownItems({
+        availability,
+        availabilitySegments,
+        playroom,
+        selectedStartTime,
+        selectedDate,
+        trajanjeTermina,
+      }),
     [
       availability,
       availabilitySegments,
       playroom,
       selectedStartTime,
+      selectedDate,
       trajanjeTermina,
     ],
   );
-
-  const isOverlapBookingError = (failure) => {
-    const status = failure?.status || failure?.response?.status;
-    const message =
-      failure?.error ||
-      failure?.response?.data?.message ||
-      failure?.message ||
-      "";
-
-    const normalizedMessage = normalizeText(message);
-
-    return (
-      status === 409 ||
-      normalizedMessage.includes("preklap") ||
-      normalizedMessage.includes("zauzet") ||
-      normalizedMessage.includes("overlap")
-    );
-  };
-
-  const getBookingFailureMessage = (failure) => {
-    if (isOverlapBookingError(failure)) {
-      return "Termin je u međuvremenu zauzet. Izaberite drugi slobodan termin.";
-    }
-
-    return (
-      failure?.error ||
-      failure?.response?.data?.message ||
-      failure?.message ||
-      "Rezervacija nije uspela."
-    );
-  };
 
   const handleBookingFailure = async (failure) => {
     const message = getBookingFailureMessage(failure);
@@ -806,164 +463,117 @@ const Book = () => {
     scrollToField(startTimeRef);
   };
 
+  const handleStartTimeSelect = (value) => {
+    setError("");
+
+    if (selectedStartTime === value) {
+      setSelectedStartTime("");
+      setSelectedEndTime("");
+      return;
+    }
+
+    setSelectedStartTime(value);
+
+    if (isFiksno) {
+      const endMinutes = timeToMinutes(value) + trajanjeTermina;
+      setSelectedEndTime(minutesToTime(endMinutes));
+      return;
+    }
+
+    setSelectedEndTime("");
+  };
+
+  const handleEndTimeSelect = (value) => {
+    setError("");
+
+    if (selectedEndTime === value) {
+      setSelectedEndTime("");
+      return;
+    }
+
+    setSelectedEndTime(value);
+  };
+
+  const handleDateChange = (value) => {
+    setSelectedDate(value);
+    setSelectedStartTime("");
+    setSelectedEndTime("");
+    setSelectedCenaIds([]);
+    setSelectedPaketId("");
+    setSelectedUslugeIds([]);
+    setBrojDece("");
+    setBrojRoditelja("");
+    setNapomena("");
+    setError("");
+  };
+
+  const getBookingValidationRef = (field) => {
+    const refs = {
+      startTime: startTimeRef,
+      endTime: endTimeRef,
+      brojDece: brojDeceWrapperRef,
+      pricing: pricingRef,
+      ime: imeRef,
+      prezime: prezimeRef,
+      email: emailRef,
+      telefon: telefonRef,
+      password: passwordRef,
+      confirmPassword: confirmPasswordRef,
+      terms: termsRef,
+    };
+
+    return refs[field] || startTimeRef;
+  };
+
   const handleBook = async () => {
     if (submitting) return;
 
     setError("");
 
-    if (!selectedStartTime || !selectedEndTime) {
-      setError("Izaberite vreme početka i završetka.");
-      scrollToField(startTimeRef);
-      return;
-    }
-    if (isPastTime(selectedStartTime) || isPastTime(selectedEndTime)) {
-      setError("Nije moguće rezervisati termin u prošlosti.");
-      scrollToField(startTimeRef);
-      return;
-    }
+    const bookingValidation = validateBookingSubmit({
+      selectedStartTime,
+      selectedEndTime,
+      selectedDate,
+      hasPerPersonPricing,
+      brojDece,
+      availability,
+      selectedCenaIds,
+      selectedPaketId,
+      korisnikPodaci,
+      isAuthenticated,
+      acceptedTerms,
+    });
 
-    if (hasPerPersonPricing && (!Number(brojDece) || Number(brojDece) < 1)) {
-      setError(
-        "Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po osobi.",
-      );
+    if (!bookingValidation.success) {
+      setError(bookingValidation.error);
 
-      showBrojDeceRequiredNotice();
-      focusBrojDeceField();
-
-      return;
-    }
-
-    if (timeToMinutes(selectedEndTime) <= timeToMinutes(selectedStartTime)) {
-      setError("Vreme završetka mora biti posle vremena početka.");
-      scrollToField(endTimeRef);
-      return;
-    }
-
-    if (!availability?.workingHours) {
-      setError("Igraonica ne radi tog dana.");
-      scrollToField(startTimeRef);
-      return;
-    }
-
-    if (
-      timeToMinutes(selectedStartTime) <
-        timeToMinutes(availability.workingHours.vremeOd) ||
-      timeToMinutes(selectedEndTime) >
-        timeToMinutes(availability.workingHours.vremeDo)
-    ) {
-      setError("Izabrani termin mora biti unutar radnog vremena.");
-      scrollToField(startTimeRef);
-      return;
-    }
-
-    if (doesOverlapBusyInterval(selectedStartTime, selectedEndTime)) {
-      setError("Izabrani termin se preklapa sa zauzetim terminom.");
-      scrollToField(startTimeRef);
-      return;
-    }
-
-    if (selectedCenaIds.length === 0 && !selectedPaketId) {
-      setError("Izaberi bar jednu stavku iz cenovnika ili paket.");
-      scrollToField(pricingRef);
-      return;
-    }
-
-    if (!korisnikPodaci.ime.trim()) {
-      setError("Unesite ime.");
-      scrollToField(imeRef);
-      return;
-    }
-
-    if (!korisnikPodaci.prezime.trim()) {
-      setError("Unesite prezime.");
-      scrollToField(prezimeRef);
-      return;
-    }
-
-    if (!korisnikPodaci.email.trim()) {
-      setError("Unesite email.");
-      scrollToField(emailRef);
-      return;
-    }
-
-    if (!korisnikPodaci.telefon.trim()) {
-      setError("Unesite telefon.");
-      scrollToField(telefonRef);
-      return;
-    }
-    const cleanedPhone = korisnikPodaci.telefon.trim();
-
-    const phoneRegex = /^\+?[0-9]+$/;
-
-    if (!phoneRegex.test(cleanedPhone)) {
-      setError("Telefon može sadržati samo brojeve i znak + na početku.");
-      scrollToField(telefonRef);
-      return;
-    }
-
-    const digitsOnly = cleanedPhone.replace(/\D/g, "");
-
-    if (digitsOnly.length < 6) {
-      setError("Telefon mora imati bar 6 cifara.");
-      scrollToField(telefonRef);
-      return;
-    }
-
-    if (!isAuthenticated) {
-      if (!korisnikPodaci.password.trim()) {
-        setError("Unesite lozinku.");
-        scrollToField(passwordRef);
+      if (bookingValidation.field === "brojDece") {
+        showBrojDeceRequiredNotice();
+        focusBrojDeceField();
         return;
       }
 
-      if (korisnikPodaci.password.trim().length < 8) {
-        setError("Lozinka mora imati najmanje 8 karaktera.");
-        scrollToField(passwordRef);
-        return;
-      }
-
-      if (!korisnikPodaci.confirmPassword.trim()) {
-        setError("Potvrdite lozinku.");
-        scrollToField(confirmPasswordRef);
-        return;
-      }
-
-      if (korisnikPodaci.password !== korisnikPodaci.confirmPassword) {
-        setError("Lozinke se ne poklapaju.");
-        scrollToField(confirmPasswordRef);
-        return;
-      }
-    }
-    if (!acceptedTerms) {
-      setError("Morate prihvatiti uslove korišćenja i politiku privatnosti.");
-      scrollToField(termsRef);
-      return;
-    }
-    if (!isQuarterHour(selectedStartTime) || !isQuarterHour(selectedEndTime)) {
-      setError("Vreme mora biti u koracima od 15 minuta.");
-      scrollToField(startTimeRef);
+      scrollToField(getBookingValidationRef(bookingValidation.field));
       return;
     }
 
     setSubmitting(true);
 
     try {
-      const bookingPayload = {
+      const bookingPayload = buildBookingPayload({
         playroomId: id,
-        datum: formatDateForBackend(selectedDate),
-        vremeOd: selectedStartTime,
-        vremeDo: selectedEndTime,
-        cenaIds: selectedCenaIds,
-        paketId: selectedPaketId || null,
-        usluge: selectedUslugeIds,
-        brojDece: brojDece === "" ? 0 : Number(brojDece),
-        brojRoditelja: brojRoditelja === "" ? 0 : Number(brojRoditelja),
-        ime: korisnikPodaci.ime.trim(),
-        prezime: korisnikPodaci.prezime.trim(),
-        email: korisnikPodaci.email.trim().toLowerCase(),
-        telefon: korisnikPodaci.telefon.trim(),
-        napomena: napomena.trim(),
-      };
+        selectedDate,
+        selectedStartTime,
+        selectedEndTime,
+        selectedCenaIds,
+        selectedPaketId,
+        selectedUslugeIds,
+        brojDece,
+        brojRoditelja,
+        korisnikPodaci,
+        telefon: bookingValidation.phone,
+        napomena,
+      });
 
       let result;
 
@@ -1028,28 +638,6 @@ const Book = () => {
     }));
   };
 
-  const getPricingLabel = (item) => {
-    if (!item) return "";
-
-    if (item.tip === "po_osobi") {
-      return "po osobi";
-    }
-
-    if (item.tip === "po_satu") {
-      return "po satu";
-    }
-
-    return "fiksna cena";
-  };
-
-  const formatBrojDece = (broj) => {
-    const n = Number(broj) || 0;
-
-    if (n === 1) return "1 dete";
-
-    return `${n} dece`;
-  };
-
   if (loading) {
     return <div className="container loading">Učitavanje...</div>;
   }
@@ -1084,630 +672,101 @@ const Book = () => {
 
         {error && <div className="error-message">{error}</div>}
 
-        <div className="date-selector">
-          <label>📅 Izaberite datum</label>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => {
-              const value = e.target.value;
-
-              setSelectedDate(value);
-              setSelectedStartTime("");
-              setSelectedEndTime("");
-              setSelectedCenaIds([]);
-              setSelectedPaketId("");
-              setSelectedUslugeIds([]);
-              setBrojDece("");
-              setBrojRoditelja("");
-              setNapomena("");
-              setError("");
-            }}
-            min={getLocalDate()}
-            className="date-input"
-          />
-          <p className="date-display">{formatDateShortLat(selectedDate)}</p>
-        </div>
-        {!hasSelectedDate && (
-          <div className="booking-info-box">
-            Prvo izaberi datum da bi se prikazali slobodni termini i ostale
-            opcije za rezervaciju.
-          </div>
-        )}
+        <BookingDateSelector
+          selectedDate={selectedDate}
+          hasSelectedDate={hasSelectedDate}
+          onDateChange={handleDateChange}
+        />
 
         {hasSelectedDate && (
           <>
-            <div className="slots-section">
-              <h3>Dostupnost za {formatDateLat(selectedDate)}</h3>
-
-              {loadingSlots ? (
-                <div className="loading-slots">Učitavanje termina...</div>
-              ) : !availability?.workingHours ? (
-                <div className="no-slots">
-                  <p>😢 Igraonica ne radi za izabrani datum.</p>
-                </div>
-              ) : (
-                <>
-                  <div className="selected-slot-summary">
-                    <p>
-                      🕘 Radno vreme: {availability.workingHours.vremeOd} -{" "}
-                      {availability.workingHours.vremeDo}
-                    </p>
-                  </div>
-
-                  <div className="form-row time-row">
-                    <div className="form-group" ref={startTimeRef}>
-                      <label>Vreme od *</label>
-
-                      <div className="time-picker-grid">
-                        {startDropdownItems.map((item) => (
-                          <button
-                            type="button"
-                            key={item.key}
-                            disabled={item.type !== "free"}
-                            className={`time-pill ${
-                              selectedStartTime === item.value ? "active" : ""
-                            } ${item.type !== "free" ? "disabled" : ""}`}
-                            onClick={() => {
-                              setError("");
-                              if (selectedStartTime === item.value) {
-                                setSelectedStartTime("");
-                                setSelectedEndTime("");
-                                return;
-                              }
-
-                              setSelectedStartTime(item.value);
-
-                              if (playroom?.rezimRezervacije === "fiksno") {
-                                const endMinutes =
-                                  timeToMinutes(item.value) + trajanjeTermina;
-                                setSelectedEndTime(minutesToTime(endMinutes));
-                              } else {
-                                setSelectedEndTime("");
-                              }
-                            }}
-                          >
-                            {item.type === "free" ? item.value : item.label}
-                          </button>
-                        ))}
-
-                        {startDropdownItems.filter(
-                          (item) => item.type === "free",
-                        ).length === 0 && (
-                          <p className="booking-info-box">
-                            Nema dostupnih termina.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {!isFiksno ? (
-                      <div className="form-group" ref={endTimeRef}>
-                        <label>Vreme do *</label>
-
-                        <div className="time-picker-grid">
-                          {endDropdownItems.map((item) => (
-                            <button
-                              type="button"
-                              key={item.key}
-                              disabled={item.type !== "free"}
-                              className={`time-pill ${
-                                selectedEndTime === item.value ? "active" : ""
-                              } ${item.type !== "free" ? "disabled" : ""}`}
-                              onClick={() => {
-                                setError("");
-                                if (selectedEndTime === item.value) {
-                                  setSelectedEndTime("");
-                                  return;
-                                }
-
-                                setSelectedEndTime(item.value);
-                              }}
-                            >
-                              {item.type === "free" ? item.value : item.label}
-                            </button>
-                          ))}
-
-                          {selectedStartTime &&
-                            endDropdownItems.filter(
-                              (item) => item.type === "free",
-                            ).length === 0 && (
-                              <p className="booking-info-box">
-                                Nema dostupnih završetaka za izabrani početak.
-                              </p>
-                            )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="form-group">
-                        <label>Trajanje termina</label>
-                        <input
-                          type="text"
-                          value={`${trajanjeTermina} minuta`}
-                          disabled
-                          className="date-input"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
+            <BookingAvailabilitySection
+              selectedDate={selectedDate}
+              loadingSlots={loadingSlots}
+              availability={availability}
+              startTimeRef={startTimeRef}
+              endTimeRef={endTimeRef}
+              isFiksno={isFiksno}
+              trajanjeTermina={trajanjeTermina}
+              startDropdownItems={startDropdownItems}
+              endDropdownItems={endDropdownItems}
+              selectedStartTime={selectedStartTime}
+              selectedEndTime={selectedEndTime}
+              onStartSelect={handleStartTimeSelect}
+              onEndSelect={handleEndTimeSelect}
+            />
 
             {availability?.workingHours && !loadingSlots && (
               <div className="booking-form">
                 <h3>Detalji rezervacije</h3>
 
-                <div className="selected-slot-summary">
-                  <p>📅 Datum: {formatDateLat(selectedDate)}</p>
-                  <p>
-                    ⏰ Vreme: {selectedStartTime || "-"} -{" "}
-                    {selectedEndTime || "-"}
-                    {selectedStartTime && selectedEndTime
-                      ? ` (${slotDurationLabel})`
-                      : ""}
-                  </p>
-                </div>
+                <BookingSelectedSlotSummary
+                  selectedDate={selectedDate}
+                  selectedStartTime={selectedStartTime}
+                  selectedEndTime={selectedEndTime}
+                  slotDurationLabel={slotDurationLabel}
+                />
 
-                {Array.isArray(playroom.cene) && playroom.cene.length > 0 && (
-                  <div className="form-group" ref={pricingRef}>
-                    <label className="booking-section-title">
-                      Stavke iz cenovnika
-                    </label>
+                <BookingPricingOptions
+                  playroom={playroom}
+                  pricingRef={pricingRef}
+                  selectedCenaIds={selectedCenaIds}
+                  selectedPaketId={selectedPaketId}
+                  selectedUslugeIds={selectedUslugeIds}
+                  handleCenaToggle={handleCenaToggle}
+                  handlePaketToggle={handlePaketToggle}
+                  handleUslugaToggle={handleUslugaToggle}
+                />
 
-                    <div className="booking-options-list booking-options-list--flat">
-                      {playroom.cene
-                        .filter((c) => {
-                          const naziv = normalizeText(c.naziv);
-                          return naziv !== "dete" && naziv !== "roditelj";
-                        })
-                        .map((cena) => (
-                          <div key={cena._id} className="option-card">
-                            <label className="option-check-row">
-                              <div>
-                                <span>
-                                  <strong>{cena.naziv}</strong> - {cena.cena}{" "}
-                                  RSD ({getPricingLabel(cena)})
-                                </span>
+                <BookingFreeFeatures features={playroom.besplatnePogodnosti} />
 
-                                {cena.opis && (
-                                  <span className="item-opis">
-                                    ({cena.opis})
-                                  </span>
-                                )}
-                              </div>
+                <BookingDetailsFields
+                  brojDece={brojDece}
+                  setBrojDece={setBrojDece}
+                  brojRoditelja={brojRoditelja}
+                  setBrojRoditelja={setBrojRoditelja}
+                  napomena={napomena}
+                  setNapomena={setNapomena}
+                  hasPerPersonPricing={hasPerPersonPricing}
+                  setError={setError}
+                  brojDeceRef={brojDeceRef}
+                  brojDeceWrapperRef={brojDeceWrapperRef}
+                />
 
-                              <input
-                                type="checkbox"
-                                checked={selectedCenaIds.includes(
-                                  String(cena._id),
-                                )}
-                                onChange={() => handleCenaToggle(cena._id)}
-                              />
-                            </label>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
+                <BookingUserFields
+                  isAuthenticated={isAuthenticated}
+                  korisnikPodaci={korisnikPodaci}
+                  handleKorisnikChange={handleKorisnikChange}
+                  showPassword={showPassword}
+                  setShowPassword={setShowPassword}
+                  showConfirmPassword={showConfirmPassword}
+                  setShowConfirmPassword={setShowConfirmPassword}
+                  acceptedTerms={acceptedTerms}
+                  setAcceptedTerms={setAcceptedTerms}
+                  setError={setError}
+                  imeRef={imeRef}
+                  prezimeRef={prezimeRef}
+                  emailRef={emailRef}
+                  telefonRef={telefonRef}
+                  passwordRef={passwordRef}
+                  confirmPasswordRef={confirmPasswordRef}
+                  termsRef={termsRef}
+                />
+                <BookingOrderSummary
+                  selectedCene={selectedCene}
+                  selectedPaket={selectedPaket}
+                  selectedUsluge={selectedUsluge}
+                  brojDece={brojDece}
+                  brojRoditelja={brojRoditelja}
+                  slotDurationHours={slotDurationHours}
+                  totalPrice={totalPrice}
+                />
 
-                {Array.isArray(playroom.paketi) &&
-                  playroom.paketi.length > 0 && (
-                    <div className="form-group">
-                      <label className="booking-section-title">
-                        Izaberi paket{" "}
-                        <span className="inline-bracket-text">(opciono)</span>
-                      </label>
-
-                      <div className="booking-options-list booking-options-list--flat">
-                        {playroom.paketi.map((p) => (
-                          <div key={p._id} className="option-card">
-                            <label className="option-check-row">
-                              <div>
-                                <span>
-                                  {p.naziv} - {p.cena} RSD
-                                  <span className="inline-bracket-text">
-                                    ({getPricingLabel(p)})
-                                  </span>
-                                </span>
-
-                                {p.opis && (
-                                  <span className="item-opis">({p.opis})</span>
-                                )}
-                              </div>
-                              <input
-                                type="checkbox"
-                                checked={selectedPaketId === String(p._id)}
-                                onChange={() => handlePaketToggle(p._id)}
-                              />
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                {Array.isArray(playroom.dodatneUsluge) &&
-                  playroom.dodatneUsluge.length > 0 && (
-                    <div className="form-group">
-                      <label className="booking-section-title">
-                        Dodatne usluge{" "}
-                        <span className="inline-bracket-text">(opciono)</span>
-                      </label>
-
-                      <div className="booking-options-list booking-options-list--flat">
-                        {playroom.dodatneUsluge.map((u) => (
-                          <div key={u._id} className="option-card">
-                            <label className="option-check-row">
-                              <div>
-                                <span>
-                                  {u.naziv} - {u.cena} RSD
-                                  <span className="inline-bracket-text">
-                                    ({getPricingLabel(u)})
-                                  </span>
-                                </span>
-
-                                {u.opis && (
-                                  <span className="item-opis">({u.opis})</span>
-                                )}
-                              </div>
-                              <input
-                                type="checkbox"
-                                checked={selectedUslugeIds.includes(
-                                  String(u._id),
-                                )}
-                                onChange={() => handleUslugaToggle(u._id)}
-                              />
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                {Array.isArray(playroom.besplatnePogodnosti) &&
-                  playroom.besplatnePogodnosti.length > 0 && (
-                    <div className="free-features-section">
-                      <h4>✨ Besplatne pogodnosti</h4>
-                      <div className="free-features-list">
-                        {playroom.besplatnePogodnosti.map((pog, index) => (
-                          <span key={`${pog}-${index}`} className="free-badge">
-                            ✓ {pog}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                <div className="form-row">
-                  <div className="form-group" ref={brojDeceWrapperRef}>
-                    <label>
-                      Broj dece{" "}
-                      <span className="inline-bracket-text">
-                        {hasPerPersonPricing ? "(obavezno)" : "(opciono)"}
-                      </span>
-                    </label>
-                    <input
-                      ref={brojDeceRef}
-                      onKeyDown={(e) => {
-                        if (["e", "E", "+", "-"].includes(e.key)) {
-                          e.preventDefault();
-                        }
-                      }}
-                      type="number"
-                      inputMode="numeric"
-                      min={hasPerPersonPricing ? "1" : "0"}
-                      max="100"
-                      required={hasPerPersonPricing}
-                      value={brojDece}
-                      className={
-                        hasPerPersonPricing && !Number(brojDece)
-                          ? "input-error"
-                          : ""
-                      }
-                      onChange={(e) => {
-                        setError("");
-                        const val = e.target.value;
-                        if (
-                          val === "" ||
-                          (Number(val) >= 0 && Number(val) <= 100)
-                        ) {
-                          setBrojDece(val);
-                        }
-                      }}
-                    />
-                    {hasPerPersonPricing && !Number(brojDece) && (
-                      <p className="field-hint-error">
-                        Broj dece je obavezan jer je izabrana stavka koja se
-                        naplaćuje po osobi.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="form-group">
-                    <label>
-                      Broj roditelja{" "}
-                      <span className="inline-bracket-text">(opciono)</span>
-                    </label>
-                    <input
-                      onKeyDown={(e) => {
-                        if (["e", "E", "+", "-"].includes(e.key)) {
-                          e.preventDefault();
-                        }
-                      }}
-                      type="number"
-                      inputMode="numeric"
-                      min="0"
-                      max="100"
-                      value={brojRoditelja}
-                      onChange={(e) => {
-                        setError("");
-                        const val = e.target.value;
-                        if (
-                          val === "" ||
-                          (Number(val) >= 0 && Number(val) <= 100)
-                        ) {
-                          setBrojRoditelja(val);
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label className="booking-section-title">
-                    📝 Napomena{" "}
-                    <span className="inline-bracket-text">(opciono)</span>
-                  </label>
-
-                  <textarea
-                    rows="3"
-                    maxLength={500}
-                    value={napomena}
-                    onChange={(e) => {
-                      setError("");
-                      setNapomena(e.target.value);
-                    }}
-                    placeholder="Npr. alergije, posebni zahtevi, dolazak sa kolicima..."
-                  />
-                </div>
-                <div className="user-data-section">
-                  <div className="user-data-header">
-                    <h4>👤 Vaši podaci</h4>
-
-                    {!isAuthenticated && (
-                      <span className="user-info-text">
-                        ( Nakon potvrde rezervacije bićete automatski
-                        registrovani i prijavljeni )
-                      </span>
-                    )}
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group" ref={imeRef}>
-                      <label>Ime *</label>
-                      <input
-                        type="text"
-                        autoComplete="given-name"
-                        name="ime"
-                        value={korisnikPodaci.ime}
-                        onChange={handleKorisnikChange}
-                        required
-                      />
-                    </div>
-
-                    <div className="form-group" ref={prezimeRef}>
-                      <label>Prezime *</label>
-                      <input
-                        type="text"
-                        autoComplete="family-name"
-                        name="prezime"
-                        value={korisnikPodaci.prezime}
-                        onChange={handleKorisnikChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group" ref={emailRef}>
-                      <label>Email *</label>
-                      <input
-                        type="email"
-                        autoComplete="email"
-                        name="email"
-                        value={korisnikPodaci.email}
-                        onChange={handleKorisnikChange}
-                        required
-                      />
-                    </div>
-
-                    <div className="form-group" ref={telefonRef}>
-                      <label>Telefon *</label>
-                      <input
-                        type="tel"
-                        autoComplete="tel"
-                        name="telefon"
-                        value={korisnikPodaci.telefon}
-                        onChange={handleKorisnikChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                  {!isAuthenticated && (
-                    <div className="form-row">
-                      <div className="form-group" ref={passwordRef}>
-                        <label>Lozinka *</label>
-                        <div className="password-input-wrapper">
-                          <input
-                            type={showPassword ? "text" : "password"}
-                            autoComplete="new-password"
-                            name="password"
-                            value={korisnikPodaci.password}
-                            onChange={handleKorisnikChange}
-                            required={!isAuthenticated}
-                          />
-
-                          <button
-                            type="button"
-                            className="password-toggle-btn"
-                            onClick={() => setShowPassword((prev) => !prev)}
-                          >
-                            {showPassword ? <FaEyeSlash /> : <FaEye />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="form-group" ref={confirmPasswordRef}>
-                        <label>Potvrda lozinke *</label>
-                        <div className="password-input-wrapper">
-                          <input
-                            type={showConfirmPassword ? "text" : "password"}
-                            autoComplete="new-password"
-                            name="confirmPassword"
-                            value={korisnikPodaci.confirmPassword}
-                            onChange={handleKorisnikChange}
-                            required={!isAuthenticated}
-                          />
-
-                          <button
-                            type="button"
-                            className="password-toggle-btn"
-                            onClick={() =>
-                              setShowConfirmPassword((prev) => !prev)
-                            }
-                          >
-                            {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="form-group terms-checkbox" ref={termsRef}>
-                    <label className="terms-checkbox-label">
-                      <span>
-                        Prihvatam{" "}
-                        <a
-                          href="/terms-of-service"
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Uslove korišćenja
-                        </a>
-                        ,{" "}
-                        <a
-                          href="/privacy-policy"
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Politiku privatnosti
-                        </a>{" "}
-                        i{" "}
-                        <a
-                          href="/booking-policy"
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Pravila rezervacije
-                        </a>
-                        .
-                      </span>
-
-                      <input
-                        type="checkbox"
-                        checked={acceptedTerms}
-                        onChange={(e) => {
-                          setAcceptedTerms(e.target.checked);
-                          setError("");
-                        }}
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                <div className="order-summary">
-                  <h4>🛒 Pregled rezervacije</h4>
-                  {Number(brojDece) > 0 && (
-                    <div className="summary-item">
-                      <span>👶 Broj dece</span>
-                      <span>{Number(brojDece)}</span>
-                    </div>
-                  )}
-
-                  {Number(brojRoditelja) > 0 && (
-                    <div className="summary-item">
-                      <span>🧑 Broj roditelja</span>
-                      <span>{Number(brojRoditelja)}</span>
-                    </div>
-                  )}
-                  {selectedCene.length > 0 && (
-                    <div className="reservation-summary-items">
-                      {selectedCene.map((item) => (
-                        <div key={item._id} className="summary-item">
-                          <span>{item.naziv}</span>
-                          <span>
-                            {item.tip === "po_satu"
-                              ? `${item.cena} RSD × ${slotDurationHours}h = ${
-                                  item.cena * slotDurationHours
-                                } RSD`
-                              : item.tip === "po_osobi"
-                                ? `${item.cena} RSD × ${formatBrojDece(brojDece)} = ${(item.cena || 0) * (Number(brojDece) || 0)} RSD`
-                                : `${item.cena} RSD`}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {selectedPaket && (
-                    <div className="summary-item">
-                      <span>{selectedPaket.naziv}</span>
-                      <span>
-                        {selectedPaket.tip === "po_satu"
-                          ? `${selectedPaket.cena} RSD × ${slotDurationHours}h = ${
-                              (Number(selectedPaket.cena) || 0) *
-                              slotDurationHours
-                            } RSD`
-                          : selectedPaket.tip === "po_osobi"
-                            ? `${selectedPaket.cena} RSD × ${formatBrojDece(brojDece)} = ${
-                                (Number(selectedPaket.cena) || 0) *
-                                (Number(brojDece) || 0)
-                              } RSD`
-                            : `${selectedPaket.cena} RSD`}
-                      </span>
-                    </div>
-                  )}
-                  {selectedUsluge.map((u) => (
-                    <div className="summary-item" key={u._id}>
-                      <span>{u.naziv}</span>
-                      <span>
-                        {u.tip === "po_satu"
-                          ? `${u.cena} RSD × ${slotDurationHours}h = ${
-                              (Number(u.cena) || 0) * slotDurationHours
-                            } RSD`
-                          : u.tip === "po_osobi"
-                            ? `${u.cena} RSD × ${formatBrojDece(brojDece)} = ${
-                                (Number(u.cena) || 0) * (Number(brojDece) || 0)
-                              } RSD`
-                            : `${u.cena} RSD`}
-                      </span>
-                    </div>
-                  ))}
-
-                  <div className="summary-total">
-                    <span>Ukupno za plaćanje:</span>
-                    <strong>{totalPrice} RSD</strong>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="btn-book"
-                  onClick={handleBook}
-                  disabled={submitting}
-                >
-                  {submitting
-                    ? "Rezervišem..."
-                    : !isAuthenticated
-                      ? "✅ Registruj me i potvrdi rezervaciju"
-                      : "✅ Potvrdi rezervaciju"}
-                </button>
+                <BookingSubmitButton
+                  submitting={submitting}
+                  isAuthenticated={isAuthenticated}
+                  onSubmit={handleBook}
+                />
               </div>
             )}
           </>

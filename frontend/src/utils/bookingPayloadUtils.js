@@ -1,0 +1,31 @@
+import { formatDateForBackend } from "./bookingUtils";
+
+export const buildBookingPayload = ({
+  playroomId,
+  selectedDate,
+  selectedStartTime,
+  selectedEndTime,
+  selectedCenaIds = [],
+  selectedPaketId = "",
+  selectedUslugeIds = [],
+  brojDece = "",
+  brojRoditelja = "",
+  korisnikPodaci = {},
+  telefon = "",
+  napomena = "",
+}) => ({
+  playroomId,
+  datum: formatDateForBackend(selectedDate),
+  vremeOd: selectedStartTime,
+  vremeDo: selectedEndTime,
+  cenaIds: Array.isArray(selectedCenaIds) ? selectedCenaIds : [],
+  paketId: selectedPaketId || null,
+  usluge: Array.isArray(selectedUslugeIds) ? selectedUslugeIds : [],
+  brojDece: brojDece === "" ? 0 : Number(brojDece),
+  brojRoditelja: brojRoditelja === "" ? 0 : Number(brojRoditelja),
+  ime: korisnikPodaci.ime?.trim() || "",
+  prezime: korisnikPodaci.prezime?.trim() || "",
+  email: korisnikPodaci.email?.trim().toLowerCase() || "",
+  telefon,
+  napomena: napomena.trim(),
+});
