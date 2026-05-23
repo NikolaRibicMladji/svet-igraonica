@@ -6,6 +6,7 @@ import {
   rejectPlayroom,
 } from "../services/adminService";
 import { useAuth } from "../context/AuthContext";
+import { getSafeExternalUrl } from "../utils/urlUtils";
 import "../styles/AdminPanel.css";
 
 const AdminPanel = () => {
@@ -29,9 +30,14 @@ const AdminPanel = () => {
   useEffect(() => {
     if (!authLoading && user?.role === "admin") {
       loadUnverifiedPlayrooms();
-      loadUsers(usersPage);
     } else if (!authLoading) {
       setLoading(false);
+    }
+  }, [user, authLoading]);
+
+  useEffect(() => {
+    if (!authLoading && user?.role === "admin") {
+      loadUsers(usersPage);
     }
   }, [user, authLoading, usersPage]);
 
@@ -98,6 +104,8 @@ const AdminPanel = () => {
   };
 
   const handleVerify = async (id) => {
+    if (verifyingId) return;
+
     setVerifyingId(id);
     setMessage("");
     setError("");
@@ -127,8 +135,12 @@ const AdminPanel = () => {
   };
 
   const handleReject = async (id) => {
-    if (!rejectReason.trim()) {
-      setError("Unesi razlog odbijanja.");
+    if (rejectingId) return;
+
+    const safeRejectReason = rejectReason.trim();
+
+    if (safeRejectReason.length < 5) {
+      setError("Razlog odbijanja mora imati najmanje 5 karaktera.");
       return;
     }
 
@@ -137,7 +149,7 @@ const AdminPanel = () => {
     setMessage("");
 
     try {
-      const result = await rejectPlayroom(id, rejectReason);
+      const result = await rejectPlayroom(id, safeRejectReason);
 
       if (result?.success) {
         setMessage(result.message || "Igraonica je odbijena.");
@@ -178,6 +190,10 @@ const AdminPanel = () => {
       </div>
     );
   }
+
+  const selectedProfileImageUrl = getSafeExternalUrl(
+    selectedPlayroom?.profilnaSlika?.url,
+  );
 
   return (
     <div className="container admin-panel">
@@ -237,10 +253,10 @@ const AdminPanel = () => {
               <div className="admin-playroom-card admin-playroom-details-card">
                 <div className="admin-playroom-info">
                   <h3>{selectedPlayroom.naziv}</h3>
-                  {selectedPlayroom?.profilnaSlika?.url && (
+                  {selectedProfileImageUrl && (
                     <div className="admin-profile-image-box">
                       <img
-                        src={selectedPlayroom.profilnaSlika.url}
+                        src={selectedProfileImageUrl}
                         alt={selectedPlayroom.naziv}
                         className="admin-profile-image"
                         loading="lazy"
@@ -363,15 +379,26 @@ const AdminPanel = () => {
                     <h4>Galerija slika</h4>
                     {selectedPlayroom?.slike?.length ? (
                       <div className="admin-gallery">
-                        {selectedPlayroom.slike.map((slika, index) => (
-                          <img
-                            key={index}
-                            src={slika.url}
-                            alt={selectedPlayroom.naziv}
-                            className="admin-gallery-image"
-                            loading="lazy"
-                          />
-                        ))}
+                        {selectedPlayroom.slike.map((slika, index) => {
+                          const imageUrl = getSafeExternalUrl(slika.url);
+
+                          if (!imageUrl) return null;
+
+                          return (
+                            <img
+                              key={
+                                slika.publicId ||
+                                slika.public_id ||
+                                imageUrl ||
+                                index
+                              }
+                              src={imageUrl}
+                              alt={selectedPlayroom.naziv}
+                              className="admin-gallery-image"
+                              loading="lazy"
+                            />
+                          );
+                        })}
                       </div>
                     ) : (
                       <p>Nema slika.</p>
@@ -382,21 +409,32 @@ const AdminPanel = () => {
 
                     {selectedPlayroom?.videoGalerija?.length ? (
                       <div className="admin-video-gallery">
-                        {selectedPlayroom.videoGalerija.map((video, index) => (
-                          <div
-                            key={video.publicId || index}
-                            className="admin-video-card"
-                          >
-                            <video
-                              src={video.url}
-                              controls
-                              preload="metadata"
-                              className="admin-video"
-                            />
+                        {selectedPlayroom.videoGalerija.map((video, index) => {
+                          const videoUrl = getSafeExternalUrl(video.url);
 
-                            <p>{video.naziv || `Video ${index + 1}`}</p>
-                          </div>
-                        ))}
+                          if (!videoUrl) return null;
+
+                          return (
+                            <div
+                              key={
+                                video.publicId ||
+                                video.public_id ||
+                                videoUrl ||
+                                index
+                              }
+                              className="admin-video-card"
+                            >
+                              <video
+                                src={videoUrl}
+                                controls
+                                preload="metadata"
+                                className="admin-video"
+                              />
+
+                              <p>{video.naziv || `Video ${index + 1}`}</p>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p>Nema video zapisa.</p>
@@ -436,7 +474,7 @@ const AdminPanel = () => {
                     onClick={() => handleReject(selectedPlayroom._id)}
                     disabled={
                       rejectingId === selectedPlayroom._id ||
-                      !rejectReason.trim()
+                      rejectReason.trim().length < 5
                     }
                   >
                     {rejectingId === selectedPlayroom._id

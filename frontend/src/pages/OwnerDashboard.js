@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import api from "../services/api";
+import { getMyPlayrooms, getPlayroomStats } from "../services/playroomService";
+import { getReviews } from "../services/reviewService";
 import { useAuth } from "../context/AuthContext";
 import { getOwnerBookings, confirmBooking } from "../services/bookingService";
 import "../styles/OwnerDashboard.css";
@@ -25,6 +26,7 @@ const OwnerDashboard = () => {
   const [timeToFilter, setTimeToFilter] = useState("");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showConfirmedModal, setShowConfirmedModal] = useState(false);
+  const [showPendingModal, setShowPendingModal] = useState(false);
   const [showAllBookingsModal, setShowAllBookingsModal] = useState(false);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [expandedOwnerBookingId, setExpandedOwnerBookingId] = useState(null);
@@ -77,10 +79,19 @@ const OwnerDashboard = () => {
       setLoading(true);
       setError("");
 
-      const resPlayrooms = await api.get("/playrooms/mine/my-playrooms");
-      const playrooms = Array.isArray(resPlayrooms.data?.data)
-        ? resPlayrooms.data.data
-        : [];
+      const result = await getMyPlayrooms();
+
+      if (!result?.success) {
+        setMyPlayrooms([]);
+        setSelectedPlayroomId("");
+        setStats(null);
+        setError(
+          result?.error || "Greška pri učitavanju podataka za dashboard.",
+        );
+        return;
+      }
+
+      const playrooms = Array.isArray(result.data) ? result.data : [];
 
       setMyPlayrooms(playrooms);
 
@@ -94,6 +105,7 @@ const OwnerDashboard = () => {
       console.error("Greška pri učitavanju igraonica:", err);
       setError(
         err?.response?.data?.message ||
+          err?.message ||
           "Greška pri učitavanju podataka za dashboard.",
       );
     } finally {
@@ -109,12 +121,21 @@ const OwnerDashboard = () => {
 
       setError("");
 
-      const resStats = await api.get(`/playrooms/${playroomId}/stats`);
-      setStats(resStats.data?.data || null);
+      const result = await getPlayroomStats(playroomId);
+
+      if (result?.success) {
+        setStats(result.data || null);
+      } else {
+        setStats(null);
+        setError(
+          result?.error || "Greška pri učitavanju statistike igraonice.",
+        );
+      }
     } catch (err) {
       console.error("Greška pri učitavanju statistike:", err);
       setError(
         err?.response?.data?.message ||
+          err?.message ||
           "Greška pri učitavanju statistike igraonice.",
       );
       setStats(null);
@@ -154,20 +175,21 @@ const OwnerDashboard = () => {
       setReviewsLoading(true);
       setReviewsError("");
 
-      const res = await api.get(`/reviews/${playroomId}?page=1`);
+      const result = await getReviews(playroomId, 1, 10);
 
-      const data = Array.isArray(res.data?.data)
-        ? res.data.data
-        : Array.isArray(res.data?.reviews)
-          ? res.data.reviews
-          : [];
-
-      setReviews(data);
+      if (result?.success) {
+        setReviews(Array.isArray(result.data) ? result.data : []);
+      } else {
+        setReviews([]);
+        setReviewsError(result?.error || "Greška pri učitavanju recenzija.");
+      }
     } catch (err) {
       console.error("Greška pri učitavanju recenzija:", err);
       setReviews([]);
       setReviewsError(
-        err?.response?.data?.message || "Greška pri učitavanju recenzija.",
+        err?.response?.data?.message ||
+          err?.message ||
+          "Greška pri učitavanju recenzija.",
       );
     } finally {
       setReviewsLoading(false);
@@ -306,7 +328,15 @@ const OwnerDashboard = () => {
     }
 
     return result;
-  }, [bookings, selectedPlayroomId, searchTerm, statusFilter, dateFilter]);
+  }, [
+    bookings,
+    selectedPlayroomId,
+    searchTerm,
+    statusFilter,
+    dateFilter,
+    timeFromFilter,
+    timeToFilter,
+  ]);
 
   const allOwnerBookings = useMemo(() => filteredBookings, [filteredBookings]);
 
@@ -723,6 +753,19 @@ const OwnerDashboard = () => {
                     )}
 
                   {booking.napomena && <p>📝 Napomena: {booking.napomena}</p>}
+
+                  {booking.status === "cekanje" && (
+                    <button
+                      type="button"
+                      className="btn-confirm-booking"
+                      onClick={() => handleConfirm(booking._id)}
+                      disabled={confirmingId === booking._id}
+                    >
+                      {confirmingId === booking._id
+                        ? "Potvrđujem..."
+                        : "✅ Potvrdi rezervaciju"}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -902,6 +945,17 @@ const OwnerDashboard = () => {
           </div>
 
           <div
+            className="stat-card yellow clickable"
+            onClick={() => setShowPendingModal(true)}
+          >
+            <span className="stat-icon">⏳</span>
+            <div className="stat-info">
+              <h3>{pendingBookings.length}</h3>
+              <p>Na čekanju</p>
+            </div>
+          </div>
+
+          <div
             className="stat-card green clickable"
             onClick={() => setShowConfirmedModal(true)}
           >
@@ -1073,6 +1127,34 @@ const OwnerDashboard = () => {
             </div>
 
             {renderOwnerBookingsAccordion(completedBookings)}
+          </div>
+        </div>
+      )}
+
+      {showPendingModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setShowPendingModal(false);
+            setExpandedOwnerBookingId(null);
+          }}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header sticky-modal-header">
+              <h3>⏳ Rezervacije na čekanju</h3>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => {
+                  setShowPendingModal(false);
+                  setExpandedOwnerBookingId(null);
+                }}
+              >
+                ✖
+              </button>
+            </div>
+
+            {renderOwnerBookingsAccordion(pendingBookings)}
           </div>
         </div>
       )}

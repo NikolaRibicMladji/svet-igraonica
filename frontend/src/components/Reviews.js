@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { addReview, deleteReview, getReviews } from "../services/reviewService";
 import { useAuth } from "../context/AuthContext";
 import "../styles/Reviews.css";
-import api from "../services/api";
+import { getMyBookings } from "../services/bookingService";
 import { useToast } from "../context/ToastContext";
 
 const REVIEWS_PER_PAGE = 10;
@@ -24,7 +24,7 @@ const Reviews = ({ playroomId }) => {
     setLoading(true);
 
     try {
-      const result = await getReviews(playroomId, page);
+      const result = await getReviews(playroomId, page, REVIEWS_PER_PAGE);
 
       if (result?.success) {
         setReviews(Array.isArray(result.data) ? result.data : []);
@@ -51,9 +51,9 @@ const Reviews = ({ playroomId }) => {
 
   const checkIfUserCanReview = useCallback(async () => {
     try {
-      const [reviewsResult, bookingsRes] = await Promise.all([
-        getReviews(playroomId, 1),
-        api.get("/bookings/my"),
+      const [reviewsResult, bookingsResult] = await Promise.all([
+        getReviews(playroomId, 1, REVIEWS_PER_PAGE),
+        getMyBookings(),
       ]);
 
       const reviewList = reviewsResult?.success
@@ -62,31 +62,40 @@ const Reviews = ({ playroomId }) => {
           : []
         : [];
 
-      const bookingList = bookingsRes?.data?.success
-        ? Array.isArray(bookingsRes.data.data)
-          ? bookingsRes.data.data
+      const bookingList = bookingsResult?.success
+        ? Array.isArray(bookingsResult.data)
+          ? bookingsResult.data
           : []
         : [];
 
-      const hasCompleted = bookingList.some(
-        (b) =>
-          (typeof b.playroomId === "object"
-            ? b.playroomId?._id
-            : b.playroomId) === playroomId && b.status === "zavrseno",
-      );
+      const currentUserId = user?._id || user?.id || "";
 
-      const hasReview = reviewList.some(
-        (r) =>
-          (typeof r.userId === "object" ? r.userId?._id : r.userId) ===
-          user?.id,
-      );
+      const hasCompleted = bookingList.some((booking) => {
+        const bookingPlayroomId =
+          typeof booking.playroomId === "object"
+            ? booking.playroomId?._id
+            : booking.playroomId;
 
-      setCanReview(hasCompleted && !hasReview);
+        return (
+          bookingPlayroomId === playroomId && booking.status === "zavrseno"
+        );
+      });
+
+      const hasReview = reviewList.some((review) => {
+        const reviewUserId =
+          typeof review.userId === "object"
+            ? review.userId?._id
+            : review.userId;
+
+        return reviewUserId === currentUserId;
+      });
+
+      setCanReview(Boolean(hasCompleted && !hasReview));
     } catch (err) {
       console.error("Greška pri proveri review prava:", err);
       setCanReview(false);
     }
-  }, [playroomId, user?.id]);
+  }, [playroomId, user?._id, user?.id]);
 
   useEffect(() => {
     if (!playroomId) return;
@@ -112,7 +121,7 @@ const Reviews = ({ playroomId }) => {
       return;
     }
 
-    if (user?.role !== "roditelj" && user?.role !== "admin") {
+    if (user?.role !== "roditelj") {
       toast.error("Samo roditelj može da ostavi recenziju.");
       return;
     }
@@ -167,7 +176,10 @@ const Reviews = ({ playroomId }) => {
           setPage((prev) => prev - 1);
         } else {
           await loadReviews();
-          setCanReview(true);
+
+          if (isAuthenticated && user?.role === "roditelj") {
+            await checkIfUserCanReview();
+          }
         }
       } else {
         toast.error(result?.error || "Brisanje recenzije nije uspelo.");
@@ -215,7 +227,7 @@ const Reviews = ({ playroomId }) => {
         <h3>⭐ Recenzije ({total})</h3>
       </div>
 
-      {isAuthenticated && (user?.role === "admin" || canReview) && (
+      {isAuthenticated && user?.role === "roditelj" && canReview && (
         <div className="review-form">
           <h4>Ostavite vašu recenziju</h4>
 
@@ -262,6 +274,8 @@ const Reviews = ({ playroomId }) => {
                 ? review.userId?._id
                 : review.userId;
 
+            const currentUserId = user?._id || user?.id || "";
+
             return (
               <div key={review._id} className="review-card">
                 <div className="review-header">
@@ -285,7 +299,7 @@ const Reviews = ({ playroomId }) => {
                   <p>{review.comment || ""}</p>
                 </div>
 
-                {(user?.role === "admin" || user?.id === reviewUserId) && (
+                {(user?.role === "admin" || currentUserId === reviewUserId) && (
                   <button
                     type="button"
                     className="btn-delete-review"

@@ -141,7 +141,7 @@ const MyBookings = () => {
   };
   const handleWriteReview = (playroomId) => {
     if (!playroomId) return;
-    navigate(`/playrooms/${playroomId}#reviews-section`);
+    navigate(`/playrooms/${encodeURIComponent(playroomId)}#reviews-section`);
   };
 
   const getStatusText = (status) => {
@@ -166,6 +166,11 @@ const MyBookings = () => {
         ),
         class: "status-completed",
         clickable: true,
+      },
+      cekanje: {
+        text: "⏳ Čeka potvrdu",
+        class: "status-pending",
+        clickable: false,
       },
     };
 

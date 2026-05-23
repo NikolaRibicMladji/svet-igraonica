@@ -160,3 +160,30 @@ export const deactivatePlayroom = async (id, password) => {
     };
   }
 };
+
+export const getPlayroomStats = async (playroomId) => {
+  if (!playroomId) {
+    return {
+      success: false,
+      error: "Nedostaje ID igraonice za statistiku.",
+    };
+  }
+
+  try {
+    const response = await api.get(`/playrooms/${playroomId}/stats`);
+
+    return {
+      success: true,
+      data: response.data?.data || null,
+    };
+  } catch (error) {
+    console.error("Greška pri učitavanju statistike:", error);
+
+    return {
+      success: false,
+      error:
+        error.response?.data?.message ||
+        "Greška pri učitavanju statistike igraonice.",
+    };
+  }
+};

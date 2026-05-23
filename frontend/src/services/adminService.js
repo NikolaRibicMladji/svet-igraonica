@@ -22,6 +22,13 @@ export const getUnverifiedPlayrooms = async () => {
 };
 
 export const verifyPlayroom = async (id) => {
+  if (!id) {
+    return {
+      success: false,
+      error: "Nedostaje ID igraonice za verifikaciju.",
+    };
+  }
+
   try {
     const response = await api.put(`/admin/playrooms/${id}/verify`);
 
@@ -42,9 +49,25 @@ export const verifyPlayroom = async (id) => {
 };
 
 export const rejectPlayroom = async (id, reason) => {
+  if (!id) {
+    return {
+      success: false,
+      error: "Nedostaje ID igraonice za odbijanje.",
+    };
+  }
+
+  const safeReason = String(reason || "").trim();
+
+  if (safeReason.length < 5) {
+    return {
+      success: false,
+      error: "Razlog odbijanja mora imati najmanje 5 karaktera.",
+    };
+  }
+
   try {
     const response = await api.put(`/admin/playrooms/${id}/reject`, {
-      reason,
+      reason: safeReason,
     });
 
     return {
@@ -64,7 +87,15 @@ export const rejectPlayroom = async (id, reason) => {
 
 export const getAllUsers = async (page = 1, limit = 10) => {
   try {
-    const response = await api.get(`/admin/users?page=${page}&limit=${limit}`);
+    const safePage = Math.max(1, Number(page) || 1);
+    const safeLimit = Math.max(1, Number(limit) || 10);
+
+    const query = new URLSearchParams({
+      page: String(safePage),
+      limit: String(safeLimit),
+    });
+
+    const response = await api.get(`/admin/users?${query.toString()}`);
 
     return {
       success: true,
