@@ -10,6 +10,7 @@ import { useAuth } from "../context/AuthContext";
 import PlayroomForm from "../components/PlayroomForm";
 import "../styles/ManagePlayroom.css";
 import PlayroomCoverFallback from "../components/PlayroomCoverFallback";
+import { getSafeExternalUrl } from "../utils/urlUtils";
 
 const DAY_LABELS = {
   ponedeljak: "Ponedeljak",
@@ -104,6 +105,8 @@ const ManagePlayroom = () => {
   };
 
   const handleDeactivatePlayroom = async () => {
+    if (deactivating) return;
+
     if (!playroom?._id) return;
 
     setDeactivating(true);
@@ -134,6 +137,8 @@ const ManagePlayroom = () => {
 
   const handleDeletePlayroom = async (e) => {
     e.preventDefault();
+
+    if (deleting) return;
 
     if (!playroom?._id) return;
 
@@ -186,6 +191,13 @@ const ManagePlayroom = () => {
   if (!playroom) {
     return null;
   }
+
+  const profileImageUrl = getSafeExternalUrl(playroom.profilnaSlika?.url);
+
+  const instagramUrl = getSafeExternalUrl(playroom.drustveneMreze?.instagram);
+  const facebookUrl = getSafeExternalUrl(playroom.drustveneMreze?.facebook);
+  const tiktokUrl = getSafeExternalUrl(playroom.drustveneMreze?.tiktok);
+  const websiteUrl = getSafeExternalUrl(playroom.drustveneMreze?.website);
 
   return (
     <div className="manage-playroom-page">
@@ -311,8 +323,8 @@ const ManagePlayroom = () => {
             <div className="detail-item full-width">
               <label>🖼️ Profilna slika</label>
               <div className="profile-image">
-                {playroom.profilnaSlika?.url ? (
-                  <img src={playroom.profilnaSlika.url} alt="Profilna slika" />
+                {profileImageUrl ? (
+                  <img src={profileImageUrl} alt="Profilna slika" />
                 ) : (
                   <PlayroomCoverFallback naziv={playroom.naziv} />
                 )}
@@ -327,33 +339,42 @@ const ManagePlayroom = () => {
                   </label>
 
                   <div className="videos-list-manage">
-                    {playroom.videoGalerija.map((video, idx) => (
-                      <div
-                        key={
-                          video.publicId || video.public_id || video.url || idx
-                        }
-                        className="video-manage-item"
-                      >
-                        <video
-                          controls
-                          className="video-manage-player"
-                          src={video.url}
-                        />
-                        <div className="video-manage-info">
-                          <span className="video-manage-name">
-                            {video.naziv || `Video ${idx + 1}`}
-                          </span>
-                          {Number(video.trajanje) > 0 && (
-                            <span className="video-manage-duration">
-                              {Math.floor(Number(video.trajanje) / 60)}:
-                              {(Number(video.trajanje) % 60)
-                                .toString()
-                                .padStart(2, "0")}
+                    {playroom.videoGalerija.map((video, idx) => {
+                      const videoUrl = getSafeExternalUrl(video.url);
+
+                      if (!videoUrl) return null;
+
+                      return (
+                        <div
+                          key={
+                            video.publicId ||
+                            video.public_id ||
+                            video.url ||
+                            idx
+                          }
+                          className="video-manage-item"
+                        >
+                          <video
+                            controls
+                            className="video-manage-player"
+                            src={videoUrl}
+                          />
+                          <div className="video-manage-info">
+                            <span className="video-manage-name">
+                              {video.naziv || `Video ${idx + 1}`}
                             </span>
-                          )}
+                            {Number(video.trajanje) > 0 && (
+                              <span className="video-manage-duration">
+                                {Math.floor(Number(video.trajanje) / 60)}:
+                                {(Number(video.trajanje) % 60)
+                                  .toString()
+                                  .padStart(2, "0")}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -362,14 +383,20 @@ const ManagePlayroom = () => {
               <div className="detail-item full-width">
                 <label>📸 Galerija slika ({playroom.slike.length})</label>
                 <div className="gallery-images">
-                  {playroom.slike.map((img, idx) => (
-                    <div
-                      key={img.publicId || img.public_id || img.url || idx}
-                      className="gallery-image"
-                    >
-                      <img src={img.url} alt={`Slika ${idx + 1}`} />
-                    </div>
-                  ))}
+                  {playroom.slike.map((img, idx) => {
+                    const imageUrl = getSafeExternalUrl(img.url);
+
+                    if (!imageUrl) return null;
+
+                    return (
+                      <div
+                        key={img.publicId || img.public_id || img.url || idx}
+                        className="gallery-image"
+                      >
+                        <img src={imageUrl} alt={`Slika ${idx + 1}`} />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -455,9 +482,9 @@ const ManagePlayroom = () => {
               <div className="detail-item full-width">
                 <label>🌐 Društvene mreže</label>
                 <div className="social-links-manage">
-                  {playroom.drustveneMreze.instagram && (
+                  {instagramUrl && (
                     <a
-                      href={playroom.drustveneMreze.instagram}
+                      href={instagramUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="social-link-small instagram"
@@ -466,9 +493,9 @@ const ManagePlayroom = () => {
                     </a>
                   )}
 
-                  {playroom.drustveneMreze.facebook && (
+                  {facebookUrl && (
                     <a
-                      href={playroom.drustveneMreze.facebook}
+                      href={facebookUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="social-link-small facebook"
@@ -477,9 +504,9 @@ const ManagePlayroom = () => {
                     </a>
                   )}
 
-                  {playroom.drustveneMreze.tiktok && (
+                  {tiktokUrl && (
                     <a
-                      href={playroom.drustveneMreze.tiktok}
+                      href={tiktokUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="social-link-small tiktok"
@@ -488,9 +515,9 @@ const ManagePlayroom = () => {
                     </a>
                   )}
 
-                  {playroom.drustveneMreze.website && (
+                  {websiteUrl && (
                     <a
-                      href={playroom.drustveneMreze.website}
+                      href={websiteUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="social-link-small website"

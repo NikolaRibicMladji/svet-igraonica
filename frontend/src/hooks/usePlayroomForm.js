@@ -50,6 +50,9 @@ const VIDEO_MAX_COUNT = 3;
 const VIDEO_MAX_SIZE = 20 * 1024 * 1024;
 const VIDEO_MAX_DURATION_SECONDS = 30;
 
+const isImageFile = (file) => file?.type?.startsWith("image/");
+const isVideoFile = (file) => file?.type?.startsWith("video/");
+
 const toNumberOrZero = (value) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
@@ -309,10 +312,15 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
 
     const selectedFiles = files.slice(0, remainingSlots);
     const validFiles = [];
+    const invalidTypeFiles = [];
     const oversizedFiles = [];
     const tooLongFiles = [];
 
     for (const file of selectedFiles) {
+      if (!isVideoFile(file)) {
+        invalidTypeFiles.push(file.name);
+        continue;
+      }
       if (file.size > VIDEO_MAX_SIZE) {
         oversizedFiles.push(file.name);
         continue;
@@ -332,7 +340,11 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
       }
     }
 
-    if (oversizedFiles.length > 0) {
+    if (invalidTypeFiles.length > 0) {
+      setError(
+        `Ovi fajlovi nisu video format: ${invalidTypeFiles.join(", ")}.`,
+      );
+    } else if (oversizedFiles.length > 0) {
       setError(
         `Ovi video fajlovi prelaze 20 MB: ${oversizedFiles.join(", ")}.`,
       );
@@ -635,6 +647,12 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
     if (isProfilna) {
       const file = files[0];
 
+      if (!isImageFile(file)) {
+        setError("Profilna slika mora biti image fajl.");
+        e.target.value = "";
+        return;
+      }
+
       if (file.size > IMAGE_MAX_SIZE) {
         setError("Profilna slika ne sme biti veća od 5 MB.");
         e.target.value = "";
@@ -686,6 +704,10 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
       const validFiles = [];
 
       for (const file of filesToUpload) {
+        if (!isImageFile(file)) {
+          setError(`Fajl "${file.name}" nije slika.`);
+          continue;
+        }
         if (file.size > IMAGE_MAX_SIZE) {
           setError(`Slika "${file.name}" je veća od 5 MB.`);
           continue;
@@ -711,6 +733,10 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
 
     try {
       for (const file of filesToUpload) {
+        if (!isImageFile(file)) {
+          setError(`Fajl "${file.name}" nije slika.`);
+          continue;
+        }
         if (file.size > IMAGE_MAX_SIZE) {
           setError(`Slika "${file.name}" je veća od 5 MB.`);
           continue;

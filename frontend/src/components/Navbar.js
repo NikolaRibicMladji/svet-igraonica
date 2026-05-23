@@ -25,7 +25,8 @@ const Navbar = () => {
   const [accountOpen, setAccountOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [formError, setFormError] = useState("");
-
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const accountDropdownRef = useRef(null);
   const [showPasswordFields, setShowPasswordFields] = useState({
@@ -99,13 +100,30 @@ const Navbar = () => {
     });
   };
 
+  const openLogoutConfirm = () => {
+    setLogoutConfirmOpen(true);
+    setAccountOpen(false);
+    closeMenu();
+  };
+
+  const closeLogoutConfirm = () => {
+    if (loggingOut) return;
+    setLogoutConfirmOpen(false);
+  };
+
   const handleLogout = async () => {
+    if (loggingOut) return;
+
+    setLoggingOut(true);
+
     try {
       await logout();
     } catch (error) {
       console.error("Greška pri odjavi:", error);
     } finally {
-      navigate("/login");
+      setLoggingOut(false);
+      setLogoutConfirmOpen(false);
+      navigate("/login", { replace: true });
       closeMenu();
     }
   };
@@ -260,7 +278,7 @@ const Navbar = () => {
 
                 <button
                   type="button"
-                  onClick={handleLogout}
+                  onClick={openLogoutConfirm}
                   className="logout-btn"
                 >
                   🚪 Odjava
@@ -270,6 +288,41 @@ const Navbar = () => {
           </div>
         </div>
       </nav>
+      {logoutConfirmOpen && (
+        <div className="logout-confirm-overlay" onClick={closeLogoutConfirm}>
+          <div
+            className="logout-confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Potvrda odjave"
+          >
+            <h2>Odjava</h2>
+
+            <p>Da li ste sigurni da želite da se odjavite?</p>
+
+            <div className="logout-confirm-actions">
+              <button
+                type="button"
+                className="logout-cancel-btn"
+                onClick={closeLogoutConfirm}
+                disabled={loggingOut}
+              >
+                Ne, ostani prijavljen
+              </button>
+
+              <button
+                type="button"
+                className="logout-confirm-btn"
+                onClick={handleLogout}
+                disabled={loggingOut}
+              >
+                {loggingOut ? "Odjavljujem..." : "Da, odjavi me"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {activeModal && (
         <div className="account-modal-overlay" onClick={closeAccountModal}>
           <div className="account-modal" onClick={(e) => e.stopPropagation()}>

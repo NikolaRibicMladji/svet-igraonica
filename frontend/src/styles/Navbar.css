@@ -443,3 +443,65 @@
     transform: rotate(360deg);
   }
 }
+
+.logout-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.logout-confirm-modal {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.25);
+}
+
+.logout-confirm-modal h2 {
+  margin: 0 0 10px;
+  color: #1e293b;
+}
+
+.logout-confirm-modal p {
+  margin: 0 0 20px;
+  color: #475569;
+}
+
+.logout-confirm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.logout-cancel-btn,
+.logout-confirm-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.logout-cancel-btn {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.logout-confirm-btn {
+  background: #ef4444;
+  color: #fff;
+}
+
+.logout-cancel-btn:disabled,
+.logout-confirm-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

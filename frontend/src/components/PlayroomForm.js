@@ -22,6 +22,7 @@ const PlayroomForm = ({
   ownerEmail = "",
 }) => {
   const { user } = useAuth();
+  const canManageMedia = user?.role === "vlasnik" || user?.role === "admin";
   const {
     formData,
     error,
@@ -106,25 +107,29 @@ const PlayroomForm = ({
 
         <BookingModeSection formData={formData} handleChange={handleChange} />
 
-        <ImagesSection
-          uploading={uploading}
-          slike={slike}
-          profilnaSlika={profilnaSlika}
-          handleFileChange={handleFileChange}
-          removeProfilna={removeProfilna}
-          removeImage={removeImage}
-        />
+        {canManageMedia && (
+          <>
+            <ImagesSection
+              uploading={uploading}
+              slike={slike}
+              profilnaSlika={profilnaSlika}
+              handleFileChange={handleFileChange}
+              removeProfilna={removeProfilna}
+              removeImage={removeImage}
+            />
 
-        <VideosSection
-          uploadingVideo={uploadingVideo}
-          videoGalerija={videoGalerija}
-          noviVideo={noviVideo}
-          videoNaziv={videoNaziv}
-          setVideoNaziv={setVideoNaziv}
-          handleVideoChange={handleVideoChange}
-          handleAddVideo={handleAddVideo}
-          handleRemoveVideo={handleRemoveVideo}
-        />
+            <VideosSection
+              uploadingVideo={uploadingVideo}
+              videoGalerija={videoGalerija}
+              noviVideo={noviVideo}
+              videoNaziv={videoNaziv}
+              setVideoNaziv={setVideoNaziv}
+              handleVideoChange={handleVideoChange}
+              handleAddVideo={handleAddVideo}
+              handleRemoveVideo={handleRemoveVideo}
+            />
+          </>
+        )}
 
         <AdditionalPricesSection
           novaCena={novaCena}
