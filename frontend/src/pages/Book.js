@@ -53,13 +53,19 @@ const Book = () => {
   const prefillDate = queryParams.get("datum") || "";
   const prefillStart = queryParams.get("vremeOd") || "";
   const prefillEnd = queryParams.get("vremeDo") || "";
-  const isOwnerBooking = queryParams.get("mode") === "owner";
+  const requestedOwnerBooking = queryParams.get("mode") === "owner";
   const {
     user,
     isAuthenticated,
     loading: authLoading,
     handleAuthSuccess,
   } = useAuth();
+
+  const isOwnerBooking =
+    requestedOwnerBooking &&
+    isAuthenticated &&
+    (user?.role === "vlasnik" || user?.role === "admin");
+
   const toast = useToast();
   const [selectedCenaIds, setSelectedCenaIds] = useState([]);
   const [selectedPaketId, setSelectedPaketId] = useState("");
@@ -539,7 +545,7 @@ const Book = () => {
       selectedCenaIds,
       selectedPaketId,
       korisnikPodaci,
-      isAuthenticated,
+      isAuthenticated: isAuthenticated || isOwnerBooking,
       acceptedTerms,
     });
 
@@ -575,7 +581,7 @@ const Book = () => {
       });
 
       const result = await submitBooking({
-        isAuthenticated,
+        isAuthenticated: isAuthenticated || isOwnerBooking,
         bookingPayload,
         password: korisnikPodaci.password,
         confirmPassword: korisnikPodaci.confirmPassword,
@@ -645,7 +651,7 @@ const Book = () => {
     <div className="container book-page" ref={topRef}>
       <button
         className="back-link"
-        onClick={() => navigate(`/playrooms/${id}`)}
+        onClick={() => navigate(`/playrooms/${encodeURIComponent(id)}`)}
       >
         ← Nazad na igraonicu
       </button>
@@ -725,7 +731,7 @@ const Book = () => {
                 />
 
                 <BookingUserFields
-                  isAuthenticated={isAuthenticated}
+                  isAuthenticated={isAuthenticated || isOwnerBooking}
                   korisnikPodaci={korisnikPodaci}
                   handleKorisnikChange={handleKorisnikChange}
                   showPassword={showPassword}
@@ -755,7 +761,7 @@ const Book = () => {
 
                 <BookingSubmitButton
                   submitting={submitting}
-                  isAuthenticated={isAuthenticated}
+                  isAuthenticated={isAuthenticated || isOwnerBooking}
                   onSubmit={handleBook}
                 />
               </div>

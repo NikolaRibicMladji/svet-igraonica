@@ -6,7 +6,7 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Home from "./pages/Home";
@@ -31,6 +31,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import BookingPolicy from "./pages/BookingPolicy";
 import VerifyEmail from "./pages/VerifyEmail";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -40,29 +41,6 @@ const ScrollToTop = () => {
   }, [pathname]);
 
   return null;
-};
-
-const ProtectedRoute = ({ children, allowedRoles = [] }) => {
-  const { user, isAuthenticated, loading } = useAuth();
-  const location = useLocation();
-
-  if (loading) {
-    return <div className="container loading">Učitavanje...</div>;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-  }
-
-  if (
-    Array.isArray(allowedRoles) &&
-    allowedRoles.length > 0 &&
-    !allowedRoles.includes(user?.role)
-  ) {
-    return <Navigate to="/" replace />;
-  }
-
-  return children;
 };
 
 const VlasnikRoute = ({ children }) => (
@@ -76,9 +54,7 @@ const AdminRoute = ({ children }) => (
 );
 
 const RoditeljRoute = ({ children }) => (
-  <ProtectedRoute allowedRoles={["roditelj", "admin"]}>
-    {children}
-  </ProtectedRoute>
+  <ProtectedRoute allowedRoles={["roditelj"]}>{children}</ProtectedRoute>
 );
 
 function AppRoutes() {

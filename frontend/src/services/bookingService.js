@@ -3,13 +3,29 @@ import api from "./api";
 // ============ TERMINI ============
 
 export const getTimeSlots = async (playroomId, datum = null) => {
+  const safePlayroomId = String(playroomId || "").trim();
+
+  if (!safePlayroomId) {
+    return {
+      success: false,
+      error: "Nedostaje ID igraonice za termine.",
+    };
+  }
+
   try {
-    let url = `/timeslots/playroom/${playroomId}`;
+    const query = new URLSearchParams();
+
     if (datum) {
-      url += `?datum=${datum}`;
+      query.append("datum", String(datum));
     }
 
-    const response = await api.get(url);
+    const queryString = query.toString();
+
+    const response = await api.get(
+      `/timeslots/playroom/${encodeURIComponent(safePlayroomId)}${
+        queryString ? `?${queryString}` : ""
+      }`,
+    );
 
     return {
       success: true,
@@ -20,12 +36,27 @@ export const getTimeSlots = async (playroomId, datum = null) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error: error.response?.data?.message || "Greška pri dohvatanju termina.",
     };
   }
 };
 
 export const createTimeSlot = async (data) => {
+  if (!data || typeof data !== "object") {
+    return {
+      success: false,
+      error: "Nedostaju podaci za kreiranje termina.",
+    };
+  }
+
+  if (!data.playroomId || !data.datum || !data.vremeOd || !data.vremeDo) {
+    return {
+      success: false,
+      error: "Popunite sva obavezna polja za termin.",
+    };
+  }
+
   try {
     const response = await api.post("/timeslots", data);
 
@@ -39,6 +70,7 @@ export const createTimeSlot = async (data) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error: error.response?.data?.message || "Greška pri kreiranju termina.",
     };
   }
@@ -63,8 +95,19 @@ export const getMyTimeSlots = async () => {
 };
 
 export const deleteTimeSlot = async (id) => {
+  const safeId = String(id || "").trim();
+
+  if (!safeId) {
+    return {
+      success: false,
+      error: "Nedostaje ID termina za brisanje.",
+    };
+  }
+
   try {
-    const response = await api.delete(`/timeslots/${id}`);
+    const response = await api.delete(
+      `/timeslots/${encodeURIComponent(safeId)}`,
+    );
 
     return {
       success: true,
@@ -75,6 +118,7 @@ export const deleteTimeSlot = async (id) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error: error.response?.data?.message || "Greška pri brisanju termina.",
     };
   }
@@ -165,8 +209,19 @@ export const getOwnerBookings = async () => {
 };
 
 export const cancelBooking = async (id) => {
+  const safeId = String(id || "").trim();
+
+  if (!safeId) {
+    return {
+      success: false,
+      error: "Nedostaje ID rezervacije za otkazivanje.",
+    };
+  }
+
   try {
-    const response = await api.put(`/bookings/${id}/cancel`);
+    const response = await api.put(
+      `/bookings/${encodeURIComponent(safeId)}/cancel`,
+    );
 
     return {
       success: true,
@@ -178,6 +233,7 @@ export const cancelBooking = async (id) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error:
         error.response?.data?.message || "Greška pri otkazivanju rezervacije.",
     };
@@ -185,8 +241,19 @@ export const cancelBooking = async (id) => {
 };
 
 export const confirmBooking = async (id) => {
+  const safeId = String(id || "").trim();
+
+  if (!safeId) {
+    return {
+      success: false,
+      error: "Nedostaje ID rezervacije za potvrdu.",
+    };
+  }
+
   try {
-    const response = await api.put(`/bookings/${id}/confirm`);
+    const response = await api.put(
+      `/bookings/${encodeURIComponent(safeId)}/confirm`,
+    );
 
     return {
       success: true,
@@ -198,14 +265,26 @@ export const confirmBooking = async (id) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error: error.response?.data?.message || "Greška pri potvrdi rezervacije.",
     };
   }
 };
 
 export const generateTimeSlots = async (playroomId) => {
+  const safePlayroomId = String(playroomId || "").trim();
+
+  if (!safePlayroomId) {
+    return {
+      success: false,
+      error: "Nedostaje ID igraonice za generisanje termina.",
+    };
+  }
+
   try {
-    const response = await api.post(`/timeslots/generate/${playroomId}`);
+    const response = await api.post(
+      `/timeslots/generate/${encodeURIComponent(safePlayroomId)}`,
+    );
 
     return {
       success: true,
@@ -217,19 +296,36 @@ export const generateTimeSlots = async (playroomId) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error: error.response?.data?.message || "Greška pri generisanju termina.",
     };
   }
 };
 
 export const getAllTimeSlotsForOwner = async (playroomId, datum = null) => {
+  const safePlayroomId = String(playroomId || "").trim();
+
+  if (!safePlayroomId) {
+    return {
+      success: false,
+      error: "Nedostaje ID igraonice za termine vlasnika.",
+    };
+  }
+
   try {
-    let url = `/timeslots/playroom/${playroomId}/all`;
+    const query = new URLSearchParams();
+
     if (datum) {
-      url += `?datum=${datum}`;
+      query.append("datum", String(datum));
     }
 
-    const response = await api.get(url);
+    const queryString = query.toString();
+
+    const response = await api.get(
+      `/timeslots/playroom/${encodeURIComponent(safePlayroomId)}/all${
+        queryString ? `?${queryString}` : ""
+      }`,
+    );
 
     return {
       success: true,
@@ -241,6 +337,7 @@ export const getAllTimeSlotsForOwner = async (playroomId, datum = null) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error:
         error.response?.data?.message ||
         "Greška pri dohvatanju termina za vlasnika.",
@@ -249,6 +346,13 @@ export const getAllTimeSlotsForOwner = async (playroomId, datum = null) => {
 };
 
 export const manualBookInterval = async (bookingData) => {
+  if (!bookingData || typeof bookingData !== "object") {
+    return {
+      success: false,
+      error: "Nedostaju podaci za ručno zauzimanje termina.",
+    };
+  }
+
   try {
     const response = await api.post(
       "/timeslots/manual-book-interval",
@@ -265,6 +369,7 @@ export const manualBookInterval = async (bookingData) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error:
         error.response?.data?.message ||
         "Greška pri ručnom zauzimanju termina.",
@@ -354,13 +459,29 @@ export const submitBooking = async ({
 };
 
 export const getAvailableTimeSlots = async (playroomId, datum = null) => {
+  const safePlayroomId = String(playroomId || "").trim();
+
+  if (!safePlayroomId) {
+    return {
+      success: false,
+      error: "Nedostaje ID igraonice za slobodne termine.",
+    };
+  }
+
   try {
-    let url = `/timeslots/playroom/${playroomId}/available`;
+    const query = new URLSearchParams();
+
     if (datum) {
-      url += `?datum=${datum}`;
+      query.append("datum", String(datum));
     }
 
-    const response = await api.get(url);
+    const queryString = query.toString();
+
+    const response = await api.get(
+      `/timeslots/playroom/${encodeURIComponent(safePlayroomId)}/available${
+        queryString ? `?${queryString}` : ""
+      }`,
+    );
 
     return {
       success: true,
