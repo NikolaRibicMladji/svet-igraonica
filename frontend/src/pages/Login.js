@@ -28,6 +28,7 @@ const getPostLoginRedirectPath = (user, from) => {
 
   const canUseFrom =
     safeFrom.startsWith("/") &&
+    !safeFrom.startsWith("//") &&
     !AUTH_REDIRECT_BLOCKLIST.some((path) => safeFrom.startsWith(path));
 
   if (canUseFrom) {
@@ -131,6 +132,7 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     setServerError("");
     setShowResendVerification(false);
 
@@ -162,6 +164,8 @@ const Login = () => {
   };
 
   const handleResendVerification = async () => {
+    if (resending) return;
+
     const normalizedEmail =
       email.trim().toLowerCase() ||
       localStorage.getItem("pendingVerificationEmail");

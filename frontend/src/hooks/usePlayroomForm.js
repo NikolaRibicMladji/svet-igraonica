@@ -60,6 +60,30 @@ const toNumberOrZero = (value) => {
 
 const sanitizeText = (value) => (typeof value === "string" ? value.trim() : "");
 
+const timeToMinutes = (time) => {
+  const [hours, minutes] = String(time || "")
+    .split(":")
+    .map(Number);
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return null;
+  }
+
+  return hours * 60 + minutes;
+};
+
+const isQuarterHourTime = (time) => {
+  const [hours, minutes] = String(time || "")
+    .split(":")
+    .map(Number);
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return false;
+  }
+
+  return [0, 15, 30, 45].includes(minutes);
+};
+
 const createLocalMediaId = (file) =>
   `${Date.now()}-${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`;
 
@@ -851,6 +875,63 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
 
     if (!formData.rezimRezervacije) {
       return createError("rezimRezervacije", "Način rezervacije je obavezan.");
+    }
+
+    if (!["fiksno", "fleksibilno"].includes(formData.rezimRezervacije)) {
+      return createError("rezimRezervacije", "Način rezervacije nije validan.");
+    }
+
+    if (formData.rezimRezervacije === "fiksno") {
+      const trajanjeTermina = Number(formData.trajanjeTermina);
+
+      if (
+        !Number.isFinite(trajanjeTermina) ||
+        trajanjeTermina <= 0 ||
+        trajanjeTermina % 15 !== 0
+      ) {
+        return createError(
+          "trajanjeTermina",
+          "Trajanje termina mora biti pozitivan broj u koracima od 15 minuta.",
+        );
+      }
+    }
+
+    const vremePripremeTermina = Number(formData.vremePripremeTermina);
+
+    if (
+      !Number.isFinite(vremePripremeTermina) ||
+      vremePripremeTermina < 0 ||
+      vremePripremeTermina % 15 !== 0
+    ) {
+      return createError(
+        "vremePripremeTermina",
+        "Vreme pripreme mora biti 0 ili pozitivan broj u koracima od 15 minuta.",
+      );
+    }
+
+    for (const [dan, vreme] of Object.entries(radnoVreme)) {
+      if (!vreme?.radi) continue;
+
+      if (!vreme.od || !vreme.do) {
+        return createError("radnoVreme", `Unesite radno vreme za ${dan}.`);
+      }
+
+      if (!isQuarterHourTime(vreme.od) || !isQuarterHourTime(vreme.do)) {
+        return createError(
+          "radnoVreme",
+          "Radno vreme mora biti u koracima od 15 minuta: 00, 15, 30 ili 45.",
+        );
+      }
+
+      const vremeOd = timeToMinutes(vreme.od);
+      const vremeDo = timeToMinutes(vreme.do);
+
+      if (vremeOd === null || vremeDo === null || vremeDo <= vremeOd) {
+        return createError(
+          "radnoVreme",
+          `Radno vreme za ${dan} nije validno. Vreme završetka mora biti posle vremena početka.`,
+        );
+      }
     }
 
     if (!sanitizeText(formData.kontaktEmail)) {

@@ -100,6 +100,8 @@ const Register = () => {
 
     if (!formData.role) {
       newErrors.role = "Izaberite tip korisnika.";
+    } else if (!["roditelj", "vlasnik"].includes(formData.role)) {
+      newErrors.role = "Izabran tip korisnika nije dozvoljen.";
     }
 
     if (!acceptedTerms) {
@@ -120,6 +122,15 @@ const Register = () => {
         ...prev,
         [name]: sanitizedValue,
       }));
+
+      setServerError("");
+
+      setErrors((prev) => {
+        if (!prev.telefon) return prev;
+        const next = { ...prev };
+        delete next.telefon;
+        return next;
+      });
 
       return;
     }
@@ -154,6 +165,7 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     setServerError("");
 
     if (!validateForm()) return;
@@ -281,6 +293,7 @@ const Register = () => {
                 type="button"
                 className="password-toggle-btn"
                 onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "Sakrij lozinku" : "Prikaži lozinku"}
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
@@ -308,6 +321,11 @@ const Register = () => {
                 type="button"
                 className="password-toggle-btn"
                 onClick={() => setShowConfirmPassword((prev) => !prev)}
+                aria-label={
+                  showConfirmPassword
+                    ? "Sakrij potvrdu lozinke"
+                    : "Prikaži potvrdu lozinke"
+                }
               >
                 {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
               </button>

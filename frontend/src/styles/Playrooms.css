@@ -321,6 +321,13 @@
   font-weight: 600;
   color: #667085;
 }
+.review-count-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
 /* =========================
    PRAVE IKONICE (IMAGE)
 ========================= */

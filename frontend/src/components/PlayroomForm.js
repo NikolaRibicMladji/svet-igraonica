@@ -20,6 +20,7 @@ const PlayroomForm = ({
   onCancel,
   isEditing = false,
   ownerEmail = "",
+  submitting: externalSubmitting = false,
 }) => {
   const { user } = useAuth();
   const canManageMedia = user?.role === "vlasnik" || user?.role === "admin";
@@ -76,9 +77,11 @@ const PlayroomForm = ({
     ownerEmail: ownerEmail || user?.email || "",
   });
 
+  const isSubmitting = submitting || externalSubmitting;
+
   return (
     <>
-      {submitting && (
+      {isSubmitting && (
         <div className="global-loading">
           <div className="global-spinner"></div>
         </div>
@@ -180,6 +183,12 @@ const PlayroomForm = ({
           handleRadnoVremeChange={handleRadnoVremeChange}
         />
 
+        {errors.radnoVreme && (
+          <div className="field-error radnoVreme-error" tabIndex="-1">
+            {errors.radnoVreme}
+          </div>
+        )}
+
         <div className="form-actions">
           <button type="button" className="btn-cancel" onClick={onCancel}>
             Otkaži
@@ -187,9 +196,9 @@ const PlayroomForm = ({
           <button
             type="submit"
             className="btn-submit"
-            disabled={uploading || uploadingVideo || submitting}
+            disabled={uploading || uploadingVideo || isSubmitting}
           >
-            {submitting ? (
+            {isSubmitting ? (
               <>
                 <span className="btn-spinner"></span>
                 {isEditing ? "Čuvam promene..." : "Kreiram igraonicu..."}

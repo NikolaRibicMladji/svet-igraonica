@@ -76,7 +76,7 @@ const PlayroomDetails = () => {
   }, [playroom]);
 
   const handleBook = () => {
-    navigate(`/book/${id}`);
+    navigate(`/book/${encodeURIComponent(id)}`);
   };
 
   const openGalleryModal = (index) => {
@@ -133,6 +133,7 @@ const PlayroomDetails = () => {
   const facebookUrl = getSafeExternalUrl(playroom.drustveneMreze?.facebook);
   const tiktokUrl = getSafeExternalUrl(playroom.drustveneMreze?.tiktok);
   const websiteUrl = getSafeExternalUrl(playroom.drustveneMreze?.website);
+  const profileImageUrl = getSafeExternalUrl(playroom.profilnaSlika?.url);
 
   const getCenaTipLabel = (tip) => {
     if (tip === "po_osobi") return "po osobi";
@@ -154,11 +155,12 @@ const PlayroomDetails = () => {
       <div className="details-card">
         <div className="profile-image-container">
           <div className="profile-image-wrapper">
-            {playroom.profilnaSlika?.url ? (
+            {profileImageUrl ? (
               <img
-                src={playroom.profilnaSlika.url}
+                src={profileImageUrl}
                 alt={playroom.naziv}
                 className="profile-image-detail"
+                loading="lazy"
               />
             ) : (
               <PlayroomCoverFallback naziv={playroom.naziv} />
@@ -334,17 +336,29 @@ const PlayroomDetails = () => {
           <div className="details-gallery">
             <h3>📸 Galerija slika</h3>
             <div className="gallery-grid">
-              {galleryImages.map((img, idx) => (
-                <button
-                  type="button"
-                  key={img.publicId || img.public_id || img.url || idx}
-                  className="gallery-item"
-                  onClick={() => openGalleryModal(idx)}
-                  aria-label={`Otvori sliku ${idx + 1}`}
-                >
-                  <img src={img.url} alt={`Slika ${idx + 1}`} />
-                </button>
-              ))}
+              {galleryImages.map((img, idx) => {
+                const imageUrl = getSafeExternalUrl(
+                  img.url || img.secure_url || img.path,
+                );
+
+                if (!imageUrl) return null;
+
+                return (
+                  <button
+                    type="button"
+                    key={img.publicId || img.public_id || imageUrl || idx}
+                    className="gallery-item"
+                    onClick={() => openGalleryModal(idx)}
+                    aria-label={`Otvori sliku ${idx + 1}`}
+                  >
+                    <img
+                      src={imageUrl}
+                      alt={`Slika ${idx + 1}`}
+                      loading="lazy"
+                    />
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

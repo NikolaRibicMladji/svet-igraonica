@@ -24,7 +24,9 @@ const uploadPendingMedia = async (playroomId, pendingMedia = {}) => {
       await uploadImage(playroomId, profilnaFile);
     } catch (err) {
       errors.push(
-        err?.response?.data?.message || "Profilna slika nije uploadovana.",
+        err?.response?.data?.message ||
+          err?.message ||
+          "Profilna slika nije uploadovana.",
       );
     }
   }
@@ -35,6 +37,7 @@ const uploadPendingMedia = async (playroomId, pendingMedia = {}) => {
     } catch (err) {
       errors.push(
         err?.response?.data?.message ||
+          err?.message ||
           `Slika "${file?.name || "nepoznata"}" nije uploadovana.`,
       );
     }
@@ -52,6 +55,7 @@ const uploadPendingMedia = async (playroomId, pendingMedia = {}) => {
     } catch (err) {
       errors.push(
         err?.response?.data?.message ||
+          err?.message ||
           `Video "${item?.naziv || item.file?.name || "nepoznat"}" nije uploadovan.`,
       );
     }
@@ -68,14 +72,19 @@ const CreatePlayroom = () => {
   const { user, loading, loadUser } = useAuth();
   const { showToast } = useToast();
   const [syncingUser, setSyncingUser] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     const syncUserEmail = async () => {
       if (!loading && user && !user.email) {
         setSyncingUser(true);
-        await loadUser();
-        setSyncingUser(false);
+
+        try {
+          await loadUser();
+        } finally {
+          setSyncingUser(false);
+        }
       }
     };
 
@@ -86,41 +95,49 @@ const CreatePlayroom = () => {
   }
 
   const handleSubmit = async (data) => {
-    const pendingMedia = data?._pendingMedia || {};
-    const { _pendingMedia, ...playroomPayload } = data;
+    if (submitting) return;
 
-    const result = await createPlayroom(playroomPayload);
+    setSubmitting(true);
 
-    if (!result?.success) {
-      throw new Error(result?.error || "Greška pri kreiranju igraonice");
-    }
+    try {
+      const pendingMedia = data?._pendingMedia || {};
+      const { _pendingMedia, ...playroomPayload } = data;
 
-    const playroomId = getPlayroomId(result.data);
+      const result = await createPlayroom(playroomPayload);
 
-    if (!playroomId) {
-      showToast(
-        "Igraonica je kreirana, ali mediji nisu uploadovani jer backend nije vratio ID igraonice.",
-        "error",
-      );
+      if (!result?.success) {
+        throw new Error(result?.error || "Greška pri kreiranju igraonice");
+      }
+
+      const playroomId = getPlayroomId(result.data);
+
+      if (!playroomId) {
+        showToast(
+          "Igraonica je kreirana, ali mediji nisu uploadovani jer backend nije vratio ID igraonice.",
+          "error",
+        );
+
+        await loadUser();
+        navigate("/manage-playroom", { replace: true });
+        return;
+      }
+
+      const mediaResult = await uploadPendingMedia(playroomId, pendingMedia);
+
+      if (mediaResult.attempted && !mediaResult.success) {
+        showToast(
+          "Igraonica je kreirana, ali neki fajlovi nisu uploadovani. Možete ih dodati iz stranice Moja igraonica.",
+          "error",
+        );
+      } else {
+        showToast("Igraonica je uspešno kreirana.", "success");
+      }
 
       await loadUser();
       navigate("/manage-playroom", { replace: true });
-      return;
+    } finally {
+      setSubmitting(false);
     }
-
-    const mediaResult = await uploadPendingMedia(playroomId, pendingMedia);
-
-    if (mediaResult.attempted && !mediaResult.success) {
-      showToast(
-        "Igraonica je kreirana, ali neki fajlovi nisu uploadovani. Možete ih dodati iz stranice Moja igraonica.",
-        "error",
-      );
-    } else {
-      showToast("Igraonica je uspešno kreirana.", "success");
-    }
-
-    await loadUser();
-    navigate("/manage-playroom", { replace: true });
   };
 
   const handleCancel = () => {
@@ -155,6 +172,7 @@ const CreatePlayroom = () => {
         onCancel={handleCancel}
         isEditing={false}
         ownerEmail={ownerEmail}
+        submitting={submitting}
       />
     </div>
   );

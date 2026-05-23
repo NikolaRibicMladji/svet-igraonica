@@ -132,8 +132,10 @@ const Playrooms = () => {
   }, []);
 
   const handleViewDetails = (id) => {
-    navigate(`/playrooms/${id}`);
+    if (!id) return;
+    navigate(`/playrooms/${encodeURIComponent(id)}`);
   };
+
   const lastPlayroomRef = useCallback(
     (node) => {
       if (loading || loadingMore) return;
@@ -197,7 +199,7 @@ const Playrooms = () => {
 
           <div className="playrooms-grid">
             {playrooms.map((playroom, index) => {
-              const imageUrl = playroom.profilnaSlika?.url || "";
+              const imageUrl = getSafeExternalUrl(playroom.profilnaSlika?.url);
               const instagramUrl = getSafeExternalUrl(
                 playroom.drustveneMreze?.instagram,
               );
@@ -316,14 +318,17 @@ const Playrooms = () => {
                         {ratingValue.toFixed(1)}
                       </span>
 
-                      <span
+                      <button
+                        type="button"
                         className="review-count-link"
                         onClick={() =>
-                          navigate(`/playrooms/${playroom._id}#reviews-section`)
+                          navigate(
+                            `/playrooms/${encodeURIComponent(playroom._id)}#reviews-section`,
+                          )
                         }
                       >
                         ({playroom.reviewCount || 0})
-                      </span>
+                      </button>
                     </div>
 
                     <div className="card-buttons">
