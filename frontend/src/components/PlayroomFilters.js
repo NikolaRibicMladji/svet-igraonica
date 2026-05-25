@@ -101,6 +101,7 @@ const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
           className="filters-title"
           onClick={() => setIsExpanded((prev) => !prev)}
           aria-expanded={isExpanded}
+          aria-controls="playroom-filters-content"
         >
           <span className="filter-icon">🔍</span>
           <span>Filteri</span>
@@ -120,10 +121,17 @@ const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
       </div>
 
       {isExpanded && (
-        <div className="filters-content">
+        <div id="playroom-filters-content" className="filters-content">
           <div className="filter-group">
-            <label className="filter-label">📊 Sortiraj po</label>
-            <div className="sort-buttons">
+            <div id="filter-sort-label" className="filter-label">
+              📊 Sortiraj po
+            </div>
+
+            <div
+              className="sort-buttons"
+              role="group"
+              aria-labelledby="filter-sort-label"
+            >
               {sortOpcije.map((option) => (
                 <button
                   key={option.value}

@@ -5,7 +5,18 @@ import {
   timeToMinutes,
 } from "./bookingUtils";
 
+const isValidInterval = (start, end) => {
+  const startMinutes = timeToMinutes(start);
+  const endMinutes = timeToMinutes(end);
+
+  return endMinutes > startMinutes;
+};
+
 export const doesOverlapBusyInterval = (availability, start, end) => {
+  if (!isValidInterval(start, end)) {
+    return true;
+  }
+
   const busyIntervals = Array.isArray(availability?.busyIntervals)
     ? availability.busyIntervals
     : [];
@@ -39,6 +50,11 @@ export const buildAvailabilitySegments = (availability) => {
   for (const interval of busyIntervals) {
     const busyStart = timeToMinutes(interval.vremeOd);
     const busyEnd = timeToMinutes(interval.vremeDo);
+
+    if (busyEnd <= busyStart) {
+      continue;
+    }
+
     const originalBusyEnd = timeToMinutes(
       interval.originalVremeDo || interval.vremeDo,
     );

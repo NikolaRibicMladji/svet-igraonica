@@ -140,9 +140,13 @@ const Reviews = ({ playroomId }) => {
         toast.success("Recenzija je uspešno dodata.");
         setComment("");
         setRating(5);
-        setPage(1);
-        await loadReviews();
         setCanReview(false);
+
+        if (page !== 1) {
+          setPage(1);
+        } else {
+          await loadReviews();
+        }
       } else {
         toast.error(result?.error || "Dodavanje recenzije nije uspelo.");
       }
@@ -158,6 +162,11 @@ const Reviews = ({ playroomId }) => {
   };
 
   const handleDelete = async (id) => {
+    if (!id) {
+      toast.error("Nedostaje ID recenzije za brisanje.");
+      return;
+    }
+
     if (deletingId) return;
     const confirmed = window.confirm(
       "Da li ste sigurni da želite da obrišete ovu recenziju?",
@@ -233,12 +242,23 @@ const Reviews = ({ playroomId }) => {
 
           <form onSubmit={handleSubmit}>
             <div className="rating-input">
-              <label>Vaša ocena:</label>
-              <div className="stars">{renderStars(rating, true)}</div>
+              <div id="review-rating-label">Vaša ocena:</div>
+              <div
+                className="stars"
+                role="group"
+                aria-labelledby="review-rating-label"
+              >
+                {renderStars(rating, true)}
+              </div>
             </div>
 
             <div className="comment-input">
+              <label htmlFor="review-comment" className="sr-only">
+                Komentar recenzije
+              </label>
+
               <textarea
+                id="review-comment"
                 rows="4"
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}

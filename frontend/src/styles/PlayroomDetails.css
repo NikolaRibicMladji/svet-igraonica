@@ -270,7 +270,7 @@
   margin: 20px 0;
 }
 
-.detail-item.full-width label {
+.detail-label {
   display: block;
   margin-bottom: 10px;
   color: #334155;
@@ -429,6 +429,10 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  border: none;
+  padding: 0;
+  width: 100%;
+  font: inherit;
 }
 
 .video-thumbnail img {

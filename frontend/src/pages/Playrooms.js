@@ -87,6 +87,7 @@ const Playrooms = () => {
       );
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [filters, page, debouncedSearch]);
 
@@ -113,12 +114,6 @@ const Playrooms = () => {
   useEffect(() => {
     loadPlayrooms();
   }, [loadPlayrooms]);
-
-  useEffect(() => {
-    if (!loading) {
-      setLoadingMore(false);
-    }
-  }, [loading]);
 
   const handleFilterChange = useCallback((newFilters) => {
     setFilters((prev) => ({
@@ -167,7 +162,9 @@ const Playrooms = () => {
 
       <div className="search-bar">
         <input
+          id="playroom-search"
           type="text"
+          aria-label="Pretraži igraonice"
           placeholder="🔍 Pretraži po nazivu igraonice ili gradu..."
           value={searchTerm}
           onChange={(e) => {
@@ -252,7 +249,7 @@ const Playrooms = () => {
                           <a
                             href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(playroom.kontaktEmail)}`}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             className="contact-item"
                           >
                             {playroom.kontaktEmail}
@@ -266,7 +263,7 @@ const Playrooms = () => {
                           <a
                             href={instagramUrl}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             className="social-item"
                           >
                             Instagram
@@ -277,7 +274,7 @@ const Playrooms = () => {
                           <a
                             href={tiktokUrl}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             className="social-item"
                           >
                             TikTok
@@ -288,7 +285,7 @@ const Playrooms = () => {
                           <a
                             href={facebookUrl}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             className="social-item"
                           >
                             Facebook
@@ -299,7 +296,7 @@ const Playrooms = () => {
                           <a
                             href={websiteUrl}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             className="social-item website-link"
                           >
                             Web sajt

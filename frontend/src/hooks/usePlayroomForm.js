@@ -59,27 +59,28 @@ const toNumberOrZero = (value) => {
 };
 
 const sanitizeText = (value) => (typeof value === "string" ? value.trim() : "");
+const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const timeToMinutes = (time) => {
-  const [hours, minutes] = String(time || "")
-    .split(":")
-    .map(Number);
+  const safeTime = String(time || "").trim();
 
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+  if (!TIME_REGEX.test(safeTime)) {
     return null;
   }
+
+  const [hours, minutes] = safeTime.split(":").map(Number);
 
   return hours * 60 + minutes;
 };
 
 const isQuarterHourTime = (time) => {
-  const [hours, minutes] = String(time || "")
-    .split(":")
-    .map(Number);
+  const safeTime = String(time || "").trim();
 
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+  if (!TIME_REGEX.test(safeTime)) {
     return false;
   }
+
+  const [, minutes] = safeTime.split(":").map(Number);
 
   return [0, 15, 30, 45].includes(minutes);
 };
@@ -594,7 +595,15 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
     const naziv = sanitizeText(noviPaket.naziv);
     const cena = Number(noviPaket.cena);
 
-    if (!naziv || !Number.isFinite(cena) || cena <= 0) return;
+    if (!naziv) {
+      setError("Unesi naziv paketa.");
+      return;
+    }
+
+    if (!Number.isFinite(cena) || cena <= 0) {
+      setError("Unesi ispravnu cenu paketa.");
+      return;
+    }
 
     setPaketi((prev) => [
       ...prev,
@@ -622,7 +631,15 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
     const naziv = sanitizeText(novaUsluga.naziv);
     const cena = Number(novaUsluga.cena);
 
-    if (!naziv || !Number.isFinite(cena) || cena <= 0) return;
+    if (!naziv) {
+      setError("Unesi naziv dodatne usluge.");
+      return;
+    }
+
+    if (!Number.isFinite(cena) || cena <= 0) {
+      setError("Unesi ispravnu cenu dodatne usluge.");
+      return;
+    }
 
     setDodatneUsluge((prev) => [
       ...prev,
@@ -949,6 +966,17 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
         return createError(
           "kapacitet.deca",
           "Kapacitet dece ne može biti negativan.",
+        );
+      }
+    }
+
+    if (formData.kapacitet.roditelji) {
+      const kapacitetRoditelja = Number(formData.kapacitet.roditelji);
+
+      if (!Number.isFinite(kapacitetRoditelja) || kapacitetRoditelja < 0) {
+        return createError(
+          "kapacitet.roditelji",
+          "Kapacitet roditelja ne može biti negativan.",
         );
       }
     }

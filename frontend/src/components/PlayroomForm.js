@@ -82,17 +82,30 @@ const PlayroomForm = ({
   return (
     <>
       {isSubmitting && (
-        <div className="global-loading">
-          <div className="global-spinner"></div>
+        <div className="global-loading" role="status" aria-live="polite">
+          <div className="global-spinner" aria-hidden="true"></div>
+          <span className="sr-only">
+            {isEditing ? "Čuvanje promena..." : "Kreiranje igraonice..."}
+          </span>
         </div>
       )}
-      <form onSubmit={handleSubmit} className="edit-form full-form">
+      <form
+        onSubmit={handleSubmit}
+        className="edit-form full-form"
+        aria-busy={uploading || uploadingVideo || isSubmitting}
+      >
         <h2>{isEditing ? "✏️ Uredi igraonicu" : "✨ Dodaj novu igraonicu"}</h2>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && (
+          <div className="error-message" role="alert">
+            {error}
+          </div>
+        )}
 
         {Object.keys(errors).length > 0 && (
-          <div className="top-form-error">{Object.values(errors)[0]}</div>
+          <div className="top-form-error" role="alert">
+            {Object.values(errors)[0]}
+          </div>
         )}
 
         <BasicInfoSection
@@ -142,7 +155,11 @@ const PlayroomForm = ({
           handleRemoveCena={handleRemoveCena}
         />
         {errors.cenePaketi && (
-          <div className="field-error cenePaketi-error" tabIndex="-1">
+          <div
+            className="field-error cenePaketi-error"
+            role="alert"
+            tabIndex={-1}
+          >
             {errors.cenePaketi}
           </div>
         )}
@@ -184,13 +201,22 @@ const PlayroomForm = ({
         />
 
         {errors.radnoVreme && (
-          <div className="field-error radnoVreme-error" tabIndex="-1">
+          <div
+            className="field-error radnoVreme-error"
+            role="alert"
+            tabIndex={-1}
+          >
             {errors.radnoVreme}
           </div>
         )}
 
         <div className="form-actions">
-          <button type="button" className="btn-cancel" onClick={onCancel}>
+          <button
+            type="button"
+            className="btn-cancel"
+            onClick={onCancel}
+            disabled={uploading || uploadingVideo || isSubmitting}
+          >
             Otkaži
           </button>
           <button

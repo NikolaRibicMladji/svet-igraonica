@@ -25,11 +25,6 @@
   flex-wrap: wrap;
 }
 
-.rating-input label {
-  font-weight: 500;
-  color: #334155;
-}
-
 .stars {
   display: flex;
   gap: 4px;
@@ -103,13 +98,6 @@
 
 .rating-input {
   margin-bottom: 16px;
-}
-
-.rating-input label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 600;
-  color: #334155;
 }
 
 .comment-input textarea {
@@ -307,4 +295,14 @@
   .pagination {
     flex-wrap: wrap;
   }
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
 }

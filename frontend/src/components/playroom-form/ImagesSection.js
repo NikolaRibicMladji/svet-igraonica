@@ -1,10 +1,11 @@
 import React from "react";
+
 const IMAGE_MAX_COUNT = 10;
 
 const ImagesSection = ({
-  uploading,
-  slike,
-  profilnaSlika,
+  uploading = false,
+  slike = [],
+  profilnaSlika = null,
   handleFileChange,
   removeProfilna,
   removeImage,
@@ -14,7 +15,7 @@ const ImagesSection = ({
       <h3>🖼️ Slike</h3>
 
       <div className="form-group">
-        <label>Profilna slika</label>
+        <label htmlFor="profilna-slika-upload">Profilna slika</label>
         <small className="upload-hint">Maks. 5 MB po slici</small>
         <small className="upload-hint">
           Ako ne dodate profilnu sliku, prva uploadovana slika će biti korišćena
@@ -22,11 +23,13 @@ const ImagesSection = ({
         </small>
 
         <input
+          id="profilna-slika-upload"
           type="file"
           accept="image/*"
           onChange={(e) => handleFileChange(e, true)}
           disabled={uploading}
         />
+
         {profilnaSlika?.url && (
           <div className="uploaded-image">
             <img src={profilnaSlika.url} alt="Profilna slika" />
@@ -38,11 +41,16 @@ const ImagesSection = ({
       </div>
 
       <div className="form-group">
-        <label>Ostale slike (maks. {IMAGE_MAX_COUNT})</label>
+        <label htmlFor="galerija-slika-upload">
+          Ostale slike (maks. {IMAGE_MAX_COUNT})
+        </label>
+
         <small className="upload-hint">
           Dodato: {slike.length}/{IMAGE_MAX_COUNT}
         </small>
+
         <input
+          id="galerija-slika-upload"
           type="file"
           accept="image/*"
           multiple
@@ -61,6 +69,7 @@ const ImagesSection = ({
                 type="button"
                 onClick={() => removeImage(idx)}
                 disabled={uploading}
+                aria-label={`Ukloni sliku ${idx + 1}`}
               >
                 ✖
               </button>

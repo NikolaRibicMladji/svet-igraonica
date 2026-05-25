@@ -31,16 +31,10 @@ const VideoPlayer = ({ video }) => {
   return (
     <div className="video-gallery-item">
       {!isPlaying ? (
-        <div
+        <button
+          type="button"
           className="video-thumbnail"
           onClick={handlePlay}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              handlePlay();
-            }
-          }}
           aria-label={`Pokreni video ${normalizedVideo.naziv || "video"}`}
         >
           {normalizedVideo.thumbnail ? (
@@ -56,13 +50,15 @@ const VideoPlayer = ({ video }) => {
           <div className="play-button-overlay">
             <div className="play-icon">▶</div>
           </div>
-        </div>
+        </button>
       ) : (
         <video
           controls
           autoPlay
+          preload="metadata"
           className="video-player-inline"
           src={normalizedVideo.url}
+          aria-label={normalizedVideo.naziv || "Video"}
         />
       )}
 

@@ -197,17 +197,17 @@ const PlayroomDetails = () => {
 
         <div className="details-grid">
           <div className="detail-item">
-            <label>📞 Telefon</label>
+            <div className="detail-label">📞 Telefon</div>
             <p>{playroom.kontaktTelefon || "-"}</p>
           </div>
 
           <div className="detail-item">
-            <label>📧 Email</label>
+            <div className="detail-label">📧 Email</div>
             {playroom.kontaktEmail ? (
               <a
                 href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(playroom.kontaktEmail)}`}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
               >
                 {playroom.kontaktEmail}
               </a>
@@ -217,12 +217,12 @@ const PlayroomDetails = () => {
           </div>
 
           <div className="detail-item">
-            <label>👶 Kapacitet dece</label>
+            <div className="detail-label">👶 Kapacitet dece</div>
             <p>{playroom.kapacitet?.deca || 0} dece</p>
           </div>
 
           <div className="detail-item">
-            <label>👨‍👩‍👧 Kapacitet roditelja</label>
+            <div className="detail-label">👨‍👩‍👧 Kapacitet roditelja</div>
             <p>
               {playroom.kapacitet?.roditelji
                 ? `${playroom.kapacitet.roditelji} roditelja`
@@ -230,7 +230,7 @@ const PlayroomDetails = () => {
             </p>
           </div>
           <div className="detail-item">
-            <label>⏰ Režim rezervacije</label>
+            <div className="detail-label">⏰ Režim rezervacije</div>
             <p>
               {playroom.rezimRezervacije === "fiksno"
                 ? `Fiksni termini (${playroom.trajanjeTermina || 60} min)`
@@ -239,7 +239,7 @@ const PlayroomDetails = () => {
           </div>
         </div>
         <div className="detail-item full-width">
-          <label>📝 Opis</label>
+          <div className="detail-label">📝 Opis</div>
           <p className="description-text">{playroom.opis || "-"}</p>
         </div>
         <div className="details-price">
@@ -283,13 +283,13 @@ const PlayroomDetails = () => {
 
         {playroom.drustveneMreze && (
           <div className="detail-item full-width">
-            <label>🌐 Društvene mreže</label>
+            <div className="detail-label">🌐 Društvene mreže</div>
             <div className="social-links-manage">
               {instagramUrl && (
                 <a
                   href={instagramUrl}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="social-link-small instagram"
                 >
                   Instagram
@@ -300,7 +300,7 @@ const PlayroomDetails = () => {
                 <a
                   href={facebookUrl}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="social-link-small facebook"
                 >
                   Facebook
@@ -311,7 +311,7 @@ const PlayroomDetails = () => {
                 <a
                   href={tiktokUrl}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="social-link-small tiktok"
                 >
                   TikTok
@@ -322,7 +322,7 @@ const PlayroomDetails = () => {
                 <a
                   href={websiteUrl}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="social-link-small website"
                 >
                   Web sajt
@@ -396,10 +396,13 @@ const PlayroomDetails = () => {
         <div className="price-modal" onClick={() => setShowPriceModal(false)}>
           <div
             className="price-modal-content"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="price-modal-title"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="price-modal-header">
-              <h2>Cenovnik - {playroom.naziv}</h2>
+              <h2 id="price-modal-title">Cenovnik - {playroom.naziv}</h2>
               <button
                 type="button"
                 className="price-modal-close"

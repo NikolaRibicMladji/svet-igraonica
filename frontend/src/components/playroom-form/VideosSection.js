@@ -1,11 +1,12 @@
 import React from "react";
+
 const VIDEO_MAX_COUNT = 3;
 
 const VideosSection = ({
-  uploadingVideo,
-  videoGalerija,
-  noviVideo,
-  videoNaziv,
+  uploadingVideo = false,
+  videoGalerija = [],
+  noviVideo = [],
+  videoNaziv = "",
   setVideoNaziv,
   handleVideoChange,
   handleAddVideo,
@@ -16,9 +17,10 @@ const VideosSection = ({
       <h3>🎥 Video galerija (maks. {VIDEO_MAX_COUNT})</h3>
 
       <p className="section-hint">
-        Dodaj video snimke sa rođendana, događaja ili prikaza igraonice (maks.
-        20 MB velicina i 30 sekundi duzina videa).
+        Dodaj video snimke sa rođendana, događaja ili prikaza igraonice. Maks.
+        20 MB i 30 sekundi po videu.
       </p>
+
       <p className="section-hint">
         Dodato: {videoGalerija.length}/{VIDEO_MAX_COUNT}
       </p>
@@ -26,7 +28,9 @@ const VideosSection = ({
       <div className="dynamic-input">
         <div className="add-item">
           <input
+            id="video-naziv"
             type="text"
+            aria-label="Naziv videa"
             placeholder="Naziv videa (npr. Rođendan 2024)"
             value={videoNaziv}
             disabled={uploadingVideo || videoGalerija.length >= VIDEO_MAX_COUNT}
@@ -34,7 +38,9 @@ const VideosSection = ({
           />
 
           <input
+            id="video-upload"
             type="file"
+            aria-label="Izaberi video fajlove"
             accept="video/*"
             multiple
             onChange={handleVideoChange}
@@ -67,33 +73,42 @@ const VideosSection = ({
         {videoGalerija.length > 0 && (
           <div className="videos-list">
             <h4>Postavljeni video snimci:</h4>
+
             {videoGalerija.map((video, idx) => (
               <div
-                key={video.publicId || video.url || idx}
+                key={video.publicId || video.public_id || video.url || idx}
                 className="video-item-preview"
               >
                 <div className="video-preview">
                   <video
                     controls
+                    preload="metadata"
                     className="video-preview-player"
                     src={video.url}
+                    aria-label={video.naziv || `Video ${idx + 1}`}
                   />
+
                   <div className="video-info">
                     <span className="video-name">
                       {video.naziv || `Video ${idx + 1}`}
                     </span>
-                    {video.trajanje > 0 && (
+
+                    {Number(video.trajanje) > 0 && (
                       <span className="video-duration">
-                        {Math.floor(video.trajanje / 60)}:
-                        {(video.trajanje % 60).toString().padStart(2, "0")}
+                        {Math.floor(Number(video.trajanje) / 60)}:
+                        {(Number(video.trajanje) % 60)
+                          .toString()
+                          .padStart(2, "0")}
                       </span>
                     )}
                   </div>
+
                   <button
                     type="button"
                     onClick={() => handleRemoveVideo(idx)}
                     className="remove-video"
                     disabled={uploadingVideo}
+                    aria-label={`Obriši video ${idx + 1}`}
                   >
                     ✖ Obriši
                   </button>

@@ -15,6 +15,29 @@ export const formatBrojDece = (broj) => {
   return `${n} dece`;
 };
 
+const toSafeNumber = (value, fallback = 0) => {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : fallback;
+};
+
+const calculateItemPrice = (item, brojDece, slotDurationHours) => {
+  if (!item) return 0;
+
+  const cena = toSafeNumber(item.cena);
+  const trajanjeSati = toSafeNumber(slotDurationHours, 1);
+  const broj = toSafeNumber(brojDece);
+
+  if (item.tip === "po_satu") {
+    return cena * trajanjeSati;
+  }
+
+  if (item.tip === "po_osobi") {
+    return cena * broj;
+  }
+
+  return cena;
+};
+
 export const calculateBookingTotal = ({
   selectedCene = [],
   selectedPaket = null,
@@ -22,53 +45,25 @@ export const calculateBookingTotal = ({
   brojDece = "",
   slotDurationHours = 1,
 }) => {
-  let total = 0;
-  const trajanjeSati = Number(slotDurationHours) || 1;
-  const broj = brojDece === "" ? 0 : Number(brojDece);
+  const ceneTotal = Array.isArray(selectedCene)
+    ? selectedCene.reduce(
+        (sum, item) =>
+          sum + calculateItemPrice(item, brojDece, slotDurationHours),
+        0,
+      )
+    : 0;
 
-  selectedCene.forEach((c) => {
-    const cena = Number(c.cena) || 0;
+  const paketTotal = selectedPaket
+    ? calculateItemPrice(selectedPaket, brojDece, slotDurationHours)
+    : 0;
 
-    if (c.tip === "po_satu") {
-      total += cena * trajanjeSati;
-      return;
-    }
+  const uslugeTotal = Array.isArray(selectedUsluge)
+    ? selectedUsluge.reduce(
+        (sum, item) =>
+          sum + calculateItemPrice(item, brojDece, slotDurationHours),
+        0,
+      )
+    : 0;
 
-    if (c.tip === "po_osobi") {
-      total += cena * broj;
-      return;
-    }
-
-    total += cena;
-  });
-
-  if (selectedPaket) {
-    const cena = Number(selectedPaket.cena) || 0;
-
-    if (selectedPaket.tip === "po_satu") {
-      total += cena * trajanjeSati;
-    } else if (selectedPaket.tip === "po_osobi") {
-      total += cena * broj;
-    } else {
-      total += cena;
-    }
-  }
-
-  selectedUsluge.forEach((u) => {
-    const cena = Number(u.cena) || 0;
-
-    if (u.tip === "po_satu") {
-      total += cena * trajanjeSati;
-      return;
-    }
-
-    if (u.tip === "po_osobi") {
-      total += cena * broj;
-      return;
-    }
-
-    total += cena;
-  });
-
-  return total;
+  return ceneTotal + paketTotal + uslugeTotal;
 };

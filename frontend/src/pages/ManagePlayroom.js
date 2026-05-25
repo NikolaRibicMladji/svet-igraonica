@@ -292,29 +292,29 @@ const ManagePlayroom = () => {
 
           <div className="details-grid">
             <div className="detail-item">
-              <label>📍 Adresa</label>
+              <div className="detail-label">📍 Adresa</div>
               <p>
                 {playroom.adresa}, {playroom.grad}
               </p>
             </div>
 
             <div className="detail-item">
-              <label>📞 Telefon</label>
+              <div className="detail-label">📞 Telefon</div>
               <p>{playroom.kontaktTelefon || "-"}</p>
             </div>
 
             <div className="detail-item">
-              <label>📧 Email</label>
+              <div className="detail-label">📧 Email</div>
               <p>{playroom.kontaktEmail || "-"}</p>
             </div>
 
             <div className="detail-item">
-              <label>👶 Kapacitet dece</label>
+              <div className="detail-label">👶 Kapacitet dece</div>
               <p>{playroom.kapacitet?.deca || 0} dece</p>
             </div>
 
             <div className="detail-item">
-              <label>👨‍👩‍👧 Kapacitet roditelja</label>
+              <div className="detail-label">👨‍👩‍👧 Kapacitet roditelja</div>
               <p>
                 {playroom.kapacitet?.roditelji
                   ? `${playroom.kapacitet.roditelji} roditelja`
@@ -322,11 +322,11 @@ const ManagePlayroom = () => {
               </p>
             </div>
             <div className="detail-item full-width">
-              <label>📝 Opis</label>
+              <div className="detail-label">📝 Opis</div>
               <p className="description-text">{playroom.opis}</p>
             </div>
             <div className="detail-item full-width">
-              <label>🖼️ Profilna slika</label>
+              <div className="detail-label">🖼️ Profilna slika</div>
               <div className="profile-image">
                 {profileImageUrl ? (
                   <img src={profileImageUrl} alt="Profilna slika" />
@@ -339,13 +339,15 @@ const ManagePlayroom = () => {
             {Array.isArray(playroom.videoGalerija) &&
               playroom.videoGalerija.length > 0 && (
                 <div className="detail-item full-width">
-                  <label>
+                  <div className="detail-label">
                     🎥 Video galerija ({playroom.videoGalerija.length})
-                  </label>
+                  </div>
 
                   <div className="videos-list-manage">
                     {playroom.videoGalerija.map((video, idx) => {
-                      const videoUrl = getSafeExternalUrl(video.url);
+                      const videoUrl = getSafeExternalUrl(
+                        video.url || video.secure_url || video.path,
+                      );
 
                       if (!videoUrl) return null;
 
@@ -361,8 +363,10 @@ const ManagePlayroom = () => {
                         >
                           <video
                             controls
+                            preload="metadata"
                             className="video-manage-player"
                             src={videoUrl}
+                            aria-label={video.naziv || `Video ${idx + 1}`}
                           />
                           <div className="video-manage-info">
                             <span className="video-manage-name">
@@ -386,10 +390,14 @@ const ManagePlayroom = () => {
 
             {Array.isArray(playroom.slike) && playroom.slike.length > 0 && (
               <div className="detail-item full-width">
-                <label>📸 Galerija slika ({playroom.slike.length})</label>
+                <div className="detail-label">
+                  📸 Galerija slika ({playroom.slike.length})
+                </div>
                 <div className="gallery-images">
                   {playroom.slike.map((img, idx) => {
-                    const imageUrl = getSafeExternalUrl(img.url);
+                    const imageUrl = getSafeExternalUrl(
+                      img.url || img.secure_url || img.path,
+                    );
 
                     if (!imageUrl) return null;
 
@@ -408,7 +416,7 @@ const ManagePlayroom = () => {
 
             {Array.isArray(playroom.cene) && playroom.cene.length > 0 && (
               <div className="detail-item full-width">
-                <label>💰 Cene</label>
+                <div className="detail-label">💰 Cene</div>
                 <div className="items-list">
                   {playroom.cene.map((item, idx) => (
                     <div key={`${item.naziv}-${idx}`} className="item-display">
@@ -416,7 +424,11 @@ const ManagePlayroom = () => {
                       <span className="item-price">{item.cena} RSD</span>
                       {item.tip && (
                         <span className="item-type">
-                          {item.tip === "po_osobi" ? "po osobi" : "fiksno"}
+                          {item.tip === "po_osobi"
+                            ? "po osobi"
+                            : item.tip === "po_satu"
+                              ? "po satu"
+                              : "fiksno"}
                         </span>
                       )}
                       {item.opis && (
@@ -430,7 +442,7 @@ const ManagePlayroom = () => {
 
             {Array.isArray(playroom.paketi) && playroom.paketi.length > 0 && (
               <div className="detail-item full-width">
-                <label>🎁 Paketi</label>
+                <div className="detail-label">🎁 Paketi</div>
                 <div className="items-list">
                   {playroom.paketi.map((item, idx) => (
                     <div key={`${item.naziv}-${idx}`} className="item-display">
@@ -448,7 +460,7 @@ const ManagePlayroom = () => {
             {Array.isArray(playroom.dodatneUsluge) &&
               playroom.dodatneUsluge.length > 0 && (
                 <div className="detail-item full-width">
-                  <label>🎪 Dodatne usluge</label>
+                  <div className="detail-label">🎪 Dodatne usluge</div>
                   <div className="items-list">
                     {playroom.dodatneUsluge.map((item, idx) => (
                       <div
@@ -458,7 +470,11 @@ const ManagePlayroom = () => {
                         <span className="item-name">{item.naziv}</span>
                         <span className="item-price">{item.cena} RSD</span>
                         <span className="item-type">
-                          {item.tip === "po_osobi" ? "po osobi" : "fiksno"}
+                          {item.tip === "po_osobi"
+                            ? "po osobi"
+                            : item.tip === "po_satu"
+                              ? "po satu"
+                              : "fiksno"}
                         </span>
                         {item.opis && (
                           <span className="item-opis">{item.opis}</span>
@@ -472,7 +488,7 @@ const ManagePlayroom = () => {
             {Array.isArray(playroom.besplatnePogodnosti) &&
               playroom.besplatnePogodnosti.length > 0 && (
                 <div className="detail-item full-width">
-                  <label>✨ Besplatne pogodnosti</label>
+                  <div className="detail-label">✨ Besplatne pogodnosti</div>
                   <div className="free-features-list">
                     {playroom.besplatnePogodnosti.map((item, idx) => (
                       <span key={`${item}-${idx}`} className="free-badge">
@@ -485,13 +501,13 @@ const ManagePlayroom = () => {
 
             {playroom.drustveneMreze && (
               <div className="detail-item full-width">
-                <label>🌐 Društvene mreže</label>
+                <div className="detail-label">🌐 Društvene mreže</div>
                 <div className="social-links-manage">
                   {instagramUrl && (
                     <a
                       href={instagramUrl}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="social-link-small instagram"
                     >
                       📸 Instagram
@@ -502,7 +518,7 @@ const ManagePlayroom = () => {
                     <a
                       href={facebookUrl}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="social-link-small facebook"
                     >
                       📘 Facebook
@@ -513,7 +529,7 @@ const ManagePlayroom = () => {
                     <a
                       href={tiktokUrl}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="social-link-small tiktok"
                     >
                       🎵 TikTok
@@ -524,7 +540,7 @@ const ManagePlayroom = () => {
                     <a
                       href={websiteUrl}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="social-link-small website"
                     >
                       🌐 Veb sajt
@@ -535,7 +551,7 @@ const ManagePlayroom = () => {
             )}
 
             <div className="detail-item full-width">
-              <label>⏰ Radno vreme</label>
+              <div className="detail-label">⏰ Radno vreme</div>
               <div className="working-hours">
                 {Object.entries(playroom.radnoVreme || {}).map(
                   ([dan, vreme]) => (
@@ -575,11 +591,15 @@ const ManagePlayroom = () => {
         >
           <div
             className="delete-playroom-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="deactivate-playroom-title"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               className="delete-playroom-close"
+              aria-label="Zatvori modal za deaktivaciju"
               onClick={() => {
                 if (!deactivating) setDeactivateModalOpen(false);
               }}
@@ -588,7 +608,7 @@ const ManagePlayroom = () => {
               ✖
             </button>
 
-            <h2>Deaktivacija igraonice</h2>
+            <h2 id="deactivate-playroom-title">Deaktivacija igraonice</h2>
 
             <p>
               Igraonica više neće biti javno dostupna i neće primati nove
@@ -596,11 +616,14 @@ const ManagePlayroom = () => {
             </p>
 
             <p>Postojeće rezervacije ostaju aktivne dok se ne završe.</p>
-
-            <label>Unesite lozinku za potvrdu</label>
+            <label htmlFor="deactivate-playroom-password">
+              Unesite lozinku za potvrdu
+            </label>
 
             <input
+              id="deactivate-playroom-password"
               type="password"
+              autoComplete="current-password"
               value={deactivatePassword}
               onChange={(e) => setDeactivatePassword(e.target.value)}
               placeholder="Lozinka"
@@ -626,11 +649,15 @@ const ManagePlayroom = () => {
         >
           <div
             className="delete-playroom-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-playroom-title"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               className="delete-playroom-close"
+              aria-label="Zatvori modal za brisanje"
               onClick={() => {
                 if (!deleting) setDeleteModalOpen(false);
               }}
@@ -639,7 +666,7 @@ const ManagePlayroom = () => {
               ✖
             </button>
 
-            <h2>Brisanje igraonice</h2>
+            <h2 id="delete-playroom-title">Brisanje igraonice</h2>
 
             <p>
               Ova akcija je trajna. Brisanjem igraonice brišu se i svi njeni
@@ -648,11 +675,12 @@ const ManagePlayroom = () => {
             </p>
 
             <form onSubmit={handleDeletePlayroom}>
-              <label>
+              <label htmlFor="delete-playroom-confirm">
                 Za potvrdu unesite <strong>OBRISI</strong>
               </label>
 
               <input
+                id="delete-playroom-confirm"
                 type="text"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}

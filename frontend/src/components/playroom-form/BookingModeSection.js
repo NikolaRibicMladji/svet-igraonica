@@ -1,14 +1,33 @@
 import React from "react";
 
-const BookingModeSection = ({ formData, handleChange }) => {
+const BookingModeSection = ({ formData = {}, handleChange }) => {
+  const rezimRezervacije = formData.rezimRezervacije || "";
+  const trajanjeTermina = formData.trajanjeTermina || 60;
+  const vremePripremeTermina = formData.vremePripremeTermina ?? 0;
+
+  const handleModeChange = (value) => {
+    handleChange({
+      target: {
+        name: "rezimRezervacije",
+        value,
+      },
+    });
+  };
+
   return (
-    <div className="form-section rezimRezervacije-error" tabIndex="-1">
+    <div className="form-section rezimRezervacije-error" tabIndex={-1}>
       <h3>⏰ Način rezervacije</h3>
 
       <div className="form-group">
-        <label>Režim rada igraonice *</label>
+        <div id="booking-mode-label" className="form-label">
+          Režim rada igraonice *
+        </div>
 
-        <div className="booking-mode-options">
+        <div
+          className="booking-mode-options"
+          role="radiogroup"
+          aria-labelledby="booking-mode-label"
+        >
           <label className="booking-mode-card">
             <input
               type="checkbox"
@@ -58,16 +77,15 @@ const BookingModeSection = ({ formData, handleChange }) => {
       </div>
 
       <div className="form-group">
-        <label>Trajanje jednog termina</label>
+        <label htmlFor="trajanje-termina">Trajanje jednog termina</label>
 
         <select
+          id="trajanje-termina"
           name="trajanjeTermina"
-          value={formData.trajanjeTermina}
+          value={trajanjeTermina}
           onChange={handleChange}
-          disabled={formData.rezimRezervacije !== "fiksno"}
-          className={
-            formData.rezimRezervacije !== "fiksno" ? "disabled-select" : ""
-          }
+          disabled={rezimRezervacije !== "fiksno"}
+          className={rezimRezervacije !== "fiksno" ? "disabled-select" : ""}
         >
           <option value={60}>60 minuta</option>
           <option value={90}>90 minuta</option>
@@ -80,31 +98,27 @@ const BookingModeSection = ({ formData, handleChange }) => {
           <option value={300}>300 minuta</option>
         </select>
 
-        {formData.rezimRezervacije !== "fiksno" && (
+        {rezimRezervacije !== "fiksno" && (
           <small className="disabled-hint">
             Dostupno samo za fiksne termine
           </small>
         )}
       </div>
       <div className="form-group">
-        <label>Vremenski interval za sređivanje igraonice</label>
+        <label htmlFor="vreme-pripreme-termina">
+          Vremenski interval za sređivanje igraonice
+        </label>
+
         <select
+          id="vreme-pripreme-termina"
           name="vremePripremeTermina"
-          value={formData.vremePripremeTermina}
+          value={vremePripremeTermina}
           onChange={handleChange}
         >
           <option value={0}>Bez pauze</option>
-          <option value={5}>5 minuta</option>
-          <option value={10}>10 minuta</option>
           <option value={15}>15 minuta</option>
-          <option value={20}>20 minuta</option>
-          <option value={25}>25 minuta</option>
           <option value={30}>30 minuta</option>
-          <option value={35}>35 minuta</option>
-          <option value={40}>40 minuta</option>
           <option value={45}>45 minuta</option>
-          <option value={50}>50 minuta</option>
-          <option value={55}>55 minuta</option>
           <option value={60}>60 minuta</option>
         </select>
       </div>
