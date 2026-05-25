@@ -793,13 +793,17 @@ const OwnerDashboard = () => {
   };
 
   if (authLoading || loading) {
-    return <div className="loading-container">⏳ Učitavanje podataka...</div>;
+    return (
+      <div className="loading-container" role="status" aria-live="polite">
+        ⏳ Učitavanje podataka...
+      </div>
+    );
   }
 
   if (user?.role !== "vlasnik" && user?.role !== "admin") {
     return (
       <div className="dashboard-container">
-        <div className="error-message">
+        <div className="error-message" role="alert">
           Ova stranica je dostupna samo vlasnicima igraonica.
         </div>
       </div>
@@ -809,7 +813,9 @@ const OwnerDashboard = () => {
   if (error && myPlayrooms.length === 0) {
     return (
       <div className="dashboard-container">
-        <div className="error-message">{error}</div>
+        <div className="error-message" role="alert">
+          {error}
+        </div>
       </div>
     );
   }
@@ -862,18 +868,27 @@ const OwnerDashboard = () => {
         </div>
       )}
 
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <div className="error-message" role="alert">
+          {error}
+        </div>
+      )}
       <div className="mobile-filters-toggle-wrap">
         <button
           type="button"
           className="mobile-filters-toggle"
           onClick={() => setShowMobileFilters((prev) => !prev)}
+          aria-expanded={showMobileFilters}
+          aria-controls="dashboard-filters"
         >
           {showMobileFilters ? "Sakrij filtere" : "Filteri"}
         </button>
       </div>
 
-      <div className={`dashboard-filters ${showMobileFilters ? "open" : ""}`}>
+      <div
+        id="dashboard-filters"
+        className={`dashboard-filters ${showMobileFilters ? "open" : ""}`}
+      >
         <div className="dashboard-filter-group pretraga-group">
           <div className="pretraga-header">
             <label htmlFor="booking-search">Pretraga</label>
@@ -901,18 +916,22 @@ const OwnerDashboard = () => {
           />
         </div>
         <div className="dashboard-filter-group">
-          <label>Vreme od</label>
+          <label htmlFor="booking-time-from-filter">Vreme od</label>
           <input
+            id="booking-time-from-filter"
             type="time"
+            step="900"
             value={timeFromFilter}
             onChange={(e) => setTimeFromFilter(e.target.value)}
           />
         </div>
 
         <div className="dashboard-filter-group">
-          <label>Vreme do</label>
+          <label htmlFor="booking-time-to-filter">Vreme do</label>
           <input
+            id="booking-time-to-filter"
             type="time"
+            step="900"
             value={timeToFilter}
             onChange={(e) => setTimeToFilter(e.target.value)}
           />
@@ -947,7 +966,9 @@ const OwnerDashboard = () => {
         Prikazano rezervacija: <strong>{filteredBookings.length}</strong>
       </div>
       {statsLoading ? (
-        <div className="loading-container">⏳ Učitavanje statistike...</div>
+        <div className="loading-container" role="status" aria-live="polite">
+          ⏳ Učitavanje statistike...
+        </div>
       ) : (
         <div className="stats-grid">
           <button
@@ -1059,6 +1080,7 @@ const OwnerDashboard = () => {
               <button
                 type="button"
                 className="modal-close-btn"
+                aria-label="Zatvori modal"
                 onClick={() => {
                   setShowAllBookingsModal(false);
                   setExpandedOwnerBookingId(null);
@@ -1087,6 +1109,7 @@ const OwnerDashboard = () => {
               <button
                 type="button"
                 className="modal-close-btn"
+                aria-label="Zatvori modal"
                 onClick={() => {
                   setShowActiveBookingsModal(false);
                   setExpandedOwnerBookingId(null);
@@ -1114,6 +1137,7 @@ const OwnerDashboard = () => {
               <button
                 type="button"
                 className="modal-close-btn"
+                aria-label="Zatvori modal"
                 onClick={() => {
                   setShowTodayBookingsModal(false);
                   setExpandedOwnerBookingId(null);
@@ -1142,6 +1166,7 @@ const OwnerDashboard = () => {
               <button
                 type="button"
                 className="modal-close-btn"
+                aria-label="Zatvori modal"
                 onClick={() => {
                   setShowCompletedModal(false);
                   setExpandedOwnerBookingId(null);
@@ -1170,6 +1195,7 @@ const OwnerDashboard = () => {
               <button
                 type="button"
                 className="modal-close-btn"
+                aria-label="Zatvori modal"
                 onClick={() => {
                   setShowPendingModal(false);
                   setExpandedOwnerBookingId(null);
@@ -1198,6 +1224,7 @@ const OwnerDashboard = () => {
               <button
                 type="button"
                 className="modal-close-btn"
+                aria-label="Zatvori modal"
                 onClick={() => {
                   setShowConfirmedModal(false);
                   setExpandedOwnerBookingId(null);
@@ -1224,6 +1251,7 @@ const OwnerDashboard = () => {
               <button
                 type="button"
                 className="modal-close-btn"
+                aria-label="Zatvori modal"
                 onClick={() => setShowStatsModal(false)}
               >
                 ✖
@@ -1328,6 +1356,7 @@ const OwnerDashboard = () => {
               <button
                 type="button"
                 className="modal-close-btn"
+                aria-label="Zatvori modal"
                 onClick={() => setShowReviewsModal(false)}
               >
                 ✖
@@ -1347,11 +1376,17 @@ const OwnerDashboard = () => {
             </div>
 
             {reviewsLoading ? (
-              <div className="loading-container">
+              <div
+                className="loading-container"
+                role="status"
+                aria-live="polite"
+              >
                 ⏳ Učitavanje recenzija...
               </div>
             ) : reviewsError ? (
-              <div className="error-message">{reviewsError}</div>
+              <div className="error-message" role="alert">
+                {reviewsError}
+              </div>
             ) : reviews.length === 0 ? (
               <div className="empty-state modal-empty">
                 <p>Još nema recenzija za ovu igraonicu.</p>

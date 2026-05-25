@@ -750,3 +750,55 @@
     font-size: 1.1rem;
   }
 }
+.owner-reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.owner-review-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.owner-review-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.owner-review-top h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.owner-review-date {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.owner-review-rating {
+  color: #f59e0b;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.owner-review-text {
+  margin: 0;
+  color: #475569;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+@media (max-width: 480px) {
+  .owner-review-top {
+    flex-direction: column;
+  }
+}

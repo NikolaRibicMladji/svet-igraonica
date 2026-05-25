@@ -916,3 +916,47 @@
   font-size: 13px;
   color: #6b7280;
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #334155;
+  font-size: 0.85rem;
+}
+.btn-cancel:disabled,
+.add-item button:disabled,
+.add-item-simple button:disabled,
+.item button:disabled,
+.remove-video:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-cancel:hover:disabled,
+.add-item button:hover:disabled,
+.add-item-simple button:hover:disabled,
+.item button:hover:disabled,
+.remove-video:hover:disabled {
+  transform: none;
+  box-shadow: none;
+}
+.add-item .error-message,
+.add-item-simple .error-message {
+  position: static;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  box-shadow: none;
+}
