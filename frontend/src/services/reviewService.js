@@ -1,7 +1,11 @@
 import api from "./api";
 
+const normalizeId = (id) => String(id || "").trim();
+
 export const getReviews = async (playroomId, page = 1, limit = 10) => {
-  if (!playroomId) {
+  const safePlayroomId = normalizeId(playroomId);
+
+  if (!safePlayroomId) {
     return {
       success: false,
       error: "Nedostaje ID igraonice za recenzije.",
@@ -10,8 +14,7 @@ export const getReviews = async (playroomId, page = 1, limit = 10) => {
 
   try {
     const safePage = Math.max(1, Number(page) || 1);
-
-    const safeLimit = Math.max(1, Number(limit) || 10);
+    const safeLimit = Math.min(50, Math.max(1, Number(limit) || 10));
 
     const query = new URLSearchParams({
       page: String(safePage),
@@ -19,7 +22,7 @@ export const getReviews = async (playroomId, page = 1, limit = 10) => {
     });
 
     const response = await api.get(
-      `/reviews/${playroomId}?${query.toString()}`,
+      `/reviews/${encodeURIComponent(safePlayroomId)}?${query.toString()}`,
     );
 
     return {
@@ -34,6 +37,7 @@ export const getReviews = async (playroomId, page = 1, limit = 10) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error:
         error.response?.data?.message || "Greška pri učitavanju recenzija.",
     };
@@ -41,7 +45,9 @@ export const getReviews = async (playroomId, page = 1, limit = 10) => {
 };
 
 export const addReview = async (playroomId, rating, comment) => {
-  if (!playroomId) {
+  const safePlayroomId = normalizeId(playroomId);
+
+  if (!safePlayroomId) {
     return {
       success: false,
       error: "Nedostaje ID igraonice za dodavanje recenzije.",
@@ -73,10 +79,13 @@ export const addReview = async (playroomId, rating, comment) => {
   }
 
   try {
-    const response = await api.post(`/reviews/${playroomId}`, {
-      rating: safeRating,
-      comment: safeComment,
-    });
+    const response = await api.post(
+      `/reviews/${encodeURIComponent(safePlayroomId)}`,
+      {
+        rating: safeRating,
+        comment: safeComment,
+      },
+    );
 
     return {
       success: true,
@@ -88,13 +97,16 @@ export const addReview = async (playroomId, rating, comment) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error: error.response?.data?.message || "Greška pri dodavanju recenzije.",
     };
   }
 };
 
 export const deleteReview = async (id) => {
-  if (!id) {
+  const safeId = normalizeId(id);
+
+  if (!safeId) {
     return {
       success: false,
       error: "Nedostaje ID recenzije za brisanje.",
@@ -102,7 +114,7 @@ export const deleteReview = async (id) => {
   }
 
   try {
-    const response = await api.delete(`/reviews/${id}`);
+    const response = await api.delete(`/reviews/${encodeURIComponent(safeId)}`);
 
     return {
       success: true,
@@ -113,6 +125,7 @@ export const deleteReview = async (id) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error: error.response?.data?.message || "Greška pri brisanju recenzije.",
     };
   }

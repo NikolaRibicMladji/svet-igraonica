@@ -89,6 +89,7 @@ export const getMyTimeSlots = async () => {
 
     return {
       success: false,
+      status: error.response?.status,
       error: error.response?.data?.message || "Greška pri dohvatanju termina.",
     };
   }
@@ -183,6 +184,7 @@ export const getMyBookings = async () => {
 
     return {
       success: false,
+      status: error.response?.status,
       error:
         error.response?.data?.message || "Greška pri dohvatanju rezervacija.",
     };
@@ -202,6 +204,7 @@ export const getOwnerBookings = async () => {
 
     return {
       success: false,
+      status: error.response?.status,
       error:
         error.response?.data?.message || "Greška pri dohvatanju rezervacija.",
     };

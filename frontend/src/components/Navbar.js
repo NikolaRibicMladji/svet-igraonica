@@ -77,6 +77,8 @@ const Navbar = () => {
   };
 
   const closeAccountModal = () => {
+    if (submitting) return;
+
     setActiveModal(null);
     setFormError("");
     setPasswordForm({
@@ -363,9 +365,10 @@ const Navbar = () => {
                     if (result.success) {
                       showToast("Lozinka je uspešno promenjena.", "success");
 
-                      setTimeout(() => {
+                      setTimeout(async () => {
+                        await logout();
                         closeAccountModal();
-                        navigate("/login");
+                        navigate("/login", { replace: true });
                       }, 1200);
                     } else {
                       setFormError(result.error);
@@ -393,6 +396,11 @@ const Navbar = () => {
                       className="account-eye-btn"
                       onClick={() =>
                         togglePasswordVisibility("currentPassword")
+                      }
+                      aria-label={
+                        showPasswordFields.currentPassword
+                          ? "Sakrij trenutnu lozinku"
+                          : "Prikaži trenutnu lozinku"
                       }
                     >
                       {showPasswordFields.currentPassword ? (
@@ -423,6 +431,11 @@ const Navbar = () => {
                       type="button"
                       className="account-eye-btn"
                       onClick={() => togglePasswordVisibility("newPassword")}
+                      aria-label={
+                        showPasswordFields.newPassword
+                          ? "Sakrij novu lozinku"
+                          : "Prikaži novu lozinku"
+                      }
                     >
                       {showPasswordFields.newPassword ? (
                         <FaEyeSlash />
@@ -455,6 +468,11 @@ const Navbar = () => {
                       className="account-eye-btn"
                       onClick={() =>
                         togglePasswordVisibility("confirmNewPassword")
+                      }
+                      aria-label={
+                        showPasswordFields.confirmNewPassword
+                          ? "Sakrij potvrdu nove lozinke"
+                          : "Prikaži potvrdu nove lozinke"
                       }
                     >
                       {showPasswordFields.confirmNewPassword ? (
@@ -511,9 +529,10 @@ const Navbar = () => {
                     if (result.success) {
                       showToast("Email je uspešno promenjen.", "success");
 
-                      setTimeout(() => {
+                      setTimeout(async () => {
+                        await logout();
                         closeAccountModal();
-                        navigate("/login");
+                        navigate("/login", { replace: true });
                       }, 1200);
                     } else {
                       setFormError(result.error);
@@ -556,6 +575,11 @@ const Navbar = () => {
                       className="account-eye-btn"
                       onClick={() =>
                         togglePasswordVisibility("emailCurrentPassword")
+                      }
+                      aria-label={
+                        showPasswordFields.emailCurrentPassword
+                          ? "Sakrij trenutnu lozinku"
+                          : "Prikaži trenutnu lozinku"
                       }
                     >
                       {showPasswordFields.emailCurrentPassword ? (
@@ -648,6 +672,11 @@ const Navbar = () => {
                       className="account-eye-btn"
                       onClick={() =>
                         togglePasswordVisibility("deleteCurrentPassword")
+                      }
+                      aria-label={
+                        showPasswordFields.deleteCurrentPassword
+                          ? "Sakrij trenutnu lozinku"
+                          : "Prikaži trenutnu lozinku"
                       }
                     >
                       {showPasswordFields.deleteCurrentPassword ? (

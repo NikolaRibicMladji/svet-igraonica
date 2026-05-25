@@ -1,12 +1,14 @@
 import api from "./api";
 
+const normalizeId = (id) => String(id || "").trim();
+
 export const getUnverifiedPlayrooms = async () => {
   try {
     const response = await api.get("/admin/playrooms/unverified");
 
     return {
       success: true,
-      data: response.data?.data || [],
+      data: Array.isArray(response.data?.data) ? response.data.data : [],
       count: response.data?.count || 0,
     };
   } catch (error) {
@@ -14,6 +16,7 @@ export const getUnverifiedPlayrooms = async () => {
 
     return {
       success: false,
+      status: error.response?.status,
       error:
         error.response?.data?.message ||
         "Greška pri učitavanju neverifikovanih igraonica.",
@@ -22,7 +25,9 @@ export const getUnverifiedPlayrooms = async () => {
 };
 
 export const verifyPlayroom = async (id) => {
-  if (!id) {
+  const safeId = normalizeId(id);
+
+  if (!safeId) {
     return {
       success: false,
       error: "Nedostaje ID igraonice za verifikaciju.",
@@ -30,7 +35,9 @@ export const verifyPlayroom = async (id) => {
   }
 
   try {
-    const response = await api.put(`/admin/playrooms/${id}/verify`);
+    const response = await api.put(
+      `/admin/playrooms/${encodeURIComponent(safeId)}/verify`,
+    );
 
     return {
       success: true,
@@ -42,6 +49,7 @@ export const verifyPlayroom = async (id) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error:
         error.response?.data?.message || "Greška pri verifikaciji igraonice.",
     };
@@ -49,7 +57,9 @@ export const verifyPlayroom = async (id) => {
 };
 
 export const rejectPlayroom = async (id, reason) => {
-  if (!id) {
+  const safeId = normalizeId(id);
+
+  if (!safeId) {
     return {
       success: false,
       error: "Nedostaje ID igraonice za odbijanje.",
@@ -66,9 +76,12 @@ export const rejectPlayroom = async (id, reason) => {
   }
 
   try {
-    const response = await api.put(`/admin/playrooms/${id}/reject`, {
-      reason: safeReason,
-    });
+    const response = await api.put(
+      `/admin/playrooms/${encodeURIComponent(safeId)}/reject`,
+      {
+        reason: safeReason,
+      },
+    );
 
     return {
       success: true,
@@ -80,6 +93,7 @@ export const rejectPlayroom = async (id, reason) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error: error.response?.data?.message || "Greška pri odbijanju igraonice.",
     };
   }
@@ -110,6 +124,7 @@ export const getAllUsers = async (page = 1, limit = 10) => {
 
     return {
       success: false,
+      status: error.response?.status,
       error:
         error.response?.data?.message || "Greška pri učitavanju korisnika.",
     };

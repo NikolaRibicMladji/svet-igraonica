@@ -19,9 +19,20 @@ const BookingDetailsFields = ({
   };
 
   const handleNumberKeyDown = (e) => {
-    if (["e", "E", "+", "-"].includes(e.key)) {
+    if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
       e.preventDefault();
     }
+  };
+
+  const isValidCountValue = (value) => {
+    if (value === "") return true;
+
+    if (!/^\d+$/.test(value)) {
+      return false;
+    }
+
+    const numberValue = Number(value);
+    return numberValue >= 0 && numberValue <= 100;
   };
 
   const handleBrojDeceChange = (e) => {
@@ -29,7 +40,7 @@ const BookingDetailsFields = ({
 
     const value = e.target.value;
 
-    if (value === "" || (Number(value) >= 0 && Number(value) <= 100)) {
+    if (isValidCountValue(value)) {
       setBrojDece(value);
     }
   };
@@ -39,7 +50,7 @@ const BookingDetailsFields = ({
 
     const value = e.target.value;
 
-    if (value === "" || (Number(value) >= 0 && Number(value) <= 100)) {
+    if (isValidCountValue(value)) {
       setBrojRoditelja(value);
     }
   };
@@ -48,7 +59,7 @@ const BookingDetailsFields = ({
     <>
       <div className="form-row">
         <div className="form-group" ref={brojDeceWrapperRef}>
-          <label>
+          <label htmlFor="booking-broj-dece">
             Broj dece{" "}
             <span className="inline-bracket-text">
               {hasPerPersonPricing ? "(obavezno)" : "(opciono)"}
@@ -56,6 +67,7 @@ const BookingDetailsFields = ({
           </label>
 
           <input
+            id="booking-broj-dece"
             ref={brojDeceRef}
             onKeyDown={handleNumberKeyDown}
             type="number"
@@ -79,12 +91,13 @@ const BookingDetailsFields = ({
         </div>
 
         <div className="form-group">
-          <label>
+          <label htmlFor="booking-broj-roditelja">
             Broj roditelja{" "}
             <span className="inline-bracket-text">(opciono)</span>
           </label>
 
           <input
+            id="booking-broj-roditelja"
             onKeyDown={handleNumberKeyDown}
             type="number"
             inputMode="numeric"
@@ -97,11 +110,12 @@ const BookingDetailsFields = ({
       </div>
 
       <div className="form-group">
-        <label className="booking-section-title">
+        <label htmlFor="booking-napomena" className="booking-section-title">
           📝 Napomena <span className="inline-bracket-text">(opciono)</span>
         </label>
 
         <textarea
+          id="booking-napomena"
           rows="3"
           maxLength={500}
           value={napomena}

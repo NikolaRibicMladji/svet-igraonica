@@ -21,9 +21,15 @@ const BookingTimePicker = ({
   return (
     <div className="form-row time-row">
       <div className="form-group" ref={startTimeRef}>
-        <label>Vreme od *</label>
+        <div id="booking-start-time-label" className="booking-section-title">
+          Vreme od *
+        </div>
 
-        <div className="time-picker-grid">
+        <div
+          className="time-picker-grid"
+          role="group"
+          aria-labelledby="booking-start-time-label"
+        >
           {startDropdownItems.map((item) => (
             <button
               type="button"
@@ -47,9 +53,15 @@ const BookingTimePicker = ({
 
       {!isFiksno ? (
         <div className="form-group" ref={endTimeRef}>
-          <label>Vreme do *</label>
+          <div id="booking-end-time-label" className="booking-section-title">
+            Vreme do *
+          </div>
 
-          <div className="time-picker-grid">
+          <div
+            className="time-picker-grid"
+            role="group"
+            aria-labelledby="booking-end-time-label"
+          >
             {endDropdownItems.map((item) => (
               <button
                 type="button"
@@ -74,8 +86,9 @@ const BookingTimePicker = ({
         </div>
       ) : (
         <div className="form-group">
-          <label>Trajanje termina</label>
+          <label htmlFor="booking-duration">Trajanje termina</label>
           <input
+            id="booking-duration"
             type="text"
             value={`${trajanjeTermina} minuta`}
             disabled

@@ -9,9 +9,10 @@ const BookingDateSelector = ({
   return (
     <>
       <div className="date-selector">
-        <label>📅 Izaberite datum</label>
+        <label htmlFor="booking-date">📅 Izaberite datum</label>
 
         <input
+          id="booking-date"
           type="date"
           value={selectedDate}
           onChange={(e) => onDateChange(e.target.value)}

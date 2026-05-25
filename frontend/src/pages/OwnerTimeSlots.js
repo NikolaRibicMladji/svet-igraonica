@@ -5,12 +5,11 @@ import { getAllTimeSlotsForOwner } from "../services/bookingService";
 import { useAuth } from "../context/AuthContext";
 
 import "../styles/OwnerTimeSlots.css";
-import { useToast } from "../context/ToastContext";
 
 const OwnerTimeSlots = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const toast = useToast();
+
   const [playrooms, setPlayrooms] = useState([]);
   const [selectedPlayroom, setSelectedPlayroom] = useState("");
   const [timeSlots, setTimeSlots] = useState([]);
@@ -25,11 +24,44 @@ const OwnerTimeSlots = () => {
 
   const [expandedBookingId, setExpandedBookingId] = useState(null);
 
+  const loadPlayrooms = useCallback(async () => {
+    setLoadingPlayrooms(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const result = await getMyPlayrooms();
+
+      if (
+        result?.success &&
+        Array.isArray(result.data) &&
+        result.data.length > 0
+      ) {
+        setPlayrooms(result.data);
+        setSelectedPlayroom((prev) => prev || result.data[0]._id);
+      } else {
+        setPlayrooms([]);
+        setSelectedPlayroom("");
+        setError("Nemate nijednu igraonicu. Prvo dodajte igraonicu.");
+      }
+    } catch (err) {
+      setPlayrooms([]);
+      setSelectedPlayroom("");
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Greška pri učitavanju igraonica.",
+      );
+    } finally {
+      setLoadingPlayrooms(false);
+    }
+  }, [user?.role]);
+
   useEffect(() => {
     if (!authLoading) {
       loadPlayrooms();
     }
-  }, [authLoading]);
+  }, [authLoading, loadPlayrooms]);
 
   const loadTimeSlots = useCallback(async () => {
     if (!selectedPlayroom) return;
@@ -91,39 +123,6 @@ const OwnerTimeSlots = () => {
     return `${minuti}min`;
   };
 
-  const loadPlayrooms = async () => {
-    setLoadingPlayrooms(true);
-    setError("");
-    setMessage("");
-
-    try {
-      const result = await getMyPlayrooms();
-
-      if (
-        result?.success &&
-        Array.isArray(result.data) &&
-        result.data.length > 0
-      ) {
-        setPlayrooms(result.data);
-        setSelectedPlayroom((prev) => prev || result.data[0]._id);
-      } else {
-        setPlayrooms([]);
-        setSelectedPlayroom("");
-        setError("Nemate nijednu igraonicu. Prvo dodajte igraonicu.");
-      }
-    } catch (err) {
-      setPlayrooms([]);
-      setSelectedPlayroom("");
-      setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Greška pri učitavanju igraonica.",
-      );
-    } finally {
-      setLoadingPlayrooms(false);
-    }
-  };
-
   const goToReservationPage = () => {
     if (!selectedPlayroom || !selectedDate) {
       setError("Izaberi igraonicu i datum.");
@@ -135,7 +134,9 @@ const OwnerTimeSlots = () => {
       mode: "owner",
     });
 
-    navigate(`/book/${selectedPlayroom}?${params.toString()}`);
+    navigate(
+      `/book/${encodeURIComponent(selectedPlayroom)}?${params.toString()}`,
+    );
   };
 
   const getBookingId = (booking) => {
@@ -149,10 +150,6 @@ const OwnerTimeSlots = () => {
 
     setExpandedBookingId((prev) => (prev === bookingId ? null : bookingId));
   };
-
-  const selectedPlayroomData = playrooms.find(
-    (p) => p._id === selectedPlayroom,
-  );
 
   const occupiedSlots = timeSlots.filter(
     (segment) => segment.tip === "zauzeto",
@@ -268,6 +265,14 @@ const OwnerTimeSlots = () => {
                   <div
                     className="owner-booking-card-header"
                     onClick={() => handleSlotClick(segment)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleSlotClick(segment);
+                      }
+                    }}
                   >
                     <div>
                       <h3>{formatBookingName(segment.booking)}</h3>

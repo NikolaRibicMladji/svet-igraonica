@@ -635,7 +635,7 @@ const Book = () => {
     }));
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return <div className="container loading">Učitavanje...</div>;
   }
 
@@ -650,6 +650,7 @@ const Book = () => {
   return (
     <div className="container book-page" ref={topRef}>
       <button
+        type="button"
         className="back-link"
         onClick={() => navigate(`/playrooms/${encodeURIComponent(id)}`)}
       >

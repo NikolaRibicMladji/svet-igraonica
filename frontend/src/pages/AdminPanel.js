@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   getUnverifiedPlayrooms,
   verifyPlayroom,
@@ -28,26 +28,12 @@ const AdminPanel = () => {
   const [usersTotal, setUsersTotal] = useState(0);
 
   useEffect(() => {
-    if (!authLoading && user?.role === "admin") {
-      loadUnverifiedPlayrooms();
-    } else if (!authLoading) {
-      setLoading(false);
-    }
-  }, [user, authLoading]);
-
-  useEffect(() => {
-    if (!authLoading && user?.role === "admin") {
-      loadUsers(usersPage);
-    }
-  }, [user, authLoading, usersPage]);
-
-  useEffect(() => {
     if (selectedPlayroom && detailsPanelRef.current) {
       detailsPanelRef.current.scrollTop = 0;
     }
   }, [selectedPlayroom?._id]);
 
-  const loadUnverifiedPlayrooms = async () => {
+  const loadUnverifiedPlayrooms = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -74,9 +60,9 @@ const AdminPanel = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadUsers = async (page = 1) => {
+  const loadUsers = useCallback(async (page = 1) => {
     setUsersLoading(true);
 
     try {
@@ -101,9 +87,28 @@ const AdminPanel = () => {
     } finally {
       setUsersLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && user?.role === "admin") {
+      loadUnverifiedPlayrooms();
+    } else if (!authLoading) {
+      setLoading(false);
+    }
+  }, [authLoading, user?.role, loadUnverifiedPlayrooms]);
+
+  useEffect(() => {
+    if (!authLoading && user?.role === "admin") {
+      loadUsers(usersPage);
+    }
+  }, [authLoading, user?.role, usersPage, loadUsers]);
 
   const handleVerify = async (id) => {
+    if (!id) {
+      setError("Nedostaje ID igraonice za verifikaciju.");
+      return;
+    }
+
     if (verifyingId) return;
 
     setVerifyingId(id);
@@ -135,6 +140,11 @@ const AdminPanel = () => {
   };
 
   const handleReject = async (id) => {
+    if (!id) {
+      setError("Nedostaje ID igraonice za odbijanje.");
+      return;
+    }
+
     if (rejectingId) return;
 
     const safeRejectReason = rejectReason.trim();
@@ -380,7 +390,9 @@ const AdminPanel = () => {
                     {selectedPlayroom?.slike?.length ? (
                       <div className="admin-gallery">
                         {selectedPlayroom.slike.map((slika, index) => {
-                          const imageUrl = getSafeExternalUrl(slika.url);
+                          const imageUrl = getSafeExternalUrl(
+                            slika.url || slika.secure_url || slika.path,
+                          );
 
                           if (!imageUrl) return null;
 
@@ -410,7 +422,9 @@ const AdminPanel = () => {
                     {selectedPlayroom?.videoGalerija?.length ? (
                       <div className="admin-video-gallery">
                         {selectedPlayroom.videoGalerija.map((video, index) => {
-                          const videoUrl = getSafeExternalUrl(video.url);
+                          const videoUrl = getSafeExternalUrl(
+                            video.url || video.secure_url || video.path,
+                          );
 
                           if (!videoUrl) return null;
 

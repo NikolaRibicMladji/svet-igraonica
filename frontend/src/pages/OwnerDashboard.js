@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getMyPlayrooms, getPlayroomStats } from "../services/playroomService";
 import { getReviews } from "../services/reviewService";
 import { useAuth } from "../context/AuthContext";
@@ -17,7 +17,7 @@ const OwnerDashboard = () => {
   const [error, setError] = useState("");
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [bookings, setBookings] = useState([]);
-  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [, setBookingsLoading] = useState(false);
   const [confirmingId, setConfirmingId] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("svi");
@@ -37,44 +37,13 @@ const OwnerDashboard = () => {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsError, setReviewsError] = useState("");
 
-  useEffect(() => {
-    if (!authLoading) {
-      fetchMyPlayrooms();
-      fetchBookings();
-    }
-  }, [authLoading]);
-
-  useEffect(() => {
-    if (selectedPlayroomId) {
-      fetchStats(selectedPlayroomId, true);
-      fetchReviews(selectedPlayroomId);
-    } else {
-      setStats(null);
-      setReviews([]);
-    }
-  }, [selectedPlayroomId]);
-
-  useEffect(() => {
-    if (authLoading) return;
-
-    const interval = setInterval(() => {
-      fetchBookings();
-
-      if (selectedPlayroomId) {
-        fetchStats(selectedPlayroomId, false);
-      }
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [authLoading, selectedPlayroomId]);
-
   const toggleOwnerBookingDetails = (bookingId) => {
     setExpandedOwnerBookingId((prev) =>
       prev === bookingId ? null : bookingId,
     );
   };
 
-  const fetchMyPlayrooms = async () => {
+  const fetchMyPlayrooms = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -111,9 +80,9 @@ const OwnerDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchStats = async (playroomId, showLoader = false) => {
+  const fetchStats = useCallback(async (playroomId, showLoader = false) => {
     try {
       if (showLoader) {
         setStatsLoading(true);
@@ -144,9 +113,9 @@ const OwnerDashboard = () => {
         setStatsLoading(false);
       }
     }
-  };
+  }, []);
 
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     try {
       setBookingsLoading(true);
 
@@ -163,9 +132,9 @@ const OwnerDashboard = () => {
     } finally {
       setBookingsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchReviews = async (playroomId) => {
+  const fetchReviews = useCallback(async (playroomId) => {
     if (!playroomId) {
       setReviews([]);
       return;
@@ -194,9 +163,45 @@ const OwnerDashboard = () => {
     } finally {
       setReviewsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading) {
+      fetchMyPlayrooms();
+      fetchBookings();
+    }
+  }, [authLoading, fetchMyPlayrooms, fetchBookings]);
+
+  useEffect(() => {
+    if (selectedPlayroomId) {
+      fetchStats(selectedPlayroomId, true);
+      fetchReviews(selectedPlayroomId);
+    } else {
+      setStats(null);
+      setReviews([]);
+    }
+  }, [selectedPlayroomId, fetchStats, fetchReviews]);
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    const interval = setInterval(() => {
+      fetchBookings();
+
+      if (selectedPlayroomId) {
+        fetchStats(selectedPlayroomId, false);
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [authLoading, selectedPlayroomId, fetchBookings, fetchStats]);
 
   const handleConfirm = async (bookingId) => {
+    if (!bookingId) {
+      toast.error("Nedostaje ID rezervacije za potvrdu.");
+      return;
+    }
+
     if (confirmingId) return;
 
     try {
@@ -224,10 +229,13 @@ const OwnerDashboard = () => {
     }
   };
 
-  const getPlayroomId = (booking) =>
-    typeof booking.playroomId === "object"
-      ? booking.playroomId?._id
-      : booking.playroomId;
+  const getPlayroomId = useCallback(
+    (booking) =>
+      typeof booking.playroomId === "object"
+        ? booking.playroomId?._id
+        : booking.playroomId,
+    [],
+  );
 
   const getDurationHours = (od, doVreme) => {
     if (!od || !doVreme) return 1;
@@ -336,6 +344,7 @@ const OwnerDashboard = () => {
     dateFilter,
     timeFromFilter,
     timeToFilter,
+    getPlayroomId,
   ]);
 
   const allOwnerBookings = useMemo(() => filteredBookings, [filteredBookings]);
@@ -667,6 +676,14 @@ const OwnerDashboard = () => {
               <div
                 className="owner-booking-header clickable-header"
                 onClick={() => toggleOwnerBookingDetails(booking._id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggleOwnerBookingDetails(booking._id);
+                  }
+                }}
               >
                 <div>
                   <h3>
@@ -933,7 +950,8 @@ const OwnerDashboard = () => {
         <div className="loading-container">⏳ Učitavanje statistike...</div>
       ) : (
         <div className="stats-grid">
-          <div
+          <button
+            type="button"
             className="stat-card blue clickable"
             onClick={() => setShowAllBookingsModal(true)}
           >
@@ -942,9 +960,10 @@ const OwnerDashboard = () => {
               <h3>{stats?.totalBookings ?? 0}</h3>
               <p>Ukupno rezervacija</p>
             </div>
-          </div>
+          </button>
 
-          <div
+          <button
+            type="button"
             className="stat-card yellow clickable"
             onClick={() => setShowPendingModal(true)}
           >
@@ -953,9 +972,10 @@ const OwnerDashboard = () => {
               <h3>{pendingBookings.length}</h3>
               <p>Na čekanju</p>
             </div>
-          </div>
+          </button>
 
-          <div
+          <button
+            type="button"
             className="stat-card green clickable"
             onClick={() => setShowConfirmedModal(true)}
           >
@@ -964,9 +984,10 @@ const OwnerDashboard = () => {
               <h3>{upcomingConfirmedBookings.length}</h3>
               <p>Potvrđene rezervacije</p>
             </div>
-          </div>
+          </button>
 
-          <div
+          <button
+            type="button"
             className="stat-card orange clickable"
             onClick={() => setShowCompletedModal(true)}
           >
@@ -975,8 +996,9 @@ const OwnerDashboard = () => {
               <h3>{completedBookings.length}</h3>
               <p>Završene rezervacije</p>
             </div>
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
             className="stat-card purple clickable"
             onClick={() => setShowTodayBookingsModal(true)}
           >
@@ -985,8 +1007,9 @@ const OwnerDashboard = () => {
               <h3>{todayBookings.length}</h3>
               <p>Današnje rezervacije</p>
             </div>
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
             className="stat-card red clickable"
             onClick={() => setShowActiveBookingsModal(true)}
           >
@@ -996,8 +1019,9 @@ const OwnerDashboard = () => {
               <h3>{activeBookings.length}</h3>
               <p>Rezervacije u toku</p>
             </div>
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
             className="stat-card dark clickable"
             onClick={() => setShowStatsModal(true)}
           >
@@ -1006,8 +1030,9 @@ const OwnerDashboard = () => {
               <h3>{filteredBookings.length}</h3>
               <p>Statistika</p>
             </div>
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
             className="stat-card dark clickable"
             onClick={() => setShowReviewsModal(true)}
           >
@@ -1016,7 +1041,7 @@ const OwnerDashboard = () => {
               <h3>{reviewsStats.total}</h3>
               <p>Recenzije</p>
             </div>
-          </div>
+          </button>
         </div>
       )}
 
@@ -1197,6 +1222,7 @@ const OwnerDashboard = () => {
             <div className="modal-header sticky-modal-header">
               <h3>📊 Statistika</h3>
               <button
+                type="button"
                 className="modal-close-btn"
                 onClick={() => setShowStatsModal(false)}
               >

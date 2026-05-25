@@ -332,3 +332,12 @@
     width: 100%;
   }
 }
+.status-badge {
+  border: none;
+  font: inherit;
+}
+
+.status-badge:disabled {
+  opacity: 1;
+  cursor: default;
+}

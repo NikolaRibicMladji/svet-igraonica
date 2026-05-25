@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cancelBooking, getMyBookings } from "../services/bookingService";
 import "../styles/MyBookings.css";
@@ -14,10 +14,6 @@ const MyBookings = () => {
   const [cancellingId, setCancellingId] = useState("");
   const [bookingToCancel, setBookingToCancel] = useState(null);
   const [expandedBookingId, setExpandedBookingId] = useState(null);
-
-  useEffect(() => {
-    loadBookings();
-  }, []);
 
   const calculateDuration = (od, doVreme) => {
     if (!od || !doVreme) return "-";
@@ -79,7 +75,7 @@ const MyBookings = () => {
     return `${cena} RSD`;
   };
 
-  const loadBookings = async () => {
+  const loadBookings = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -106,7 +102,11 @@ const MyBookings = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadBookings();
+  }, [loadBookings]);
 
   const openCancelModal = (booking) => {
     if (cancellingId) return;
@@ -222,6 +222,14 @@ const MyBookings = () => {
                 <div
                   className="booking-header clickable-header"
                   onClick={() => toggleBookingDetails(booking._id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleBookingDetails(booking._id);
+                    }
+                  }}
                 >
                   <div>
                     <h3>{playroom?.naziv || "Igraonica"}</h3>
@@ -235,7 +243,8 @@ const MyBookings = () => {
                   </div>
 
                   <div className="booking-header-right">
-                    <span
+                    <button
+                      type="button"
                       className={`status-badge ${status.class} ${
                         status.clickable ? "clickable" : ""
                       }`}
@@ -245,9 +254,10 @@ const MyBookings = () => {
                           handleWriteReview(playroomId);
                         }
                       }}
+                      disabled={!status.clickable || !playroomId}
                     >
                       {status.text}
-                    </span>
+                    </button>
 
                     <span
                       className={`arrow ${expandedBookingId === booking._id ? "open" : ""}`}

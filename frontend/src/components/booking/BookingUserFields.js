@@ -41,8 +41,9 @@ const BookingUserFields = ({
 
       <div className="form-row">
         <div className="form-group" ref={imeRef}>
-          <label>Ime *</label>
+          <label htmlFor="booking-ime">Ime *</label>
           <input
+            id="booking-ime"
             type="text"
             autoComplete="given-name"
             name="ime"
@@ -53,8 +54,9 @@ const BookingUserFields = ({
         </div>
 
         <div className="form-group" ref={prezimeRef}>
-          <label>Prezime *</label>
+          <label htmlFor="booking-prezime">Prezime *</label>
           <input
+            id="booking-prezime"
             type="text"
             autoComplete="family-name"
             name="prezime"
@@ -67,8 +69,9 @@ const BookingUserFields = ({
 
       <div className="form-row">
         <div className="form-group" ref={emailRef}>
-          <label>Email *</label>
+          <label htmlFor="booking-email">Email *</label>
           <input
+            id="booking-email"
             type="email"
             autoComplete="email"
             name="email"
@@ -79,8 +82,9 @@ const BookingUserFields = ({
         </div>
 
         <div className="form-group" ref={telefonRef}>
-          <label>Telefon *</label>
+          <label htmlFor="booking-telefon">Telefon *</label>
           <input
+            id="booking-telefon"
             type="tel"
             autoComplete="tel"
             name="telefon"
@@ -94,9 +98,10 @@ const BookingUserFields = ({
       {!isAuthenticated && (
         <div className="form-row">
           <div className="form-group" ref={passwordRef}>
-            <label>Lozinka *</label>
+            <label htmlFor="booking-password">Lozinka *</label>
             <div className="password-input-wrapper">
               <input
+                id="booking-password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
                 name="password"
@@ -117,9 +122,10 @@ const BookingUserFields = ({
           </div>
 
           <div className="form-group" ref={confirmPasswordRef}>
-            <label>Potvrda lozinke *</label>
+            <label htmlFor="booking-confirm-password">Potvrda lozinke *</label>
             <div className="password-input-wrapper">
               <input
+                id="booking-confirm-password"
                 type={showConfirmPassword ? "text" : "password"}
                 autoComplete="new-password"
                 name="confirmPassword"
@@ -149,15 +155,19 @@ const BookingUserFields = ({
         <label className="terms-checkbox-label">
           <span>
             Prihvatam{" "}
-            <a href="/terms-of-service" target="_blank" rel="noreferrer">
+            <a
+              href="/terms-of-service"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Uslove korišćenja
             </a>
             ,{" "}
-            <a href="/privacy-policy" target="_blank" rel="noreferrer">
+            <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">
               Politiku privatnosti
             </a>{" "}
             i{" "}
-            <a href="/booking-policy" target="_blank" rel="noreferrer">
+            <a href="/booking-policy" target="_blank" rel="noopener noreferrer">
               Pravila rezervacije
             </a>
             .

@@ -576,6 +576,11 @@
   padding: 20px 0;
 }
 
+.stat-card {
+  border: none;
+  font: inherit;
+  text-align: left;
+}
 .stats-box {
   background: #f8fafc;
   border-radius: 16px;

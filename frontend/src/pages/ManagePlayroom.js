@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getMyPlayrooms,
@@ -37,14 +37,9 @@ const ManagePlayroom = () => {
   const [deleting, setDeleting] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [deactivatePassword, setDeactivatePassword] = useState("");
+  const [updating, setUpdating] = useState(false);
 
-  useEffect(() => {
-    if (!authLoading) {
-      loadPlayroom();
-    }
-  }, [authLoading]);
-
-  const loadPlayroom = async () => {
+  const loadPlayroom = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -71,11 +66,19 @@ const ManagePlayroom = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate, user?.role]);
+
+  useEffect(() => {
+    if (!authLoading) {
+      loadPlayroom();
+    }
+  }, [authLoading, loadPlayroom]);
 
   const handleUpdate = async (formData) => {
+    if (updating) return;
     if (!playroom?._id) return;
 
+    setUpdating(true);
     setError("");
     setMessage("");
 
@@ -101,6 +104,8 @@ const ManagePlayroom = () => {
           err?.message ||
           "Greška pri ažuriranju.",
       );
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -558,12 +563,15 @@ const ManagePlayroom = () => {
           onSubmit={handleUpdate}
           onCancel={() => setEditing(false)}
           isEditing={true}
+          submitting={updating}
         />
       )}
       {deactivateModalOpen && (
         <div
           className="delete-playroom-overlay"
-          onClick={() => setDeactivateModalOpen(false)}
+          onClick={() => {
+            if (!deactivating) setDeactivateModalOpen(false);
+          }}
         >
           <div
             className="delete-playroom-modal"
@@ -572,7 +580,10 @@ const ManagePlayroom = () => {
             <button
               type="button"
               className="delete-playroom-close"
-              onClick={() => setDeactivateModalOpen(false)}
+              onClick={() => {
+                if (!deactivating) setDeactivateModalOpen(false);
+              }}
+              disabled={deactivating}
             >
               ✖
             </button>
@@ -609,7 +620,9 @@ const ManagePlayroom = () => {
       {deleteModalOpen && (
         <div
           className="delete-playroom-overlay"
-          onClick={() => setDeleteModalOpen(false)}
+          onClick={() => {
+            if (!deleting) setDeleteModalOpen(false);
+          }}
         >
           <div
             className="delete-playroom-modal"
@@ -618,7 +631,10 @@ const ManagePlayroom = () => {
             <button
               type="button"
               className="delete-playroom-close"
-              onClick={() => setDeleteModalOpen(false)}
+              onClick={() => {
+                if (!deleting) setDeleteModalOpen(false);
+              }}
+              disabled={deleting}
             >
               ✖
             </button>

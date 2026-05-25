@@ -14,7 +14,15 @@ import api, {
 
 const AuthContext = createContext(null);
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error("useAuth mora biti korišćen unutar AuthProvider.");
+  }
+
+  return context;
+};
 
 const extractAuthPayload = (response) => {
   const payload =
@@ -148,6 +156,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       setAuthData(userDataRes, token);
+      localStorage.removeItem("pendingVerificationEmail");
 
       return { success: true, user: userDataRes };
     },
