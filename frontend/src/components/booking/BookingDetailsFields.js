@@ -32,7 +32,7 @@ const BookingDetailsFields = ({
     }
 
     const numberValue = Number(value);
-    return numberValue >= 0 && numberValue <= 100;
+    return numberValue >= 0 && numberValue <= 200;
   };
 
   const handleBrojDeceChange = (e) => {
@@ -73,7 +73,7 @@ const BookingDetailsFields = ({
             type="number"
             inputMode="numeric"
             min={hasPerPersonPricing ? "1" : "0"}
-            max="100"
+            max="200"
             required={hasPerPersonPricing}
             value={brojDece}
             className={
@@ -102,7 +102,7 @@ const BookingDetailsFields = ({
             type="number"
             inputMode="numeric"
             min="0"
-            max="100"
+            max="200"
             value={brojRoditelja}
             onChange={handleBrojRoditeljaChange}
           />

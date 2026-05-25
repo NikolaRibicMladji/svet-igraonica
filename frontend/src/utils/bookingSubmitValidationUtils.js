@@ -15,6 +15,14 @@ export const validateBookingSubmit = ({
   isAuthenticated = false,
   acceptedTerms = false,
 }) => {
+  if (!selectedDate) {
+    return {
+      success: false,
+      field: "startTime",
+      error: "Izaberite datum rezervacije.",
+    };
+  }
+
   if (!selectedStartTime || !selectedEndTime) {
     return {
       success: false,
@@ -34,12 +42,17 @@ export const validateBookingSubmit = ({
     };
   }
 
-  if (hasPerPersonPricing && (!Number(brojDece) || Number(brojDece) < 1)) {
+  const safeBrojDece = Number(brojDece);
+
+  if (
+    hasPerPersonPricing &&
+    (!Number.isInteger(safeBrojDece) || safeBrojDece < 1 || safeBrojDece > 200)
+  ) {
     return {
       success: false,
       field: "brojDece",
       error:
-        "Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po osobi.",
+        "Broj dece je obavezan i mora biti ceo broj između 1 i 200 jer je izabrana stavka koja se naplaćuje po osobi.",
     };
   }
 
