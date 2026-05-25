@@ -16,7 +16,7 @@ const getErrorMessage = (name) => {
 };
 
 const normalizeUrl = (value) => {
-  const trimmed = value.trim();
+  const trimmed = String(value || "").trim();
 
   if (!trimmed) return "";
 
@@ -27,7 +27,18 @@ const normalizeUrl = (value) => {
   return `https://${trimmed}`;
 };
 
-const SocialLinksSection = ({ drustveneMreze, handleDrustveneMrezeChange }) => {
+const SocialLinksSection = ({
+  drustveneMreze = {},
+  handleDrustveneMrezeChange,
+}) => {
+  const safeDrustveneMreze = {
+    instagram: "",
+    facebook: "",
+    tiktok: "",
+    website: "",
+    ...drustveneMreze,
+  };
+
   const handleInvalid = (e) => {
     e.target.setCustomValidity(getErrorMessage(e.target.name));
   };
@@ -56,11 +67,12 @@ const SocialLinksSection = ({ drustveneMreze, handleDrustveneMrezeChange }) => {
       <p className="section-hint">Dodaj linkove ka profilima ili sajtu.</p>
 
       <div className="form-group">
-        <label>📸 Instagram</label>
+        <label htmlFor="social-instagram">📸 Instagram</label>
         <input
+          id="social-instagram"
           type="url"
           name="instagram"
-          value={drustveneMreze.instagram}
+          value={safeDrustveneMreze.instagram}
           onChange={handleChange}
           onBlur={handleBlur}
           onInvalid={handleInvalid}
@@ -69,11 +81,12 @@ const SocialLinksSection = ({ drustveneMreze, handleDrustveneMrezeChange }) => {
       </div>
 
       <div className="form-group">
-        <label>📘 Facebook</label>
+        <label htmlFor="social-facebook">📘 Facebook</label>
         <input
+          id="social-facebook"
           type="url"
           name="facebook"
-          value={drustveneMreze.facebook}
+          value={safeDrustveneMreze.facebook}
           onChange={handleChange}
           onBlur={handleBlur}
           onInvalid={handleInvalid}
@@ -82,11 +95,12 @@ const SocialLinksSection = ({ drustveneMreze, handleDrustveneMrezeChange }) => {
       </div>
 
       <div className="form-group">
-        <label>🎵 TikTok</label>
+        <label htmlFor="social-tiktok">🎵 TikTok</label>
         <input
+          id="social-tiktok"
           type="url"
           name="tiktok"
-          value={drustveneMreze.tiktok}
+          value={safeDrustveneMreze.tiktok}
           onChange={handleChange}
           onBlur={handleBlur}
           onInvalid={handleInvalid}
@@ -95,11 +109,12 @@ const SocialLinksSection = ({ drustveneMreze, handleDrustveneMrezeChange }) => {
       </div>
 
       <div className="form-group">
-        <label>🌐 Veb sajt</label>
+        <label htmlFor="social-website">🌐 Web sajt</label>
         <input
+          id="social-website"
           type="url"
           name="website"
-          value={drustveneMreze.website}
+          value={safeDrustveneMreze.website}
           onChange={handleChange}
           onBlur={handleBlur}
           onInvalid={handleInvalid}

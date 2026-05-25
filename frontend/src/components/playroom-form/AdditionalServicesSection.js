@@ -1,12 +1,26 @@
 import React from "react";
 
 const AdditionalServicesSection = ({
-  novaUsluga,
+  novaUsluga = {},
   setNovaUsluga,
-  dodatneUsluge,
+  dodatneUsluge = [],
   handleAddUsluga,
   handleRemoveUsluga,
 }) => {
+  const safeNovaUsluga = {
+    naziv: "",
+    cena: "",
+    tip: "fiksno",
+    opis: "",
+    ...novaUsluga,
+  };
+
+  const handleNumberKeyDown = (e) => {
+    if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <div className="form-section">
       <h3>
@@ -19,26 +33,34 @@ const AdditionalServicesSection = ({
       <div className="dynamic-input">
         <div className="add-item">
           <input
+            id="nova-usluga-naziv"
             type="text"
+            aria-label="Naziv dodatne usluge"
             placeholder="Naziv usluge"
-            value={novaUsluga.naziv}
+            value={safeNovaUsluga.naziv}
             onChange={(e) =>
               setNovaUsluga((prev) => ({ ...prev, naziv: e.target.value }))
             }
           />
 
           <input
+            id="nova-usluga-cena"
             type="number"
-            min="0"
+            inputMode="numeric"
+            min="1"
             placeholder="Cena (RSD)"
-            value={novaUsluga.cena}
+            aria-label="Cena dodatne usluge u dinarima"
+            value={safeNovaUsluga.cena}
+            onKeyDown={handleNumberKeyDown}
             onChange={(e) =>
               setNovaUsluga((prev) => ({ ...prev, cena: e.target.value }))
             }
           />
 
           <select
-            value={novaUsluga.tip}
+            id="nova-usluga-tip"
+            aria-label="Tip cene dodatne usluge"
+            value={safeNovaUsluga.tip}
             onChange={(e) =>
               setNovaUsluga((prev) => ({ ...prev, tip: e.target.value }))
             }
@@ -49,9 +71,11 @@ const AdditionalServicesSection = ({
           </select>
 
           <input
+            id="nova-usluga-opis"
             type="text"
+            aria-label="Opis dodatne usluge"
             placeholder="Opis"
-            value={novaUsluga.opis}
+            value={safeNovaUsluga.opis}
             onChange={(e) =>
               setNovaUsluga((prev) => ({ ...prev, opis: e.target.value }))
             }
@@ -77,7 +101,11 @@ const AdditionalServicesSection = ({
                       : "(fiksno)"}
                 </span>
                 {item.opis && <span className="item-opis">({item.opis})</span>}
-                <button type="button" onClick={() => handleRemoveUsluga(idx)}>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveUsluga(idx)}
+                  aria-label={`Ukloni dodatnu uslugu ${item.naziv || idx + 1}`}
+                >
                   ✖
                 </button>
               </div>

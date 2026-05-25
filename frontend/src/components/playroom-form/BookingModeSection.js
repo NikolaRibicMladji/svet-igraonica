@@ -28,14 +28,19 @@ const BookingModeSection = ({ formData = {}, handleChange }) => {
           role="radiogroup"
           aria-labelledby="booking-mode-label"
         >
-          <label className="booking-mode-card" htmlFor="mode-fleksibilno">
+          <label className="booking-mode-card">
             <input
-              id="mode-fleksibilno"
-              type="radio"
+              type="checkbox"
               name="rezimRezervacije"
-              value="fleksibilno"
-              checked={rezimRezervacije === "fleksibilno"}
-              onChange={() => handleModeChange("fleksibilno")}
+              checked={formData.rezimRezervacije === "fleksibilno"}
+              onChange={() =>
+                handleChange({
+                  target: {
+                    name: "rezimRezervacije",
+                    value: "fleksibilno",
+                  },
+                })
+              }
             />
 
             <div className="booking-mode-text">
@@ -46,14 +51,19 @@ const BookingModeSection = ({ formData = {}, handleChange }) => {
             </div>
           </label>
 
-          <label className="booking-mode-card" htmlFor="mode-fiksno">
+          <label className="booking-mode-card">
             <input
-              id="mode-fiksno"
-              type="radio"
+              type="checkbox"
               name="rezimRezervacije"
-              value="fiksno"
-              checked={rezimRezervacije === "fiksno"}
-              onChange={() => handleModeChange("fiksno")}
+              checked={formData.rezimRezervacije === "fiksno"}
+              onChange={() =>
+                handleChange({
+                  target: {
+                    name: "rezimRezervacije",
+                    value: "fiksno",
+                  },
+                })
+              }
             />
 
             <div className="booking-mode-text">

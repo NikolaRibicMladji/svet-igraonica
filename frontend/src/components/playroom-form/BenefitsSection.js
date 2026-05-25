@@ -1,9 +1,9 @@
 import React from "react";
 
 const BenefitsSection = ({
-  novaPogodnost,
+  novaPogodnost = "",
   setNovaPogodnost,
-  besplatnePogodnosti,
+  besplatnePogodnosti = [],
   handleAddPogodnost,
   handleRemovePogodnost,
 }) => {
@@ -14,7 +14,9 @@ const BenefitsSection = ({
       <div className="dynamic-input">
         <div className="add-item-simple">
           <input
+            id="nova-pogodnost"
             type="text"
+            aria-label="Naziv besplatne pogodnosti"
             placeholder="Naziv pogodnosti"
             value={novaPogodnost}
             onChange={(e) => setNovaPogodnost(e.target.value)}
@@ -32,6 +34,7 @@ const BenefitsSection = ({
                 <button
                   type="button"
                   onClick={() => handleRemovePogodnost(idx)}
+                  aria-label={`Ukloni pogodnost ${item || idx + 1}`}
                 >
                   ✖
                 </button>

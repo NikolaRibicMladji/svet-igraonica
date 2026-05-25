@@ -1,12 +1,35 @@
 import React from "react";
 
 const AdditionalPricesSection = ({
-  novaCena,
+  novaCena = {},
   setNovaCena,
-  cene,
+  cene = [],
   handleAddCena,
   handleRemoveCena,
 }) => {
+  const safeNovaCena = {
+    naziv: "",
+    cena: "",
+    tip: "fiksno",
+    opis: "",
+    ...novaCena,
+  };
+
+  const isDuplicateCena =
+    safeNovaCena.naziv.trim() &&
+    cene.some(
+      (item) =>
+        String(item?.naziv || "")
+          .trim()
+          .toLowerCase() === safeNovaCena.naziv.trim().toLowerCase(),
+    );
+
+  const handleNumberKeyDown = (e) => {
+    if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <div className="form-section">
       <h3>
@@ -17,26 +40,34 @@ const AdditionalPricesSection = ({
       <div className="dynamic-input">
         <div className="add-item">
           <input
+            id="nova-cena-naziv"
             type="text"
+            aria-label="Naziv cene"
             placeholder="Naziv (npr. Prostor, Dete, Roditelj...)"
-            value={novaCena.naziv}
+            value={safeNovaCena.naziv}
             onChange={(e) =>
               setNovaCena((prev) => ({ ...prev, naziv: e.target.value }))
             }
           />
 
           <input
+            id="nova-cena-iznos"
             type="number"
-            min="0"
+            inputMode="numeric"
+            min="1"
             placeholder="Cena (RSD)"
-            value={novaCena.cena}
+            aria-label="Iznos cene u dinarima"
+            value={safeNovaCena.cena}
+            onKeyDown={handleNumberKeyDown}
             onChange={(e) =>
               setNovaCena((prev) => ({ ...prev, cena: e.target.value }))
             }
           />
 
           <select
-            value={novaCena.tip}
+            id="nova-cena-tip"
+            aria-label="Tip cene"
+            value={safeNovaCena.tip}
             onChange={(e) =>
               setNovaCena((prev) => ({ ...prev, tip: e.target.value }))
             }
@@ -47,22 +78,20 @@ const AdditionalPricesSection = ({
           </select>
 
           <input
+            id="nova-cena-opis"
             type="text"
+            aria-label="Opis cene"
             placeholder="Opis cene"
-            value={novaCena.opis}
+            value={safeNovaCena.opis}
             onChange={(e) =>
               setNovaCena((prev) => ({ ...prev, opis: e.target.value }))
             }
           />
-          {cene.some(
-            (item) =>
-              item.naziv.toLowerCase() === novaCena.naziv.trim().toLowerCase(),
-          ) &&
-            novaCena.naziv.trim() && (
-              <div className="error-message">
-                Cena za "{novaCena.naziv}" je već dodata.
-              </div>
-            )}
+          {isDuplicateCena && (
+            <div className="error-message" role="alert">
+              Cena za "{safeNovaCena.naziv}" je već dodata.
+            </div>
+          )}
           <button type="button" onClick={handleAddCena}>
             + Dodaj
           </button>
@@ -86,7 +115,11 @@ const AdditionalPricesSection = ({
 
                 {item.opis && <span className="item-opis">({item.opis})</span>}
 
-                <button type="button" onClick={() => handleRemoveCena(idx)}>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveCena(idx)}
+                  aria-label={`Ukloni cenu ${item.naziv || idx + 1}`}
+                >
                   ✖
                 </button>
               </div>

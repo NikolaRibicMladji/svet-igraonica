@@ -1,12 +1,25 @@
 import React from "react";
 
 const PackagesSection = ({
-  noviPaket,
+  noviPaket = {},
   setNoviPaket,
-  paketi,
+  paketi = [],
   handleAddPaket,
   handleRemovePaket,
 }) => {
+  const safeNoviPaket = {
+    naziv: "",
+    cena: "",
+    tip: "fiksno",
+    opis: "",
+    ...noviPaket,
+  };
+
+  const handleNumberKeyDown = (e) => {
+    if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
   return (
     <div className="form-section">
       <h3>
@@ -19,25 +32,33 @@ const PackagesSection = ({
       <div className="dynamic-input">
         <div className="add-item">
           <input
+            id="novi-paket-naziv"
             type="text"
+            aria-label="Naziv paketa"
             placeholder="Naziv paketa"
-            value={noviPaket.naziv}
+            value={safeNoviPaket.naziv}
             onChange={(e) =>
               setNoviPaket((prev) => ({ ...prev, naziv: e.target.value }))
             }
           />
 
           <input
+            id="novi-paket-cena"
             type="number"
-            min="0"
+            inputMode="numeric"
+            min="1"
             placeholder="Cena (RSD)"
-            value={noviPaket.cena}
+            aria-label="Cena paketa u dinarima"
+            value={safeNoviPaket.cena}
+            onKeyDown={handleNumberKeyDown}
             onChange={(e) =>
               setNoviPaket((prev) => ({ ...prev, cena: e.target.value }))
             }
           />
           <select
-            value={noviPaket.tip}
+            id="novi-paket-tip"
+            aria-label="Tip cene paketa"
+            value={safeNoviPaket.tip}
             onChange={(e) =>
               setNoviPaket((prev) => ({ ...prev, tip: e.target.value }))
             }
@@ -48,9 +69,11 @@ const PackagesSection = ({
           </select>
 
           <input
+            id="novi-paket-opis"
             type="text"
+            aria-label="Opis paketa"
             placeholder="Opis"
-            value={noviPaket.opis}
+            value={safeNoviPaket.opis}
             onChange={(e) =>
               setNoviPaket((prev) => ({ ...prev, opis: e.target.value }))
             }
@@ -79,7 +102,11 @@ const PackagesSection = ({
 
                 {item.opis && <span className="item-opis">({item.opis})</span>}
 
-                <button type="button" onClick={() => handleRemovePaket(idx)}>
+                <button
+                  type="button"
+                  onClick={() => handleRemovePaket(idx)}
+                  aria-label={`Ukloni paket ${item.naziv || idx + 1}`}
+                >
                   ✖
                 </button>
               </div>
