@@ -364,6 +364,9 @@ exports.generateSlotsForPlayroom = async (req, res, next) => {
 // @desc    Dohvati slobodne termine za igraonicu
 // @route   GET /api/timeslots/playroom/:playroomId/available
 // @access  Public
+// @desc    Dohvati slobodne termine za igraonicu
+// @route   GET /api/timeslots/playroom/:playroomId/available
+// @access  Public
 exports.getAvailableTimeSlots = async (req, res, next) => {
   try {
     const { playroomId } = req.validated.params;
@@ -383,8 +386,91 @@ exports.getAvailableTimeSlots = async (req, res, next) => {
       return res.status(200).json({
         success: true,
         data: {
+          mode: playroom.rezimRezervacije,
           workingHours: null,
+          slots: [],
+          busySlots: [],
           busyIntervals: [],
+          freeIntervals: [],
+        },
+      });
+    }
+
+    if (playroom.rezimRezervacije === "fiksno") {
+      const startDate = startOfDayInAppTimezone(targetDate);
+      const endDate = endOfDayInAppTimezone(startDate);
+      const now = getNowInAppTimezone();
+
+      const isToday =
+        formatInTimeZone(startDate, APP_TIMEZONE, "yyyy-MM-dd") ===
+        formatInTimeZone(now, APP_TIMEZONE, "yyyy-MM-dd");
+
+      const [slots, bookings] = await Promise.all([
+        TimeSlot.find({
+          playroomId,
+          datum: { $gte: startDate, $lte: endDate },
+          aktivno: true,
+          vanRadnogVremena: false,
+        })
+          .select("_id datum vremeOd vremeDo cena zauzeto aktivno")
+          .sort({ vremeOd: 1 })
+          .lean(),
+
+        bookingService.getActiveBookingsForDate({
+          playroomId,
+          datum: targetDate,
+        }),
+      ]);
+
+      const blockedSlotIds = new Set(
+        bookings
+          .map((booking) => booking.timeSlotId?.toString())
+          .filter(Boolean),
+      );
+
+      const blockedIntervals = new Set(
+        bookings.map((booking) => `${booking.vremeOd}_${booking.vremeDo}`),
+      );
+
+      const visibleSlots = slots.filter((slot) => {
+        if (!isToday) return true;
+
+        const slotEnd = buildDateTimeInAppTimezone(slot.datum, slot.vremeDo);
+
+        return slotEnd && slotEnd > now;
+      });
+
+      const normalizedSlots = visibleSlots.map((slot) => {
+        const isBusy =
+          Boolean(slot.zauzeto) ||
+          blockedSlotIds.has(slot._id.toString()) ||
+          blockedIntervals.has(`${slot.vremeOd}_${slot.vremeDo}`);
+
+        return {
+          _id: slot._id,
+          datum: slot.datum,
+          vremeOd: slot.vremeOd,
+          vremeDo: slot.vremeDo,
+          cena: slot.cena,
+          zauzeto: isBusy,
+          available: !isBusy,
+        };
+      });
+
+      const availableSlots = normalizedSlots.filter((slot) => slot.available);
+      const busySlots = normalizedSlots.filter((slot) => !slot.available);
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          mode: "fiksno",
+          workingHours,
+          slots: availableSlots,
+          busySlots,
+          busyIntervals: busySlots.map((slot) => ({
+            vremeOd: slot.vremeOd,
+            vremeDo: slot.vremeDo,
+          })),
           freeIntervals: [],
         },
       });
@@ -398,32 +484,35 @@ exports.getAvailableTimeSlots = async (req, res, next) => {
     const segments = bookingService.buildDaySegments({
       workingHours,
       preparationMinutes: Number(playroom.vremePripremeTermina) || 0,
-      bookings: bookings.map((b) => ({
-        vremeOd: b.vremeOd,
-        vremeDo: b.vremeDo,
+      bookings: bookings.map((booking) => ({
+        vremeOd: booking.vremeOd,
+        vremeDo: booking.vremeDo,
       })),
     });
 
     const busyIntervals = segments
-      .filter((s) => s.tip === "zauzeto")
-      .map((s) => ({
-        vremeOd: s.vremeOd,
-        vremeDo: s.vremeDo,
-        originalVremeDo: s.originalVremeDo || s.vremeDo,
-        hasPreparationBuffer: Boolean(s.hasPreparationBuffer),
+      .filter((segment) => segment.tip === "zauzeto")
+      .map((segment) => ({
+        vremeOd: segment.vremeOd,
+        vremeDo: segment.vremeDo,
+        originalVremeDo: segment.originalVremeDo || segment.vremeDo,
+        hasPreparationBuffer: Boolean(segment.hasPreparationBuffer),
       }));
 
     const freeIntervals = segments
-      .filter((s) => s.tip === "slobodno")
-      .map((s) => ({
-        vremeOd: s.vremeOd,
-        vremeDo: s.vremeDo,
+      .filter((segment) => segment.tip === "slobodno")
+      .map((segment) => ({
+        vremeOd: segment.vremeOd,
+        vremeDo: segment.vremeDo,
       }));
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: {
+        mode: "fleksibilno",
         workingHours,
+        slots: [],
+        busySlots: [],
         busyIntervals,
         freeIntervals,
       },

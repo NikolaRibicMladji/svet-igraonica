@@ -130,7 +130,7 @@ const getActiveBookingsForDate = async ({
     datum: { $gte: startDate, $lte: endDate },
     status: { $in: getBlockingStatuses() },
   })
-    .select("_id vremeOd vremeDo")
+    .select("_id timeSlotId vremeOd vremeDo")
     .sort({ vremeOd: 1 })
     .lean();
 
@@ -331,6 +331,7 @@ const buildDaySegments = ({
 
 const reserveSlot = async ({
   slotId,
+  expectedPlayroomId = null,
   user,
   payload,
   session: externalSession = null,
@@ -373,6 +374,13 @@ const reserveSlot = async ({
 
     if (!slotForLock) {
       throw new ErrorResponse("Termin je već zauzet ili ne postoji", 400);
+    }
+
+    if (
+      expectedPlayroomId &&
+      slotForLock.playroomId.toString() !== String(expectedPlayroomId)
+    ) {
+      throw new ErrorResponse("Termin ne pripada izabranoj igraonici", 400);
     }
 
     await lockBookingDay({
@@ -703,6 +711,13 @@ const reserveCustomInterval = async ({
     const playroom = await Playroom.findById(playroomId).session(session);
 
     ensureBookablePlayroom(playroom);
+
+    if (playroom.rezimRezervacije === "fiksno") {
+      throw new ErrorResponse(
+        "Za ovu igraonicu možete rezervisati samo jedan od ponuđenih termina",
+        400,
+      );
+    }
 
     const workingHours = getWorkingHoursForDate(playroom, bookingDate);
 

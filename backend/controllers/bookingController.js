@@ -13,6 +13,22 @@ const logger = require("../utils/logger");
 const ErrorResponse = require("../utils/errorResponse");
 const { queueBookingEmails } = require("../services/emailQueueService");
 
+const getBookingModePlayroom = async ({ playroomId, session = null }) => {
+  let query = Playroom.findById(playroomId).select("_id rezimRezervacije");
+
+  if (session) {
+    query = query.session(session);
+  }
+
+  const playroom = await query.lean();
+
+  if (!playroom) {
+    throw new ErrorResponse("Igraonica nije pronađena", 404);
+  }
+
+  return playroom;
+};
+
 // @desc    Kreiraj novu rezervaciju (ulogovan korisnik)
 // @route   POST /api/bookings
 // @access  Private
@@ -27,6 +43,7 @@ exports.createBooking = async (req, res, next) => {
 
     const {
       playroomId,
+      timeSlotId,
       datum,
       vremeOd,
       vremeDo,
@@ -42,25 +59,54 @@ exports.createBooking = async (req, res, next) => {
       napomena,
     } = req.validated.body;
 
-    const booking = await bookingService.reserveCustomInterval({
-      playroomId,
-      datum,
-      vremeOd,
-      vremeDo,
-      user: req.user || null,
-      payload: {
-        cenaIds,
-        paketId,
-        usluge,
-        brojDece,
-        brojRoditelja,
-        imeRoditelja,
-        prezimeRoditelja,
-        emailRoditelja,
-        telefonRoditelja,
-        napomena,
-      },
-    });
+    const playroom = await getBookingModePlayroom({ playroomId });
+
+    const payload = {
+      cenaIds,
+      paketId,
+      usluge,
+      brojDece,
+      brojRoditelja,
+      imeRoditelja,
+      prezimeRoditelja,
+      emailRoditelja,
+      telefonRoditelja,
+      napomena,
+    };
+
+    let booking;
+
+    if (playroom.rezimRezervacije === "fiksno") {
+      if (!timeSlotId) {
+        throw new ErrorResponse(
+          "Morate izabrati jedan od ponuđenih termina",
+          400,
+        );
+      }
+
+      booking = await bookingService.reserveSlot({
+        slotId: timeSlotId,
+        expectedPlayroomId: playroomId,
+        user: req.user || null,
+        payload,
+      });
+    } else {
+      if (timeSlotId) {
+        throw new ErrorResponse(
+          "Za fleksibilnu rezervaciju ne šaljite timeSlotId",
+          400,
+        );
+      }
+
+      booking = await bookingService.reserveCustomInterval({
+        playroomId,
+        datum,
+        vremeOd,
+        vremeDo,
+        user: req.user || null,
+        payload,
+      });
+    }
 
     return res.status(201).json({
       success: true,
@@ -71,7 +117,6 @@ exports.createBooking = async (req, res, next) => {
     next(error);
   }
 };
-
 // @desc    Guest rezervacija + registracija + auto login
 // @route   POST /api/bookings/guest
 // @access  Public
@@ -83,6 +128,7 @@ exports.createGuestBooking = async (req, res, next) => {
 
     const {
       playroomId,
+      timeSlotId,
       datum,
       vremeOd,
       vremeDo,
@@ -100,6 +146,11 @@ exports.createGuestBooking = async (req, res, next) => {
       acceptedTerms,
     } = req.validated.body;
 
+    const playroom = await getBookingModePlayroom({
+      playroomId,
+      session,
+    });
+
     const authResult = await authService.registerGuestParent(
       {
         ime,
@@ -116,26 +167,54 @@ exports.createGuestBooking = async (req, res, next) => {
     const accessToken = authResult.accessToken;
     const refreshToken = authResult.refreshToken;
 
-    const createdBooking = await bookingService.reserveCustomInterval({
-      playroomId,
-      datum,
-      vremeOd,
-      vremeDo,
-      user: createdUser,
-      payload: {
-        cenaIds,
-        paketId,
-        usluge,
-        brojDece,
-        brojRoditelja,
-        imeRoditelja: createdUser.ime,
-        prezimeRoditelja: createdUser.prezime,
-        emailRoditelja: createdUser.email,
-        telefonRoditelja: createdUser.telefon,
-        napomena,
-      },
-      session,
-    });
+    const payload = {
+      cenaIds,
+      paketId,
+      usluge,
+      brojDece,
+      brojRoditelja,
+      imeRoditelja: createdUser.ime,
+      prezimeRoditelja: createdUser.prezime,
+      emailRoditelja: createdUser.email,
+      telefonRoditelja: createdUser.telefon,
+      napomena,
+    };
+
+    let createdBooking;
+
+    if (playroom.rezimRezervacije === "fiksno") {
+      if (!timeSlotId) {
+        throw new ErrorResponse(
+          "Morate izabrati jedan od ponuđenih termina",
+          400,
+        );
+      }
+
+      createdBooking = await bookingService.reserveSlot({
+        slotId: timeSlotId,
+        expectedPlayroomId: playroomId,
+        user: createdUser,
+        payload,
+        session,
+      });
+    } else {
+      if (timeSlotId) {
+        throw new ErrorResponse(
+          "Za fleksibilnu rezervaciju ne šaljite timeSlotId",
+          400,
+        );
+      }
+
+      createdBooking = await bookingService.reserveCustomInterval({
+        playroomId,
+        datum,
+        vremeOd,
+        vremeDo,
+        user: createdUser,
+        payload,
+        session,
+      });
+    }
 
     await session.commitTransaction();
 
@@ -163,9 +242,10 @@ exports.createGuestBooking = async (req, res, next) => {
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
+
     next(error);
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 };
 

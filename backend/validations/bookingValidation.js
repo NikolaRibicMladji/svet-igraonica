@@ -28,36 +28,87 @@ const cenaOrPaketError = {
   path: ["body", "cenaIds"],
 };
 
+const dateOnlySchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
+  .refine(
+    (val) => {
+      try {
+        parseDateOnlyInAppTimezone(val);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    {
+      message: "Datum nije validan",
+    },
+  );
+
+const timeSchema = z
+  .string()
+  .regex(/^\d{2}:\d{2}$/, "Vreme nije validno")
+  .refine(isQuarterHour, "Vreme mora biti u koracima od 15 minuta");
+
+const validateBookingTimeChoice = (data, ctx) => {
+  const { timeSlotId, datum, vremeOd, vremeDo } = data.body;
+
+  const hasSlot = Boolean(timeSlotId);
+  const intervalFieldsCount = [datum, vremeOd, vremeDo].filter(Boolean).length;
+
+  if (hasSlot && intervalFieldsCount > 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "Pošaljite ili timeSlotId ili datum/vremeOd/vremeDo, ne oba načina",
+      path: ["body", "timeSlotId"],
+    });
+
+    return;
+  }
+
+  if (!hasSlot && intervalFieldsCount === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Morate izabrati termin ili poslati datum i vreme",
+      path: ["body", "timeSlotId"],
+    });
+
+    return;
+  }
+
+  if (!hasSlot && intervalFieldsCount < 3) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "Za fleksibilnu rezervaciju su obavezni datum, vremeOd i vremeDo",
+      path: ["body", "datum"],
+    });
+
+    return;
+  }
+
+  if (!hasSlot && timeToMinutes(vremeDo) <= timeToMinutes(vremeOd)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Vreme završetka mora biti posle vremena početka",
+      path: ["body", "vremeDo"],
+    });
+  }
+};
+
 const createBookingSchema = z
   .object({
     body: z
       .object({
         playroomId: objectId,
-        datum: z
-          .string()
-          .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
-          .refine(
-            (val) => {
-              try {
-                parseDateOnlyInAppTimezone(val);
-                return true;
-              } catch {
-                return false;
-              }
-            },
-            {
-              message: "Datum nije validan",
-            },
-          ),
-        vremeOd: z
-          .string()
-          .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
-          .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
+        timeSlotId: objectId.optional(),
 
-        vremeDo: z
-          .string()
-          .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
-          .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
+        datum: dateOnlySchema.optional(),
+
+        vremeOd: timeSchema.optional(),
+
+        vremeDo: timeSchema.optional(),
         cenaIds: z
           .array(objectId)
           .max(20, "Previše izabranih cena")
@@ -109,14 +160,7 @@ const createBookingSchema = z
     params: z.object({}).optional(),
     query: z.object({}).optional(),
   })
-  .refine(
-    (data) =>
-      timeToMinutes(data.body.vremeDo) > timeToMinutes(data.body.vremeOd),
-    {
-      message: "Vreme završetka mora biti posle vremena početka",
-      path: ["body", "vremeDo"],
-    },
-  )
+  .superRefine(validateBookingTimeChoice)
   .refine(hasCenaOrPaket, cenaOrPaketError);
 
 const createGuestBookingSchema = z
@@ -125,31 +169,13 @@ const createGuestBookingSchema = z
       .object({
         playroomId: objectId,
 
-        datum: z
-          .string()
-          .regex(/^\d{4}-\d{2}-\d{2}$/, "Datum mora biti u formatu YYYY-MM-DD")
-          .refine(
-            (val) => {
-              try {
-                parseDateOnlyInAppTimezone(val);
-                return true;
-              } catch {
-                return false;
-              }
-            },
-            {
-              message: "Datum nije validan",
-            },
-          ),
-        vremeOd: z
-          .string()
-          .regex(/^\d{2}:\d{2}$/, "Vreme od nije validno")
-          .refine(isQuarterHour, "Vreme od mora biti u koracima od 15 minuta"),
+        timeSlotId: objectId.optional(),
 
-        vremeDo: z
-          .string()
-          .regex(/^\d{2}:\d{2}$/, "Vreme do nije validno")
-          .refine(isQuarterHour, "Vreme do mora biti u koracima od 15 minuta"),
+        datum: dateOnlySchema.optional(),
+
+        vremeOd: timeSchema.optional(),
+
+        vremeDo: timeSchema.optional(),
         cenaIds: z
           .array(objectId)
           .max(20, "Previše izabranih cena")
@@ -212,19 +238,9 @@ const createGuestBookingSchema = z
     params: z.object({}).optional(),
     query: z.object({}).optional(),
   })
-  .refine((data) => data.body.password === data.body.confirmPassword, {
-    message: "Lozinke se ne poklapaju",
-    path: ["body", "confirmPassword"],
-  })
-  .refine(
-    (data) =>
-      timeToMinutes(data.body.vremeDo) > timeToMinutes(data.body.vremeOd),
-    {
-      message: "Vreme završetka mora biti posle vremena početka",
-      path: ["body", "vremeDo"],
-    },
-  )
+  .superRefine(validateBookingTimeChoice)
   .refine(hasCenaOrPaket, cenaOrPaketError);
+
 const bookingIdParamSchema = z.object({
   body: z.object({}).optional(),
   params: z.object({
