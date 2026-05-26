@@ -1,6 +1,31 @@
 import React from "react";
 import { formatBrojDece } from "../../utils/bookingPriceUtils";
 
+const toSafeNumber = (value) => {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : 0;
+};
+
+const getItemPriceText = (item, brojDece, slotDurationHours) => {
+  const cena = toSafeNumber(item?.cena);
+  const safeSlotDurationHours = toSafeNumber(slotDurationHours) || 1;
+  const safeBrojDece = toSafeNumber(brojDece);
+
+  if (item?.tip === "po_satu") {
+    return `${cena} RSD × ${safeSlotDurationHours}h = ${
+      cena * safeSlotDurationHours
+    } RSD`;
+  }
+
+  if (item?.tip === "po_osobi") {
+    return `${cena} RSD × ${formatBrojDece(safeBrojDece)} = ${
+      cena * safeBrojDece
+    } RSD`;
+  }
+
+  return `${cena} RSD`;
+};
+
 const BookingOrderSummary = ({
   selectedCene = [],
   selectedPaket = null,
@@ -10,36 +35,39 @@ const BookingOrderSummary = ({
   slotDurationHours = 1,
   totalPrice = 0,
 }) => {
+  const safeSelectedCene = Array.isArray(selectedCene) ? selectedCene : [];
+  const safeSelectedUsluge = Array.isArray(selectedUsluge)
+    ? selectedUsluge
+    : [];
+  const safeBrojDece = toSafeNumber(brojDece);
+  const safeBrojRoditelja = toSafeNumber(brojRoditelja);
+  const safeTotalPrice = toSafeNumber(totalPrice);
+
   return (
-    <div className="order-summary">
-      <h4>🛒 Pregled rezervacije</h4>
-      {Number(brojDece) > 0 && (
+    <div
+      className="order-summary"
+      aria-labelledby="booking-order-summary-title"
+    >
+      <h4 id="booking-order-summary-title">🛒 Pregled rezervacije</h4>
+      {safeBrojDece > 0 && (
         <div className="summary-item">
           <span>👶 Broj dece</span>
-          <span>{Number(brojDece)}</span>
+          <span>{safeBrojDece}</span>
         </div>
       )}
 
-      {Number(brojRoditelja) > 0 && (
+      {safeBrojRoditelja > 0 && (
         <div className="summary-item">
           <span>🧑 Broj roditelja</span>
-          <span>{Number(brojRoditelja)}</span>
+          <span>{safeBrojRoditelja}</span>
         </div>
       )}
-      {selectedCene.length > 0 && (
+      {safeSelectedCene.length > 0 && (
         <div className="reservation-summary-items">
-          {selectedCene.map((item) => (
-            <div key={item._id} className="summary-item">
+          {safeSelectedCene.map((item) => (
+            <div key={item._id || item.naziv} className="summary-item">
               <span>{item.naziv}</span>
-              <span>
-                {item.tip === "po_satu"
-                  ? `${item.cena} RSD × ${slotDurationHours}h = ${
-                      (Number(item.cena) || 0) * slotDurationHours
-                    } RSD`
-                  : item.tip === "po_osobi"
-                    ? `${item.cena} RSD × ${formatBrojDece(brojDece)} = ${(item.cena || 0) * (Number(brojDece) || 0)} RSD`
-                    : `${item.cena} RSD`}
-              </span>
+              <span>{getItemPriceText(item, brojDece, slotDurationHours)}</span>
             </div>
           ))}
         </div>
@@ -48,38 +76,20 @@ const BookingOrderSummary = ({
         <div className="summary-item">
           <span>{selectedPaket.naziv}</span>
           <span>
-            {selectedPaket.tip === "po_satu"
-              ? `${selectedPaket.cena} RSD × ${slotDurationHours}h = ${
-                  (Number(selectedPaket.cena) || 0) * slotDurationHours
-                } RSD`
-              : selectedPaket.tip === "po_osobi"
-                ? `${selectedPaket.cena} RSD × ${formatBrojDece(brojDece)} = ${
-                    (Number(selectedPaket.cena) || 0) * (Number(brojDece) || 0)
-                  } RSD`
-                : `${selectedPaket.cena} RSD`}
+            {getItemPriceText(selectedPaket, brojDece, slotDurationHours)}
           </span>
         </div>
       )}
-      {selectedUsluge.map((u) => (
-        <div className="summary-item" key={u._id}>
+      {safeSelectedUsluge.map((u) => (
+        <div className="summary-item" key={u._id || u.naziv}>
           <span>{u.naziv}</span>
-          <span>
-            {u.tip === "po_satu"
-              ? `${u.cena} RSD × ${slotDurationHours}h = ${
-                  (Number(u.cena) || 0) * slotDurationHours
-                } RSD`
-              : u.tip === "po_osobi"
-                ? `${u.cena} RSD × ${formatBrojDece(brojDece)} = ${
-                    (Number(u.cena) || 0) * (Number(brojDece) || 0)
-                  } RSD`
-                : `${u.cena} RSD`}
-          </span>
+          <span>{getItemPriceText(u, brojDece, slotDurationHours)}</span>
         </div>
       ))}
 
       <div className="summary-total">
         <span>Ukupno za plaćanje:</span>
-        <strong>{totalPrice} RSD</strong>
+        <strong>{safeTotalPrice} RSD</strong>
       </div>
     </div>
   );

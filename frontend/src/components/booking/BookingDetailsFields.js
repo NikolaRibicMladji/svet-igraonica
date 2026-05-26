@@ -24,6 +24,8 @@ const BookingDetailsFields = ({
     }
   };
 
+  const showBrojDeceError = hasPerPersonPricing && !Number(brojDece);
+
   const isValidCountValue = (value) => {
     if (value === "") return true;
 
@@ -41,7 +43,7 @@ const BookingDetailsFields = ({
     const value = e.target.value;
 
     if (isValidCountValue(value)) {
-      setBrojDece(value);
+      setBrojDece?.(value);
     }
   };
 
@@ -51,7 +53,7 @@ const BookingDetailsFields = ({
     const value = e.target.value;
 
     if (isValidCountValue(value)) {
-      setBrojRoditelja(value);
+      setBrojRoditelja?.(value);
     }
   };
 
@@ -76,14 +78,20 @@ const BookingDetailsFields = ({
             max="200"
             required={hasPerPersonPricing}
             value={brojDece}
-            className={
-              hasPerPersonPricing && !Number(brojDece) ? "input-error" : ""
+            className={showBrojDeceError ? "input-error" : ""}
+            aria-invalid={showBrojDeceError}
+            aria-describedby={
+              showBrojDeceError ? "booking-broj-dece-error" : undefined
             }
             onChange={handleBrojDeceChange}
           />
 
-          {hasPerPersonPricing && !Number(brojDece) && (
-            <p className="field-hint-error">
+          {showBrojDeceError && (
+            <p
+              id="booking-broj-dece-error"
+              className="field-hint-error"
+              role="alert"
+            >
               Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po
               osobi.
             </p>
@@ -121,7 +129,7 @@ const BookingDetailsFields = ({
           value={napomena}
           onChange={(e) => {
             clearError();
-            setNapomena(e.target.value);
+            setNapomena?.(e.target.value);
           }}
           placeholder="Npr. alergije, posebni zahtevi, dolazak sa kolicima..."
         />

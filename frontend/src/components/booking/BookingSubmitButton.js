@@ -9,8 +9,9 @@ const BookingSubmitButton = ({
     <button
       type="button"
       className="btn-book"
-      onClick={onSubmit}
+      onClick={() => onSubmit?.()}
       disabled={submitting}
+      aria-busy={submitting}
     >
       {submitting
         ? "Rezervišem..."

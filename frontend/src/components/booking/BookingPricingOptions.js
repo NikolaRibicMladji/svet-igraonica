@@ -16,18 +16,34 @@ const BookingPricingOptions = ({
     if (!Array.isArray(playroom?.cene)) return [];
 
     return playroom.cene.filter((c) => {
-      const naziv = normalizeText(c.naziv);
+      const naziv = normalizeText(c?.naziv || "");
       return naziv !== "dete" && naziv !== "roditelj";
     });
   }, [playroom?.cene]);
 
-  return (
-    <>
-      {visibleCene.length > 0 && (
-        <div className="form-group" ref={pricingRef}>
-          <div className="booking-section-title">Stavke iz cenovnika</div>
+  const hasVisibleCene = visibleCene.length > 0;
+  const hasPaketi =
+    Array.isArray(playroom?.paketi) && playroom.paketi.length > 0;
+  const hasDodatneUsluge =
+    Array.isArray(playroom?.dodatneUsluge) && playroom.dodatneUsluge.length > 0;
 
-          <div className="booking-options-list booking-options-list--flat">
+  if (!hasVisibleCene && !hasPaketi && !hasDodatneUsluge) {
+    return null;
+  }
+
+  return (
+    <div className="pricing-options-section" ref={pricingRef}>
+      {hasVisibleCene && (
+        <div className="form-group">
+          <div id="booking-cene-title" className="booking-section-title">
+            Stavke iz cenovnika
+          </div>
+
+          <div
+            className="booking-options-list booking-options-list--flat"
+            role="group"
+            aria-labelledby="booking-cene-title"
+          >
             {visibleCene.map((cena) => (
               <div key={cena._id} className="option-card">
                 <label className="option-check-row">
@@ -45,7 +61,7 @@ const BookingPricingOptions = ({
                   <input
                     type="checkbox"
                     checked={selectedCenaIds.includes(String(cena._id))}
-                    onChange={() => handleCenaToggle(cena._id)}
+                    onChange={() => handleCenaToggle?.(String(cena._id))}
                   />
                 </label>
               </div>
@@ -54,13 +70,17 @@ const BookingPricingOptions = ({
         </div>
       )}
 
-      {Array.isArray(playroom?.paketi) && playroom.paketi.length > 0 && (
+      {hasPaketi && (
         <div className="form-group">
-          <div className="booking-section-title">
+          <div id="booking-paketi-title" className="booking-section-title">
             Izaberi paket <span className="inline-bracket-text">(opciono)</span>
           </div>
 
-          <div className="booking-options-list booking-options-list--flat">
+          <div
+            className="booking-options-list booking-options-list--flat"
+            role="group"
+            aria-labelledby="booking-paketi-title"
+          >
             {playroom.paketi.map((p) => (
               <div key={p._id} className="option-card">
                 <label className="option-check-row">
@@ -78,7 +98,7 @@ const BookingPricingOptions = ({
                   <input
                     type="checkbox"
                     checked={selectedPaketId === String(p._id)}
-                    onChange={() => handlePaketToggle(p._id)}
+                    onChange={() => handlePaketToggle?.(String(p._id))}
                   />
                 </label>
               </div>
@@ -87,41 +107,44 @@ const BookingPricingOptions = ({
         </div>
       )}
 
-      {Array.isArray(playroom?.dodatneUsluge) &&
-        playroom.dodatneUsluge.length > 0 && (
-          <div className="form-group">
-            <div className="booking-section-title">
-              Dodatne usluge{" "}
-              <span className="inline-bracket-text">(opciono)</span>
-            </div>
-
-            <div className="booking-options-list booking-options-list--flat">
-              {playroom.dodatneUsluge.map((u) => (
-                <div key={u._id} className="option-card">
-                  <label className="option-check-row">
-                    <div>
-                      <span>
-                        {u.naziv} - {u.cena} RSD{" "}
-                        <span className="inline-bracket-text">
-                          ({getPricingLabel(u)})
-                        </span>
-                      </span>
-
-                      {u.opis && <span className="item-opis">({u.opis})</span>}
-                    </div>
-
-                    <input
-                      type="checkbox"
-                      checked={selectedUslugeIds.includes(String(u._id))}
-                      onChange={() => handleUslugaToggle(u._id)}
-                    />
-                  </label>
-                </div>
-              ))}
-            </div>
+      {hasDodatneUsluge && (
+        <div className="form-group">
+          <div id="booking-usluge-title" className="booking-section-title">
+            Dodatne usluge{" "}
+            <span className="inline-bracket-text">(opciono)</span>
           </div>
-        )}
-    </>
+
+          <div
+            className="booking-options-list booking-options-list--flat"
+            role="group"
+            aria-labelledby="booking-usluge-title"
+          >
+            {playroom.dodatneUsluge.map((u) => (
+              <div key={u._id} className="option-card">
+                <label className="option-check-row">
+                  <div>
+                    <span>
+                      {u.naziv} - {u.cena} RSD{" "}
+                      <span className="inline-bracket-text">
+                        ({getPricingLabel(u)})
+                      </span>
+                    </span>
+
+                    {u.opis && <span className="item-opis">({u.opis})</span>}
+                  </div>
+
+                  <input
+                    type="checkbox"
+                    checked={selectedUslugeIds.includes(String(u._id))}
+                    onChange={() => handleUslugaToggle?.(String(u._id))}
+                  />
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

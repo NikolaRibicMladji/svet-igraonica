@@ -38,15 +38,22 @@ const BookingTimePicker = ({
               className={`time-pill ${
                 selectedStartTime === item.value ? "active" : ""
               } ${item.type !== "free" ? "disabled" : ""}`}
-              onClick={() => onStartSelect(item.value)}
+              onClick={() => onStartSelect?.(item.value)}
               aria-pressed={selectedStartTime === item.value}
+              aria-label={
+                item.type === "free"
+                  ? `Izaberi početak termina u ${item.value}`
+                  : item.label
+              }
             >
               {item.type === "free" ? item.value : item.label}
             </button>
           ))}
 
           {!hasFreeStartTimes && (
-            <p className="booking-info-box">Nema dostupnih termina.</p>
+            <p className="booking-info-box" role="status" aria-live="polite">
+              Nema dostupnih termina.
+            </p>
           )}
         </div>
       </div>
@@ -70,15 +77,20 @@ const BookingTimePicker = ({
                 className={`time-pill ${
                   selectedEndTime === item.value ? "active" : ""
                 } ${item.type !== "free" ? "disabled" : ""}`}
-                onClick={() => onEndSelect(item.value)}
+                onClick={() => onEndSelect?.(item.value)}
                 aria-pressed={selectedEndTime === item.value}
+                aria-label={
+                  item.type === "free"
+                    ? `Izaberi završetak termina u ${item.value}`
+                    : item.label
+                }
               >
                 {item.type === "free" ? item.value : item.label}
               </button>
             ))}
 
             {selectedStartTime && !hasFreeEndTimes && (
-              <p className="booking-info-box">
+              <p className="booking-info-box" role="status" aria-live="polite">
                 Nema dostupnih završetaka za izabrani početak.
               </p>
             )}

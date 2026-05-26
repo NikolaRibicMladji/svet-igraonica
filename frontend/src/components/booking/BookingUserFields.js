@@ -26,6 +26,11 @@ const BookingUserFields = ({
     }
   };
 
+  const handleTermsChange = (e) => {
+    setAcceptedTerms?.(e.target.checked);
+    clearError();
+  };
+
   return (
     <div className="user-data-section">
       <div className="user-data-header">
@@ -113,8 +118,9 @@ const BookingUserFields = ({
               <button
                 type="button"
                 className="password-toggle-btn"
-                onClick={() => setShowPassword((prev) => !prev)}
+                onClick={() => setShowPassword?.((prev) => !prev)}
                 aria-label={showPassword ? "Sakrij lozinku" : "Prikaži lozinku"}
+                aria-pressed={showPassword}
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
@@ -137,12 +143,13 @@ const BookingUserFields = ({
               <button
                 type="button"
                 className="password-toggle-btn"
-                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                onClick={() => setShowConfirmPassword?.((prev) => !prev)}
                 aria-label={
                   showConfirmPassword
                     ? "Sakrij potvrdu lozinke"
                     : "Prikaži potvrdu lozinke"
                 }
+                aria-pressed={showConfirmPassword}
               >
                 {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
@@ -174,12 +181,11 @@ const BookingUserFields = ({
           </span>
 
           <input
+            id="booking-accepted-terms"
             type="checkbox"
             checked={acceptedTerms}
-            onChange={(e) => {
-              setAcceptedTerms(e.target.checked);
-              clearError();
-            }}
+            onChange={handleTermsChange}
+            aria-label="Prihvatam uslove korišćenja, politiku privatnosti i pravila rezervacije"
           />
         </label>
       </div>

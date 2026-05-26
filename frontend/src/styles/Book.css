@@ -297,20 +297,20 @@
    SUMMARY
 ========================================= */
 
-.order-summary {
+.book-page .order-summary {
   background: #fff9f5;
   border-radius: 20px;
   padding: 20px;
   margin: 24px 0;
 }
 
-.summary-item {
+.book-page .summary-item {
   display: flex;
   justify-content: space-between;
   padding: 10px 0;
 }
 
-.summary-total {
+.book-page .summary-total {
   display: flex;
   justify-content: space-between;
   font-weight: 700;
@@ -319,7 +319,7 @@
   padding-top: 10px;
 }
 
-.total-amount {
+.book-page .total-amount {
   color: #ff6b4a;
   font-size: 1.3rem;
 }
@@ -328,7 +328,7 @@
    BUTTON
 ========================================= */
 
-.btn-book {
+.book-page .btn-book {
   width: 100%;
   padding: 16px;
   border-radius: 50px;
@@ -339,7 +339,7 @@
   transition: 0.2s;
 }
 
-.btn-book:hover {
+.book-page .btn-book:hover:not(:disabled) {
   transform: translateY(-2px);
 }
 
@@ -347,7 +347,7 @@
    MESSAGES
 ========================================= */
 
-.error-message {
+.book-page .error-message {
   scroll-margin-top: 120px;
   background: #ffebee;
   color: #c62828;
@@ -468,7 +468,7 @@
   font-weight: 600;
 }
 
-.order-summary {
+.book-page .order-summary {
   position: fixed;
   left: 50%;
   bottom: 16px;
@@ -725,7 +725,7 @@
 ========================================= */
 
 @media (max-width: 768px) {
-  .order-summary {
+  .book-page .order-summary {
     position: static;
     transform: none;
     width: 100%;
@@ -928,5 +928,42 @@
   .timeline-label {
     min-width: 72px;
     font-size: 12px;
+  }
+}
+.book-page .back-link:focus-visible,
+.book-page .date-input:focus-visible,
+.book-page .booking-select:focus-visible,
+.book-page .count-input:focus-visible,
+.book-page .custom-time-trigger:focus-visible,
+.book-page .custom-time-item.free:focus-visible,
+.book-page .custom-time-item.clear:focus-visible,
+.book-page .time-pill:focus-visible,
+.book-page .password-toggle-btn:focus-visible,
+.book-page .clear-package-btn:focus-visible,
+.book-page .btn-book:focus-visible,
+.book-page input[type="checkbox"]:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  outline-offset: 3px;
+}
+
+.book-page .btn-book:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-page *,
+  .book-page *::before,
+  .book-page *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  .book-page .btn-book:hover,
+  .book-page .slot-card:hover,
+  .book-page .time-pill:not(.disabled):hover {
+    transform: none;
   }
 }

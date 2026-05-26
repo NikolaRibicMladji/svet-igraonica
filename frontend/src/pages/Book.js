@@ -44,15 +44,35 @@ import BookingDateSelector from "../components/booking/BookingDateSelector";
 import BookingFreeFeatures from "../components/booking/BookingFreeFeatures";
 import BookingAvailabilitySection from "../components/booking/BookingAvailabilitySection";
 
+const DATE_QUERY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_QUERY_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const ALLOWED_QUERY_MINUTES = new Set([0, 15, 30, 45]);
+
+const normalizeDateQuery = (value) => {
+  const safeValue = String(value || "").trim();
+
+  return DATE_QUERY_REGEX.test(safeValue) ? safeValue : "";
+};
+
+const normalizeTimeQuery = (value) => {
+  const safeValue = String(value || "").trim();
+
+  if (!TIME_QUERY_REGEX.test(safeValue)) return "";
+
+  const minutes = Number(safeValue.split(":")[1]);
+
+  return ALLOWED_QUERY_MINUTES.has(minutes) ? safeValue : "";
+};
+
 const Book = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
 
-  const prefillDate = queryParams.get("datum") || "";
-  const prefillStart = queryParams.get("vremeOd") || "";
-  const prefillEnd = queryParams.get("vremeDo") || "";
+  const prefillDate = normalizeDateQuery(queryParams.get("datum"));
+  const prefillStart = normalizeTimeQuery(queryParams.get("vremeOd"));
+  const prefillEnd = normalizeTimeQuery(queryParams.get("vremeDo"));
   const requestedOwnerBooking = queryParams.get("mode") === "owner";
   const {
     user,
@@ -66,7 +86,7 @@ const Book = () => {
     isAuthenticated &&
     (user?.role === "vlasnik" || user?.role === "admin");
 
-  const toast = useToast();
+  const { error: showError } = useToast();
   const [selectedCenaIds, setSelectedCenaIds] = useState([]);
   const [selectedPaketId, setSelectedPaketId] = useState("");
   const [selectedUslugeIds, setSelectedUslugeIds] = useState([]);
@@ -143,7 +163,7 @@ const Book = () => {
   }, [playroom, selectedCenaIds, selectedPaketId, selectedUslugeIds]);
 
   const showBrojDeceRequiredNotice = () => {
-    toast.error(
+    showError(
       "Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po osobi.",
     );
   };
@@ -636,12 +656,16 @@ const Book = () => {
   };
 
   if (loading || authLoading) {
-    return <div className="container loading">Učitavanje...</div>;
+    return (
+      <div className="container loading" role="status" aria-live="polite">
+        Učitavanje...
+      </div>
+    );
   }
 
   if (!playroom) {
     return (
-      <div className="container loading">
+      <div className="container loading" role="alert">
         Nije moguće učitati podatke o igraonici.
       </div>
     );
@@ -668,7 +692,11 @@ const Book = () => {
           </div>
         </div>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && (
+          <div className="error-message" role="alert">
+            {error}
+          </div>
+        )}
 
         <BookingDateSelector
           selectedDate={selectedDate}

@@ -18,13 +18,17 @@ const BookingAvailabilitySection = ({
   onEndSelect,
 }) => {
   return (
-    <div className="slots-section">
-      <h3>Dostupnost za {formatDateLat(selectedDate)}</h3>
+    <div className="slots-section" aria-labelledby="booking-availability-title">
+      <h3 id="booking-availability-title">
+        Dostupnost za {formatDateLat(selectedDate)}
+      </h3>
 
       {loadingSlots ? (
-        <div className="loading-slots">Učitavanje termina...</div>
+        <div className="loading-slots" role="status" aria-live="polite">
+          Učitavanje termina...
+        </div>
       ) : !availability?.workingHours ? (
-        <div className="no-slots">
+        <div className="no-slots" role="status" aria-live="polite">
           <p>😢 Igraonica ne radi za izabrani datum.</p>
         </div>
       ) : (

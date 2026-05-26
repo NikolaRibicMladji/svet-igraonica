@@ -8,7 +8,7 @@ const BookingSelectedSlotSummary = ({
   slotDurationLabel = "",
 }) => {
   return (
-    <div className="selected-slot-summary">
+    <div className="selected-slot-summary" role="status" aria-live="polite">
       <p>📅 Datum: {formatDateLat(selectedDate)}</p>
 
       <p>

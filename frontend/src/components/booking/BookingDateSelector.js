@@ -18,13 +18,16 @@ const BookingDateSelector = ({
           onChange={(e) => onDateChange(e.target.value)}
           min={getLocalDate()}
           className="date-input"
+          aria-describedby="booking-date-display"
         />
 
-        <p className="date-display">{formatDateShortLat(selectedDate)}</p>
+        <p id="booking-date-display" className="date-display">
+          {formatDateShortLat(selectedDate)}
+        </p>
       </div>
 
       {!hasSelectedDate && (
-        <div className="booking-info-box">
+        <div className="booking-info-box" role="status" aria-live="polite">
           Prvo izaberi datum da bi se prikazali slobodni termini i ostale opcije
           za rezervaciju.
         </div>
