@@ -145,16 +145,10 @@ const manualBookTimeSlotSchema = z.object({
         .default(""),
     })
     .strict()
-    .refine(
-      (data) =>
-        data.cenaIds.length > 0 ||
-        Boolean(data.paketId) ||
-        data.usluge.length > 0,
-      {
-        message: "Morate izabrati bar jednu cenu, paket ili uslugu",
-        path: ["cenaIds"],
-      },
-    ),
+    .refine((data) => data.cenaIds.length > 0 || Boolean(data.paketId), {
+      message: "Morate izabrati cenu ili paket",
+      path: ["cenaIds"],
+    }),
 
   params: z.object({
     id: objectId,

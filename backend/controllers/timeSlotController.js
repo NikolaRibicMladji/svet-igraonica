@@ -678,6 +678,13 @@ exports.manualBookTimeSlot = async (req, res, next) => {
       throw new ErrorResponse("Nemate pravo da zauzmete ovaj termin", 403);
     }
 
+    if (playroom.rezimRezervacije !== "fiksno") {
+      throw new ErrorResponse(
+        "Za fleksibilnu igraonicu koristite ručnu rezervaciju intervala",
+        400,
+      );
+    }
+
     const booking = await bookingService.reserveSlot({
       slotId: timeSlot._id,
       user: null,
@@ -749,6 +756,13 @@ exports.manualBookInterval = async (req, res, next) => {
       throw new ErrorResponse(
         "Nemate pravo da ručno rezervišete za ovu igraonicu",
         403,
+      );
+    }
+
+    if (playroom.rezimRezervacije === "fiksno") {
+      throw new ErrorResponse(
+        "Za fiksnu igraonicu ručno zauzmite jedan od postojećih termina",
+        400,
       );
     }
 
