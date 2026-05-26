@@ -6,7 +6,7 @@ import { useToast } from "../context/ToastContext";
 
 const MyBookings = () => {
   const navigate = useNavigate();
-  const toast = useToast();
+  const { success: showSuccess, error: showError } = useToast();
 
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -123,18 +123,18 @@ const MyBookings = () => {
       const result = await cancelBooking(bookingToCancel._id);
 
       if (result?.success) {
-        toast.success(result.message || "Rezervacija je uspešno otkazana.");
+        showSuccess(result.message || "Rezervacija je uspešno otkazana.");
         setBookingToCancel(null);
         await loadBookings();
       } else {
-        toast.error(result?.error || "Greška pri otkazivanju rezervacije.");
+        showError(result?.error || "Greška pri otkazivanju rezervacije.");
       }
     } catch (err) {
       const message =
         err?.response?.data?.message ||
         err?.message ||
         "Greška pri otkazivanju rezervacije.";
-      toast.error(message);
+      showError(message);
     } finally {
       setCancellingId("");
     }
@@ -187,17 +187,25 @@ const MyBookings = () => {
     String(status).toLowerCase() === "potvrdjeno";
 
   if (loading) {
-    return <div className="container loading">Učitavanje...</div>;
+    return (
+      <div className="container loading" role="status" aria-live="polite">
+        Učitavanje...
+      </div>
+    );
   }
 
   return (
     <div className="container my-bookings-page">
       <h1>📋 Moje rezervacije</h1>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <div className="error-message" role="alert">
+          {error}
+        </div>
+      )}
 
       {bookings.length === 0 ? (
-        <div className="empty-state">
+        <div className="empty-state" role="status" aria-live="polite">
           <p>Još nemate nijednu rezervaciju.</p>
           <button
             type="button"
@@ -224,6 +232,8 @@ const MyBookings = () => {
                   onClick={() => toggleBookingDetails(booking._id)}
                   role="button"
                   tabIndex={0}
+                  aria-expanded={expandedBookingId === booking._id}
+                  aria-controls={`booking-details-${booking._id}`}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
@@ -248,6 +258,11 @@ const MyBookings = () => {
                       className={`status-badge ${status.class} ${
                         status.clickable ? "clickable" : ""
                       }`}
+                      aria-label={
+                        status.clickable
+                          ? `Ostavi recenziju za ${playroom?.naziv || "igraonicu"}`
+                          : `Status rezervacije: ${booking.status || "nepoznato"}`
+                      }
                       onClick={(e) => {
                         e.stopPropagation();
                         if (status.clickable && playroomId) {
@@ -269,7 +284,10 @@ const MyBookings = () => {
 
                 {expandedBookingId === booking._id && (
                   <>
-                    <div className="booking-details">
+                    <div
+                      id={`booking-details-${booking._id}`}
+                      className="booking-details"
+                    >
                       <p>
                         📍 {playroom?.adresa || "-"}
                         {playroom?.grad ? `, ${playroom.grad}` : ""}
@@ -399,12 +417,19 @@ const MyBookings = () => {
             if (!cancellingId) setBookingToCancel(null);
           }}
         >
-          <div className="cancel-modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="cancel-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cancel-modal-title"
+          >
             <div className="cancel-modal-header">
-              <h3>Otkaži rezervaciju</h3>
+              <h3 id="cancel-modal-title">Otkaži rezervaciju</h3>
               <button
                 type="button"
                 className="cancel-modal-close"
+                aria-label="Zatvori modal za otkazivanje rezervacije"
                 onClick={() => {
                   if (!cancellingId) setBookingToCancel(null);
                 }}

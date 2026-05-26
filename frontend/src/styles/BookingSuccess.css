@@ -41,15 +41,36 @@
 
 /* BUTTON */
 
+.success-actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
 .success-button {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: linear-gradient(135deg, #ff6b4a, #ff8c6e);
   color: white;
   padding: 14px 32px;
   border-radius: 50px;
+  border: none;
   font-weight: 600;
-  margin-top: 20px;
+  text-decoration: none;
+  cursor: pointer;
   transition: all 0.2s ease;
+}
+.success-button.secondary {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.success-button.secondary:hover {
+  background: #e2e8f0;
+  box-shadow: none;
 }
 
 .success-button:hover {
@@ -104,5 +125,25 @@
   .success-button {
     width: 100%;
     text-align: center;
+  }
+  .success-actions {
+    flex-direction: column;
+  }
+}
+.success-button:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .success-container,
+  .success-icon,
+  .success-button {
+    animation: none;
+    transition: none;
+  }
+
+  .success-button:hover {
+    transform: none;
   }
 }

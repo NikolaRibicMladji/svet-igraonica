@@ -295,13 +295,17 @@
   }
 }
 
-@media (max-width: 1024px) {
-  .bookings-list {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 @media (max-width: 480px) {
+  .cancel-modal-overlay {
+    align-items: flex-start;
+    overflow-y: auto;
+  }
+
+  .cancel-modal {
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
+
   .my-bookings-page {
     padding: 20px 0;
   }
@@ -340,4 +344,64 @@
 .status-badge:disabled {
   opacity: 1;
   cursor: default;
+}
+.my-bookings-page .empty-state {
+  text-align: center;
+  padding: 40px 24px;
+  background: #ffffff;
+  border: 1px solid #eef2f7;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.my-bookings-page .empty-state p {
+  margin-bottom: 18px;
+  color: #475569;
+}
+
+.my-bookings-page .btn-primary {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #ff6b4a, #ff8c6e);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.my-bookings-page .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(255, 107, 74, 0.24);
+}
+.my-bookings-page .clickable-header:focus-visible,
+.my-bookings-page .status-badge:focus-visible,
+.my-bookings-page .btn-cancel:focus-visible,
+.my-bookings-page .btn-primary:focus-visible,
+.my-bookings-page .cancel-modal-close:focus-visible,
+.my-bookings-page .cancel-modal-secondary:focus-visible,
+.my-bookings-page .cancel-modal-danger:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .my-bookings-page *,
+  .my-bookings-page *::before,
+  .my-bookings-page *::after,
+  .cancel-modal-overlay *,
+  .cancel-modal-overlay *::before,
+  .cancel-modal-overlay *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .booking-card:hover,
+  .status-badge.clickable:hover,
+  .btn-cancel:hover:not(:disabled),
+  .cancel-modal-danger:hover:not(:disabled),
+  .my-bookings-page .btn-primary:hover {
+    transform: none;
+  }
 }

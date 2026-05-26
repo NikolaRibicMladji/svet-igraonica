@@ -8,7 +8,7 @@ import { useToast } from "../context/ToastContext";
 
 const OwnerDashboard = () => {
   const { user, loading: authLoading } = useAuth();
-  const toast = useToast();
+  const { success: showSuccess, error: showError } = useToast();
   const [stats, setStats] = useState(null);
   const [myPlayrooms, setMyPlayrooms] = useState([]);
   const [selectedPlayroomId, setSelectedPlayroomId] = useState("");
@@ -198,7 +198,7 @@ const OwnerDashboard = () => {
 
   const handleConfirm = async (bookingId) => {
     if (!bookingId) {
-      toast.error("Nedostaje ID rezervacije za potvrdu.");
+      showError("Nedostaje ID rezervacije za potvrdu.");
       return;
     }
 
@@ -211,19 +211,19 @@ const OwnerDashboard = () => {
       const res = await confirmBooking(bookingId);
 
       if (res?.success) {
-        toast.success(res.message || "Rezervacija je potvrđena.");
+        showSuccess(res.message || "Rezervacija je potvrđena.");
         await fetchBookings();
 
         if (selectedPlayroomId) {
           await fetchStats(selectedPlayroomId);
         }
       } else {
-        toast.error(res?.error || "Greška pri potvrdi rezervacije.");
+        showError(res?.error || "Greška pri potvrdi rezervacije.");
       }
     } catch (err) {
       const message =
         err?.response?.data?.message || "Greška pri potvrdi rezervacije.";
-      toast.error(message);
+      showError(message);
     } finally {
       setConfirmingId("");
     }
@@ -640,7 +640,11 @@ const OwnerDashboard = () => {
   const renderOwnerBookingsAccordion = (items = []) => {
     if (!items.length) {
       return (
-        <div className="empty-state modal-empty">
+        <div
+          className="empty-state modal-empty"
+          role="status"
+          aria-live="polite"
+        >
           <p>Nema rezervacija.</p>
         </div>
       );
@@ -678,6 +682,8 @@ const OwnerDashboard = () => {
                 onClick={() => toggleOwnerBookingDetails(booking._id)}
                 role="button"
                 tabIndex={0}
+                aria-expanded={isExpanded}
+                aria-controls={`owner-booking-details-${booking._id}`}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
@@ -707,7 +713,10 @@ const OwnerDashboard = () => {
               </div>
 
               {isExpanded && (
-                <div className="owner-booking-details">
+                <div
+                  id={`owner-booking-details-${booking._id}`}
+                  className="owner-booking-details"
+                >
                   <p>📧 {booking.emailRoditelja || "-"}</p>
                   <p>📞 {booking.telefonRoditelja || booking.telefon || "-"}</p>
                   <p>
@@ -777,6 +786,10 @@ const OwnerDashboard = () => {
                       className="btn-confirm-booking"
                       onClick={() => handleConfirm(booking._id)}
                       disabled={confirmingId === booking._id}
+                      aria-busy={confirmingId === booking._id}
+                      aria-label={`Potvrdi rezervaciju za ${booking.imeRoditelja || ""} ${
+                        booking.prezimeRoditelja || ""
+                      }`.trim()}
                     >
                       {confirmingId === booking._id
                         ? "Potvrđujem..."
@@ -827,7 +840,7 @@ const OwnerDashboard = () => {
           <h2>Zdravo, {user?.ime || "vlasniče"} 👋</h2>
         </header>
 
-        <div className="empty-state">
+        <div className="empty-state" role="status" aria-live="polite">
           <p>Još nemate kreiranu nijednu igraonicu.</p>
           <p>Prvo kreirajte svoju igraonicu da biste videli statistiku.</p>
         </div>
@@ -1074,9 +1087,15 @@ const OwnerDashboard = () => {
             setExpandedOwnerBookingId(null);
           }}
         >
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="all-bookings-modal-title"
+          >
             <div className="modal-header sticky-modal-header">
-              <h3>📊 Sve rezervacije</h3>
+              <h3 id="all-bookings-modal-title">📊 Sve rezervacije</h3>
               <button
                 type="button"
                 className="modal-close-btn"
@@ -1102,9 +1121,15 @@ const OwnerDashboard = () => {
             setExpandedOwnerBookingId(null);
           }}
         >
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="active-bookings-modal-title"
+          >
             <div className="modal-header sticky-modal-header">
-              <h3>🔥 Rezervacije u toku</h3>
+              <h3 id="active-bookings-modal-title">🔥 Rezervacije u toku</h3>
 
               <button
                 type="button"
@@ -1131,9 +1156,15 @@ const OwnerDashboard = () => {
             setExpandedOwnerBookingId(null);
           }}
         >
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="today-bookings-modal-title"
+          >
             <div className="modal-header sticky-modal-header">
-              <h3>📅 Današnje rezervacije</h3>
+              <h3 id="today-bookings-modal-title">📅 Današnje rezervacije</h3>
               <button
                 type="button"
                 className="modal-close-btn"
@@ -1160,9 +1191,17 @@ const OwnerDashboard = () => {
             setExpandedOwnerBookingId(null);
           }}
         >
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="completed-bookings-modal-title"
+          >
             <div className="modal-header sticky-modal-header">
-              <h3>🎉 Završene rezervacije</h3>
+              <h3 id="completed-bookings-modal-title">
+                🎉 Završene rezervacije
+              </h3>
               <button
                 type="button"
                 className="modal-close-btn"
@@ -1189,9 +1228,17 @@ const OwnerDashboard = () => {
             setExpandedOwnerBookingId(null);
           }}
         >
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pending-bookings-modal-title"
+          >
             <div className="modal-header sticky-modal-header">
-              <h3>⏳ Rezervacije na čekanju</h3>
+              <h3 id="pending-bookings-modal-title">
+                ⏳ Rezervacije na čekanju
+              </h3>
               <button
                 type="button"
                 className="modal-close-btn"
@@ -1218,9 +1265,17 @@ const OwnerDashboard = () => {
             setExpandedOwnerBookingId(null);
           }}
         >
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirmed-bookings-modal-title"
+          >
             <div className="modal-header sticky-modal-header">
-              <h3>✅ Potvrđene rezervacije</h3>
+              <h3 id="confirmed-bookings-modal-title">
+                ✅ Potvrđene rezervacije
+              </h3>
               <button
                 type="button"
                 className="modal-close-btn"
@@ -1245,9 +1300,15 @@ const OwnerDashboard = () => {
             setShowStatsModal(false);
           }}
         >
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="stats-modal-title"
+          >
             <div className="modal-header sticky-modal-header">
-              <h3>📊 Statistika</h3>
+              <h3 id="stats-modal-title">📊 Statistika</h3>
               <button
                 type="button"
                 className="modal-close-btn"
@@ -1350,9 +1411,15 @@ const OwnerDashboard = () => {
             setShowReviewsModal(false);
           }}
         >
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reviews-modal-title"
+          >
             <div className="modal-header sticky-modal-header">
-              <h3>⭐ Recenzije</h3>
+              <h3 id="reviews-modal-title">⭐ Recenzije</h3>
               <button
                 type="button"
                 className="modal-close-btn"
@@ -1388,7 +1455,11 @@ const OwnerDashboard = () => {
                 {reviewsError}
               </div>
             ) : reviews.length === 0 ? (
-              <div className="empty-state modal-empty">
+              <div
+                className="empty-state modal-empty"
+                role="status"
+                aria-live="polite"
+              >
                 <p>Još nema recenzija za ovu igraonicu.</p>
               </div>
             ) : (
