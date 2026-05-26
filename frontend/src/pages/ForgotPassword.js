@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import api from "../services/api";
+import { forgotPassword } from "../services/authService";
 import "../styles/global.css";
 
 const ForgotPassword = () => {
@@ -12,12 +12,22 @@ const ForgotPassword = () => {
 
   const validateEmail = (value) => /^\S+@\S+\.\S+$/.test(value);
 
+  const getFieldErrorId = (field) => `forgot-${field}-error`;
+
+  const renderFieldError = (field) =>
+    errors[field] ? (
+      <div id={getFieldErrorId(field)} className="field-error" role="alert">
+        {errors[field]}
+      </div>
+    ) : null;
+
   const validateForm = () => {
     const newErrors = {};
+    const safeEmail = email.trim().toLowerCase();
 
-    if (!email.trim()) {
+    if (!safeEmail) {
       newErrors.email = "Email adresa je obavezna.";
-    } else if (!validateEmail(email.trim())) {
+    } else if (!validateEmail(safeEmail)) {
       newErrors.email = "Unesite ispravnu email adresu.";
     }
 
@@ -32,6 +42,7 @@ const ForgotPassword = () => {
 
     setErrors((prev) => {
       if (!prev.email) return prev;
+
       const next = { ...prev };
       delete next.email;
       return next;
@@ -40,6 +51,9 @@ const ForgotPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (submitting) return;
+
     setServerMessage("");
     setServerError("");
 
@@ -48,22 +62,23 @@ const ForgotPassword = () => {
     setSubmitting(true);
 
     try {
-      const response = await api.post("/auth/forgot-password", {
-        email: email.trim(),
-      });
+      const result = await forgotPassword(email);
 
-      if (response.data?.success) {
+      if (result?.success) {
         setServerMessage(
-          response.data.message ||
+          result.message ||
             "Ako nalog postoji, poslali smo link za reset lozinke.",
         );
         setEmail("");
-      } else {
-        setServerError("Greška pri slanju reset linka.");
+        return;
       }
+
+      setServerError(result?.error || "Greška pri slanju reset linka.");
     } catch (err) {
       setServerError(
-        err?.response?.data?.message || "Greška pri slanju reset linka.",
+        err?.response?.data?.message ||
+          err?.message ||
+          "Greška pri slanju reset linka.",
       );
     } finally {
       setSubmitting(false);
@@ -76,13 +91,21 @@ const ForgotPassword = () => {
         <h1>Zaboravljena lozinka</h1>
 
         {serverMessage && (
-          <div className="success-message">{serverMessage}</div>
+          <div className="success-message" role="status" aria-live="polite">
+            {serverMessage}
+          </div>
         )}
-        {serverError && <div className="error-message">{serverError}</div>}
+
+        {serverError && (
+          <div className="error-message" role="alert">
+            {serverError}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="form-group">
             <label htmlFor="forgot-email">Email</label>
+
             <input
               id="forgot-email"
               type="email"
@@ -90,14 +113,21 @@ const ForgotPassword = () => {
               onChange={handleChange}
               autoComplete="email"
               className={errors.email ? "input-error" : ""}
+              required
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={
+                errors.email ? getFieldErrorId("email") : undefined
+              }
             />
-            {errors.email && <div className="field-error">{errors.email}</div>}
+
+            {renderFieldError("email")}
           </div>
 
           <button
             type="submit"
             className="btn btn-primary"
             disabled={submitting}
+            aria-busy={submitting}
           >
             {submitting ? "Šaljem..." : "Pošalji link"}
           </button>

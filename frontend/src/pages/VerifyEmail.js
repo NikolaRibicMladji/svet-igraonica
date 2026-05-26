@@ -1,51 +1,69 @@
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import api from "../services/api";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { verifyEmailAddress } from "../services/authService";
 import "../styles/global.css";
-import { useNavigate } from "react-router-dom";
+
+const REDIRECT_DELAY_MS = 2000;
 
 const VerifyEmail = () => {
   const { token } = useParams();
   const navigate = useNavigate();
+
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("Potvrđujemo vašu email adresu...");
 
   useEffect(() => {
-    const verifyEmail = async () => {
-      try {
-        const response = await api.get(`/auth/verify-email/${token}`);
+    let isMounted = true;
+    let redirectTimer = null;
 
+    const handleVerifyEmail = async () => {
+      if (!token) {
+        setStatus("error");
+        setMessage("Verifikacioni token nije pronađen.");
+        return;
+      }
+
+      setStatus("loading");
+      setMessage("Potvrđujemo vašu email adresu...");
+
+      const result = await verifyEmailAddress(token);
+
+      if (!isMounted) return;
+
+      if (result?.success) {
         setStatus("success");
-        setMessage(
-          response?.data?.message || "Email adresa je uspešno potvrđena.",
-        );
+        setMessage(result.message || "Email adresa je uspešno potvrđena.");
 
-        localStorage.removeItem("pendingVerificationEmail");
+        sessionStorage.removeItem("pendingVerificationEmail");
 
-        setTimeout(() => {
+        redirectTimer = setTimeout(() => {
           navigate("/login", {
             replace: true,
             state: {
               registrationSuccess: "Email je uspešno potvrđen. Prijavite se.",
             },
           });
-        }, 2000);
-      } catch (error) {
-        setStatus("error");
-        setMessage(
-          error?.response?.data?.message ||
-            "Verifikacioni link nije validan ili je istekao.",
-        );
+        }, REDIRECT_DELAY_MS);
+
+        return;
       }
+
+      setStatus("error");
+      setMessage(
+        result?.error || "Verifikacioni link nije validan ili je istekao.",
+      );
     };
 
-    if (token) {
-      verifyEmail();
-    } else {
-      setStatus("error");
-      setMessage("Verifikacioni token nije pronađen.");
-    }
-  }, [token]);
+    handleVerifyEmail();
+
+    return () => {
+      isMounted = false;
+
+      if (redirectTimer) {
+        clearTimeout(redirectTimer);
+      }
+    };
+  }, [token, navigate]);
 
   return (
     <div className="container auth-page">
@@ -60,6 +78,8 @@ const VerifyEmail = () => {
                 ? "error-message"
                 : "info-message"
           }
+          role={status === "error" ? "alert" : "status"}
+          aria-live={status === "error" ? "assertive" : "polite"}
         >
           {message}
         </div>
