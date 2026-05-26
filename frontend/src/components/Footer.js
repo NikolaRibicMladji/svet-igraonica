@@ -8,11 +8,11 @@ const Footer = () => {
       <div className="container site-footer-container">
         <p>© Svet Igraonica</p>
 
-        <div className="site-footer-links">
+        <nav className="site-footer-links" aria-label="Linkovi u footer-u">
           <Link to="/privacy-policy">Politika privatnosti</Link>
           <Link to="/terms-of-service">Uslovi korišćenja</Link>
           <Link to="/booking-policy">Pravila rezervacije</Link>
-        </div>
+        </nav>
       </div>
     </footer>
   );

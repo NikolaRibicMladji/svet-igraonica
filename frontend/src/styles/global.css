@@ -229,20 +229,6 @@ p {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
-.input-error {
-  border: 2px solid #e74c3c !important;
-}
-.input-error:focus {
-  border-color: #e74c3c;
-  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
-}
-
-.field-error {
-  color: #e74c3c;
-  font-size: 0.8rem;
-  margin-top: 6px;
-  font-weight: 500;
-}
 
 /* ============================================
    AUTH FORM POLISH
@@ -322,6 +308,13 @@ p {
 .success-message {
   background: #e8f5e9;
   color: #2e7d32;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+.info-message {
+  background: #e0f2fe;
+  color: #075985;
   padding: 12px 16px;
   border-radius: 12px;
   margin-bottom: 16px;
@@ -452,4 +445,32 @@ p {
 
 .password-toggle-btn:hover {
   color: #111;
+}
+.btn:focus-visible,
+.auth-switch-text a:focus-visible,
+.form-group.terms-checkbox label.terms-checkbox-label a:focus-visible,
+.password-toggle-btn:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  outline-offset: 3px;
+}
+
+.form-group.terms-checkbox
+  label.terms-checkbox-label
+  input[type="checkbox"]:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35) !important;
+  outline-offset: 3px !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  .btn:hover,
+  .card:hover {
+    transform: none;
+  }
 }
