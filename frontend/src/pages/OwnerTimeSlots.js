@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getMyPlayrooms } from "../services/playroomService";
 import { getAllTimeSlotsForOwner } from "../services/bookingService";
 import { useAuth } from "../context/AuthContext";
-
+import { getLocalDate } from "../utils/bookingUtils";
 import "../styles/OwnerTimeSlots.css";
 
 const OwnerTimeSlots = () => {
@@ -15,9 +15,7 @@ const OwnerTimeSlots = () => {
   const [timeSlots, setTimeSlots] = useState([]);
   const [loadingPlayrooms, setLoadingPlayrooms] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0],
-  );
+  const [selectedDate, setSelectedDate] = useState(getLocalDate());
   const [message, setMessage] = useState("");
 
   const [error, setError] = useState("");
@@ -123,6 +121,40 @@ const OwnerTimeSlots = () => {
     return `${minuti}min`;
   };
 
+  const getDurationHours = (od, doVreme) => {
+    if (!od || !doVreme) return 1;
+
+    const [h1, m1] = od.split(":").map(Number);
+    const [h2, m2] = doVreme.split(":").map(Number);
+
+    const start = h1 * 60 + m1;
+    const end = h2 * 60 + m2;
+    const diff = end - start;
+
+    if (!Number.isFinite(diff) || diff <= 0) return 1;
+
+    return diff / 60;
+  };
+
+  const getItemCalculationText = (item, segment) => {
+    if (!item) return "";
+
+    const cena = Number(item.cena) || 0;
+    const tip = item.tip || "fiksno";
+    const brojDece = Number(segment?.booking?.brojDece) || 0;
+    const sati = getDurationHours(segment?.vremeOd, segment?.vremeDo);
+
+    if (tip === "po_satu" || tip === "poSatu") {
+      return `${cena} RSD × ${sati}h = ${cena * sati} RSD`;
+    }
+
+    if (tip === "po_osobi" || tip === "poOsobi") {
+      return `${cena} RSD × ${brojDece} = ${cena * brojDece} RSD`;
+    }
+
+    return `${cena} RSD`;
+  };
+
   const goToReservationPage = () => {
     if (!selectedPlayroom || !selectedDate) {
       setError("Izaberi igraonicu i datum.");
@@ -186,7 +218,11 @@ const OwnerTimeSlots = () => {
   };
 
   if (authLoading || loadingPlayrooms) {
-    return <div className="container loading">Učitavanje...</div>;
+    return (
+      <div className="container loading" role="status" aria-live="polite">
+        Učitavanje...
+      </div>
+    );
   }
 
   if (user?.role !== "vlasnik" && user?.role !== "admin") {
@@ -204,11 +240,20 @@ const OwnerTimeSlots = () => {
         <h1>📅 Termini igraonice</h1>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
-      {message && <div className="success-message">{message}</div>}
+      {error && (
+        <div className="error-message" role="alert">
+          {error}
+        </div>
+      )}
+
+      {message && (
+        <div className="success-message" role="status" aria-live="polite">
+          {message}
+        </div>
+      )}
 
       {playrooms.length === 0 ? (
-        <div className="empty-state">
+        <div className="empty-state" role="status" aria-live="polite">
           <p>Nemate nijednu igraonicu.</p>
           <button
             type="button"
@@ -227,7 +272,7 @@ const OwnerTimeSlots = () => {
                 id="owner-date-select"
                 type="date"
                 value={selectedDate}
-                min={new Date().toISOString().split("T")[0]}
+                min={getLocalDate()}
                 onChange={(e) => {
                   setSelectedDate(e.target.value);
                   setMessage("");
@@ -248,9 +293,11 @@ const OwnerTimeSlots = () => {
           </div>
 
           {loadingSlots ? (
-            <div className="loading-slots">Učitavanje termina...</div>
+            <div className="loading-slots" role="status" aria-live="polite">
+              Učitavanje termina...
+            </div>
           ) : occupiedSlots.length === 0 ? (
-            <div className="empty-state">
+            <div className="empty-state" role="status" aria-live="polite">
               <p>Nema zauzetih termina za izabrani datum.</p>
             </div>
           ) : (
@@ -263,10 +310,14 @@ const OwnerTimeSlots = () => {
                   }`}
                 >
                   <div
-                    className="owner-booking-card-header"
+                    className="owner-booking-card-header clickable-slot"
                     onClick={() => handleSlotClick(segment)}
                     role="button"
                     tabIndex={0}
+                    aria-expanded={
+                      expandedBookingId === getBookingId(segment.booking)
+                    }
+                    aria-controls={`owner-slot-booking-details-${getBookingId(segment.booking)}`}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
@@ -308,6 +359,7 @@ const OwnerTimeSlots = () => {
 
                   {expandedBookingId === getBookingId(segment.booking) && (
                     <div
+                      id={`owner-slot-booking-details-${getBookingId(segment.booking)}`}
                       className="owner-booking-card-details"
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -346,29 +398,7 @@ const OwnerTimeSlots = () => {
                             {segment.booking.izabraneCene.map((item, idx) => (
                               <p key={`cena-${idx}`}>
                                 • {item.naziv} ({item.tip || "fiksno"}) -{" "}
-                                {item.cena} RSD
-                                {item.tip === "po_satu" && (
-                                  <>
-                                    {" "}
-                                    ×{" "}
-                                    {calculateDuration(
-                                      segment.vremeOd,
-                                      segment.vremeDo,
-                                    )}{" "}
-                                    ={" "}
-                                    {(Number(item.cena) || 0) *
-                                      ((Number(segment.vremeDo?.slice(0, 2)) *
-                                        60 +
-                                        Number(segment.vremeDo?.slice(3, 5)) -
-                                        (Number(segment.vremeOd?.slice(0, 2)) *
-                                          60 +
-                                          Number(
-                                            segment.vremeOd?.slice(3, 5),
-                                          ))) /
-                                        60)}{" "}
-                                    RSD
-                                  </>
-                                )}
+                                {getItemCalculationText(item, segment)}
                                 {item.opis && <span> - {item.opis}</span>}
                               </p>
                             ))}
@@ -381,7 +411,10 @@ const OwnerTimeSlots = () => {
                             <strong>Paket:</strong>{" "}
                             {segment.booking.izabraniPaket.naziv} (
                             {segment.booking.izabraniPaket.tip || "fiksno"}) -{" "}
-                            {segment.booking.izabraniPaket.cena} RSD
+                            {getItemCalculationText(
+                              segment.booking.izabraniPaket,
+                              segment,
+                            )}
                           </p>
 
                           {segment.booking.izabraniPaket.opis && (
@@ -400,7 +433,7 @@ const OwnerTimeSlots = () => {
                             {segment.booking.izabraneUsluge.map((item, idx) => (
                               <p key={`usluga-${idx}`}>
                                 • {item.naziv} ({item.tip || "fiksno"}) -{" "}
-                                {item.cena} RSD
+                                {getItemCalculationText(item, segment)}
                                 {item.opis && <span> - {item.opis}</span>}
                               </p>
                             ))}

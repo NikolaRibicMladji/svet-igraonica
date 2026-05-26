@@ -56,6 +56,15 @@ const Register = () => {
     return "";
   };
 
+  const getFieldErrorId = (field) => `register-${field}-error`;
+
+  const renderFieldError = (field) =>
+    errors[field] ? (
+      <div id={getFieldErrorId(field)} className="field-error" role="alert">
+        {errors[field]}
+      </div>
+    ) : null;
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -165,53 +174,65 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (submitting) return;
+
     setServerError("");
 
     if (!validateForm()) return;
 
     setSubmitting(true);
 
-    const result = await register({
-      ...formData,
-      acceptedTerms,
-      ime: formData.ime.trim(),
-      prezime: formData.prezime.trim(),
-      email: formData.email.trim(),
-      telefon: formData.telefon.trim(),
-    });
-
-    if (result?.success) {
-      setSuccessMessage(
-        result?.message || "Proverite email adresu radi potvrde naloga.",
-      );
-
-      setFormData({
-        ime: "",
-        prezime: "",
-        email: "",
-        password: "",
-        telefon: "",
-        role: "",
+    try {
+      const result = await register({
+        ...formData,
+        acceptedTerms,
+        ime: formData.ime.trim(),
+        prezime: formData.prezime.trim(),
+        email: formData.email.trim(),
+        telefon: formData.telefon.trim(),
       });
 
-      setConfirmPassword("");
-      setAcceptedTerms(false);
+      if (result?.success) {
+        setSuccessMessage(
+          result?.message || "Proverite email adresu radi potvrde naloga.",
+        );
 
-      setTimeout(() => {
-        navigate("/login", {
-          replace: true,
-          state: {
-            registrationSuccess:
-              "Uspešno ste se registrovali. Proverite email adresu radi potvrde naloga.",
-          },
+        setFormData({
+          ime: "",
+          prezime: "",
+          email: "",
+          password: "",
+          telefon: "",
+          role: "",
         });
-      }, 3500);
-    } else {
-      setServerError(result?.error || "Greška pri registraciji.");
-    }
 
-    setSubmitting(false);
+        setConfirmPassword("");
+        setAcceptedTerms(false);
+
+        setTimeout(() => {
+          navigate("/login", {
+            replace: true,
+            state: {
+              registrationSuccess:
+                "Uspešno ste se registrovali. Proverite email adresu radi potvrde naloga.",
+            },
+          });
+        }, 3500);
+
+        return;
+      }
+
+      setServerError(result?.error || "Greška pri registraciji.");
+    } catch (err) {
+      setServerError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Greška pri registraciji.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -219,9 +240,16 @@ const Register = () => {
       <div className="auth-card">
         <h1>Registracija</h1>
 
-        {serverError && <div className="error-message">{serverError}</div>}
+        {serverError && (
+          <div className="error-message" role="alert">
+            {serverError}
+          </div>
+        )}
+
         {successMessage && (
-          <div className="success-message">{successMessage}</div>
+          <div className="success-message" role="status" aria-live="polite">
+            {successMessage}
+          </div>
         )}
 
         <form onSubmit={handleSubmit} noValidate>
@@ -237,8 +265,10 @@ const Register = () => {
               onChange={handleChange}
               autoComplete="given-name"
               className={errors.ime ? "input-error" : ""}
+              aria-invalid={Boolean(errors.ime)}
+              aria-describedby={errors.ime ? getFieldErrorId("ime") : undefined}
             />
-            {errors.ime && <div className="field-error">{errors.ime}</div>}
+            {renderFieldError("ime")}
           </div>
 
           <div className="form-group">
@@ -253,10 +283,12 @@ const Register = () => {
               onChange={handleChange}
               autoComplete="family-name"
               className={errors.prezime ? "input-error" : ""}
+              aria-invalid={Boolean(errors.prezime)}
+              aria-describedby={
+                errors.prezime ? getFieldErrorId("prezime") : undefined
+              }
             />
-            {errors.prezime && (
-              <div className="field-error">{errors.prezime}</div>
-            )}
+            {renderFieldError("prezime")}
           </div>
 
           <div className="form-group">
@@ -270,8 +302,12 @@ const Register = () => {
               onChange={handleChange}
               autoComplete="email"
               className={errors.email ? "input-error" : ""}
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={
+                errors.email ? getFieldErrorId("email") : undefined
+              }
             />
-            {errors.email && <div className="field-error">{errors.email}</div>}
+            {renderFieldError("email")}
           </div>
 
           <div className="form-group">
@@ -287,6 +323,10 @@ const Register = () => {
                 onChange={handleChange}
                 autoComplete="new-password"
                 className={errors.password ? "input-error" : ""}
+                aria-invalid={Boolean(errors.password)}
+                aria-describedby={
+                  errors.password ? getFieldErrorId("password") : undefined
+                }
               />
 
               <button
@@ -294,13 +334,12 @@ const Register = () => {
                 className="password-toggle-btn"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? "Sakrij lozinku" : "Prikaži lozinku"}
+                aria-pressed={showPassword}
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
-            {errors.password && (
-              <div className="field-error">{errors.password}</div>
-            )}
+            {renderFieldError("password")}
           </div>
 
           <div className="form-group">
@@ -315,6 +354,12 @@ const Register = () => {
                 onChange={handleConfirmPasswordChange}
                 autoComplete="new-password"
                 className={errors.confirmPassword ? "input-error" : ""}
+                aria-invalid={Boolean(errors.confirmPassword)}
+                aria-describedby={
+                  errors.confirmPassword
+                    ? getFieldErrorId("confirmPassword")
+                    : undefined
+                }
               />
 
               <button
@@ -326,13 +371,12 @@ const Register = () => {
                     ? "Sakrij potvrdu lozinke"
                     : "Prikaži potvrdu lozinke"
                 }
+                aria-pressed={showConfirmPassword}
               >
                 {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
-            {errors.confirmPassword && (
-              <div className="field-error">{errors.confirmPassword}</div>
-            )}
+            {renderFieldError("confirmPassword")}
           </div>
 
           <div className="form-group">
@@ -347,10 +391,12 @@ const Register = () => {
               autoComplete="tel"
               inputMode="numeric"
               className={errors.telefon ? "input-error" : ""}
+              aria-invalid={Boolean(errors.telefon)}
+              aria-describedby={
+                errors.telefon ? getFieldErrorId("telefon") : undefined
+              }
             />
-            {errors.telefon && (
-              <div className="field-error">{errors.telefon}</div>
-            )}
+            {renderFieldError("telefon")}
           </div>
 
           <div className="form-group">
@@ -362,34 +408,58 @@ const Register = () => {
               value={formData.role}
               onChange={handleChange}
               className={errors.role ? "input-error" : ""}
+              aria-invalid={Boolean(errors.role)}
+              aria-describedby={
+                errors.role ? getFieldErrorId("role") : undefined
+              }
             >
               <option value="">-- Izaberite tip korisnika --</option>
               <option value="roditelj">Roditelj</option>
               <option value="vlasnik">Vlasnik igraonice</option>
             </select>
-            {errors.role && <div className="field-error">{errors.role}</div>}
+            {renderFieldError("role")}
           </div>
           <div className="form-group terms-checkbox">
             <label className="terms-checkbox-label">
               <span>
                 Prihvatam{" "}
-                <a href="/terms-of-service" target="_blank" rel="noreferrer">
+                <a
+                  href="/terms-of-service"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Uslove korišćenja
                 </a>
                 ,{" "}
-                <a href="/privacy-policy" target="_blank" rel="noreferrer">
+                <a
+                  href="/privacy-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Politiku privatnosti
                 </a>{" "}
                 i{" "}
-                <a href="/booking-policy" target="_blank" rel="noreferrer">
+                <a
+                  href="/booking-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Pravila rezervacije
                 </a>
                 .
               </span>
               <input
+                id="register-accepted-terms"
+                name="acceptedTerms"
                 type="checkbox"
                 required
                 checked={acceptedTerms}
+                aria-invalid={Boolean(errors.acceptedTerms)}
+                aria-describedby={
+                  errors.acceptedTerms
+                    ? getFieldErrorId("acceptedTerms")
+                    : undefined
+                }
                 onChange={(e) => {
                   setAcceptedTerms(e.target.checked);
                   setServerError("");
@@ -404,15 +474,14 @@ const Register = () => {
               />
             </label>
 
-            {errors.acceptedTerms && (
-              <div className="field-error">{errors.acceptedTerms}</div>
-            )}
+            {renderFieldError("acceptedTerms")}
           </div>
 
           <button
             type="submit"
             className="btn btn-primary"
             disabled={submitting || !acceptedTerms}
+            aria-busy={submitting}
           >
             {submitting ? "Registrujem..." : "Registruj se"}
           </button>

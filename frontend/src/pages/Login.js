@@ -76,7 +76,7 @@ const Login = () => {
     if (location.state?.registrationSuccess) {
       setSuccessMessage(location.state.registrationSuccess);
 
-      const pendingEmail = localStorage.getItem("pendingVerificationEmail");
+      const pendingEmail = sessionStorage.getItem("pendingVerificationEmail");
 
       if (pendingEmail) {
         setEmail(pendingEmail);
@@ -87,6 +87,15 @@ const Login = () => {
   }, [location.state]);
 
   const validateEmail = (value) => /^\S+@\S+\.\S+$/.test(value);
+
+  const getFieldErrorId = (field) => `login-${field}-error`;
+
+  const renderFieldError = (field) =>
+    errors[field] ? (
+      <div id={getFieldErrorId(field)} className="field-error" role="alert">
+        {errors[field]}
+      </div>
+    ) : null;
 
   const validateForm = () => {
     const newErrors = {};
@@ -132,7 +141,9 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (submitting) return;
+
     setServerError("");
     setShowResendVerification(false);
 
@@ -140,11 +151,16 @@ const Login = () => {
 
     setSubmitting(true);
 
-    const result = await login(email.trim().toLowerCase(), password);
+    try {
+      const result = await login(email.trim().toLowerCase(), password);
 
-    if (result?.success) {
-      navigate(getPostLoginRedirectPath(result.user, from), { replace: true });
-    } else {
+      if (result?.success) {
+        navigate(getPostLoginRedirectPath(result.user, from), {
+          replace: true,
+        });
+        return;
+      }
+
       const errorMessage = result?.error || "Greška pri prijavi.";
 
       setServerError(errorMessage);
@@ -155,12 +171,16 @@ const Login = () => {
         const pendingEmail = email.trim().toLowerCase();
 
         if (pendingEmail) {
-          localStorage.setItem("pendingVerificationEmail", pendingEmail);
+          sessionStorage.setItem("pendingVerificationEmail", pendingEmail);
         }
       }
+    } catch (err) {
+      setServerError(
+        err?.response?.data?.message || err?.message || "Greška pri prijavi.",
+      );
+    } finally {
+      setSubmitting(false);
     }
-
-    setSubmitting(false);
   };
 
   const handleResendVerification = async () => {
@@ -168,7 +188,7 @@ const Login = () => {
 
     const normalizedEmail =
       email.trim().toLowerCase() ||
-      localStorage.getItem("pendingVerificationEmail");
+      sessionStorage.getItem("pendingVerificationEmail");
 
     if (!normalizedEmail || !validateEmail(normalizedEmail)) {
       setServerError("Unesite validnu email adresu.");
@@ -180,20 +200,28 @@ const Login = () => {
     setSuccessMessage("");
     setShowResendVerification(false);
 
-    const result = await resendVerificationEmail(normalizedEmail);
+    try {
+      const result = await resendVerificationEmail(normalizedEmail);
 
-    if (result?.success) {
-      setSuccessMessage(
-        result.message ||
-          "Ako nalog postoji i nije potvrđen, poslali smo novi email.",
-      );
-    } else {
+      if (result?.success) {
+        setSuccessMessage(
+          result.message ||
+            "Ako nalog postoji i nije potvrđen, poslali smo novi email.",
+        );
+      } else {
+        setServerError(
+          result?.error || "Greška pri slanju verifikacionog emaila.",
+        );
+      }
+    } catch (err) {
       setServerError(
-        result?.error || "Greška pri slanju verifikacionog emaila.",
+        err?.response?.data?.message ||
+          err?.message ||
+          "Greška pri slanju verifikacionog emaila.",
       );
+    } finally {
+      setResending(false);
     }
-
-    setResending(false);
   };
 
   return (
@@ -202,9 +230,16 @@ const Login = () => {
         <h1>Prijava</h1>
 
         {successMessage && (
-          <div className="success-message">{successMessage}</div>
+          <div className="success-message" role="status" aria-live="polite">
+            {successMessage}
+          </div>
         )}
-        {serverError && <div className="error-message">{serverError}</div>}
+
+        {serverError && (
+          <div className="error-message" role="alert">
+            {serverError}
+          </div>
+        )}
 
         {showResendVerification && (
           <button
@@ -212,6 +247,7 @@ const Login = () => {
             className="btn btn-secondary"
             onClick={handleResendVerification}
             disabled={resending}
+            aria-busy={resending}
           >
             {resending ? "Šaljem..." : "Pošalji ponovo verifikacioni email"}
           </button>
@@ -227,8 +263,13 @@ const Login = () => {
               onChange={handleEmailChange}
               autoComplete="email"
               className={errors.email ? "input-error" : ""}
+              required
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={
+                errors.email ? getFieldErrorId("email") : undefined
+              }
             />
-            {errors.email && <div className="field-error">{errors.email}</div>}
+            {renderFieldError("email")}
           </div>
 
           <div className="form-group">
@@ -241,6 +282,11 @@ const Login = () => {
                 onChange={handlePasswordChange}
                 autoComplete="current-password"
                 className={errors.password ? "input-error" : ""}
+                required
+                aria-invalid={Boolean(errors.password)}
+                aria-describedby={
+                  errors.password ? getFieldErrorId("password") : undefined
+                }
               />
 
               <button
@@ -248,19 +294,19 @@ const Login = () => {
                 className="password-toggle-btn"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? "Sakrij lozinku" : "Prikaži lozinku"}
+                aria-pressed={showPassword}
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
-            {errors.password && (
-              <div className="field-error">{errors.password}</div>
-            )}
+            {renderFieldError("password")}
           </div>
 
           <button
             type="submit"
             className="btn btn-primary"
             disabled={submitting}
+            aria-busy={submitting}
           >
             {submitting ? "Prijavljujem..." : "Prijavi se"}
           </button>

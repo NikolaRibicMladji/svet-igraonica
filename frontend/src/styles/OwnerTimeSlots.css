@@ -10,12 +10,12 @@
 
 /* HEADER */
 
-.page-header {
+.owner-slots-page .page-header {
   text-align: center;
   margin-bottom: 28px;
 }
 
-.page-header h1 {
+.owner-slots-page .page-header h1 {
   margin-bottom: 8px;
   color: #1e293b;
   font-size: 2rem;
@@ -23,16 +23,16 @@
   letter-spacing: -0.02em;
 }
 
-.page-header p {
+.owner-slots-page .page-header p {
   color: #64748b;
   font-size: 0.95rem;
 }
 
-.clickable-slot {
+.owner-slots-page .clickable-slot {
   cursor: pointer;
 }
 
-.slot-click-hint {
+.owner-slots-page .slot-click-hint {
   margin-top: 16px;
   padding: 12px 14px;
   border-radius: 14px;
@@ -42,18 +42,14 @@
   font-weight: 700;
 }
 
-.slot-card.zauzeto .slot-click-hint {
+.owner-slots-page .slot-card.zauzeto .slot-click-hint {
   background: #f1f5f9;
   color: #475569;
 }
 
-.booking-info {
-  margin-top: 16px;
-}
-
 /* ALERTS */
 
-.success-message {
+.owner-slots-page .success-message {
   background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
   color: #2e7d32;
   padding: 14px 20px;
@@ -65,7 +61,7 @@
   animation: slideIn 0.3s ease;
 }
 
-.error-message {
+.owner-slots-page .error-message {
   background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
   color: #c62828;
   padding: 14px 20px;
@@ -91,7 +87,7 @@
 
 /* FILTERS */
 
-.filters-card {
+.owner-slots-page .filters-card {
   display: flex;
   gap: 24px;
   margin-bottom: 24px;
@@ -103,12 +99,12 @@
   border: 1px solid rgba(0, 0, 0, 0.03);
 }
 
-.filter-group {
+.owner-slots-page .filter-group {
   flex: 1;
   min-width: 220px;
 }
 
-.filter-group label {
+.owner-slots-page .filter-group label {
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
@@ -118,8 +114,8 @@
   letter-spacing: 0.5px;
 }
 
-.filter-group select,
-.filter-group input[type="date"] {
+.owner-slots-page .filter-group select,
+.owner-slots-page .filter-group input[type="date"] {
   width: 100%;
   padding: 12px 16px;
   border: 2px solid #e2e8f0;
@@ -131,13 +127,13 @@
   font-family: inherit;
 }
 
-.filter-group select:hover,
-.filter-group input[type="date"]:hover {
+.owner-slots-page .filter-group select:hover,
+.owner-slots-page .filter-group input[type="date"]:hover {
   border-color: #ff6b4a;
 }
 
-.filter-group select:focus,
-.filter-group input[type="date"]:focus {
+.owner-slots-page .filter-group select:focus,
+.owner-slots-page .filter-group input[type="date"]:focus {
   outline: none;
   border-color: #ff6b4a;
   box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.1);
@@ -145,7 +141,7 @@
 
 /* PLAYROOM SUMMARY */
 
-.playroom-summary {
+.owner-slots-page .playroom-summary {
   background: white;
   border: 1px solid #eef2f7;
   border-radius: 20px;
@@ -154,27 +150,27 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
-.playroom-summary h2 {
+.owner-slots-page .playroom-summary h2 {
   margin-bottom: 6px;
   color: #ff6b4a;
 }
 
-.playroom-summary p {
+.owner-slots-page .playroom-summary p {
   color: #64748b;
   margin: 0;
 }
 
 /* STATES */
 
-.loading-slots,
-.loading {
+.owner-slots-page .loading-slots,
+.owner-slots-page .loading {
   text-align: center;
   padding: 60px 20px;
   color: #64748b;
   font-size: 1rem;
 }
 
-.empty-state {
+.owner-slots-page .empty-state {
   text-align: center;
   padding: 48px 28px;
   background: white;
@@ -183,19 +179,19 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
 
-.empty-state p {
+.owner-slots-page .empty-state p {
   color: #475569;
   margin-bottom: 8px;
   font-size: 1rem;
 }
 
-.empty-state p:first-child {
+.owner-slots-page .empty-state p:first-child {
   font-size: 1.15rem;
   font-weight: 600;
   color: #1e293b;
 }
 
-.empty-state .btn-primary {
+.owner-slots-page .empty-state .btn-primary {
   margin-top: 20px;
   background: linear-gradient(135deg, #ff6b4a, #ff8c6e);
   color: white;
@@ -207,14 +203,14 @@
   transition: all 0.2s ease;
 }
 
-.empty-state .btn-primary:hover {
+.owner-slots-page .empty-state .btn-primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(255, 107, 74, 0.3);
 }
 
 /* GRID */
 
-.slots-grid {
+.owner-slots-page .slots-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 24px;
@@ -223,7 +219,7 @@
 
 /* SLOT CARD */
 
-.slot-card {
+.owner-slots-page .slot-card {
   background: white;
   border-top: 1px solid #f1f5f9;
   border-radius: 20px;
@@ -235,7 +231,7 @@
   overflow: hidden;
 }
 
-.slot-card::before {
+.owner-slots-page .slot-card::before {
   content: "";
   position: absolute;
   top: 0;
@@ -247,27 +243,27 @@
   transition: opacity 0.3s ease;
 }
 
-.slot-card:hover {
+.owner-slots-page .slot-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
 }
 
-.slot-card:hover::before {
+.owner-slots-page .slot-card:hover::before {
   opacity: 1;
 }
 
-.slot-card.slobodno {
+.owner-slots-page .slot-card.slobodno {
   border-left-color: #2ecc71;
 }
 
-.slot-card.zauzeto {
+.owner-slots-page .slot-card.zauzeto {
   border-left-color: #e74c3c;
   opacity: 0.9;
 }
 
 /* SLOT HEADER */
 
-.slot-header {
+.owner-slots-page .slot-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -275,14 +271,14 @@
   margin-bottom: 16px;
 }
 
-.slot-header h3 {
+.owner-slots-page .slot-header h3 {
   margin: 0;
   color: #1e293b;
   font-size: 1.1rem;
   font-weight: 700;
 }
 
-.slot-status {
+.owner-slots-page .slot-status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -293,23 +289,24 @@
   letter-spacing: 0.3px;
 }
 
-.slot-status.slobodno {
+.owner-slots-page .slot-status.slobodno {
   background: #e8f5e9;
   color: #2e7d32;
 }
 
-.slot-status.zauzeto {
+.owner-slots-page .slot-status.zauzeto {
   background: #ffebee;
   color: #c62828;
 }
 
 /* SLOT BODY */
 
-.slot-body {
+.owner-slots-page .slot-body {
   display: grid;
   gap: 4px;
 }
-.slot-body p {
+
+.owner-slots-page .slot-body p {
   margin: 8px 0;
   color: #334155;
   font-size: 0.9rem;
@@ -318,7 +315,7 @@
 
 /* BOOKING INFO */
 
-.booking-info {
+.owner-slots-page .booking-info {
   background: #f8fafc;
   padding: 14px;
   border-radius: 14px;
@@ -328,7 +325,7 @@
   border: 1px solid #eef2f6;
 }
 
-.booking-info h4 {
+.owner-slots-page .booking-info h4 {
   margin-bottom: 12px;
   margin-top: 16px;
   padding-bottom: 8px;
@@ -337,7 +334,7 @@
   font-size: 0.9rem;
 }
 
-.booking-info p {
+.owner-slots-page .booking-info p {
   margin: 8px 0;
   color: #334155;
   word-break: break-word;
@@ -345,7 +342,7 @@
 
 /* BUTTON */
 
-.btn-primary {
+.owner-slots-page .btn-primary {
   width: 100%;
   background: linear-gradient(135deg, #ff6b4a 0%, #ff8c6e 100%);
   color: white;
@@ -359,18 +356,18 @@
   margin-top: 10px;
 }
 
-.btn-primary:hover:not(:disabled) {
+.owner-slots-page .btn-primary:hover:not(:disabled) {
   background: linear-gradient(135deg, #e85a3a 0%, #ff7a5a 100%);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(255, 107, 74, 0.3);
 }
 
-.btn-primary:disabled {
+.owner-slots-page .btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.owner-reservation-toolbar {
+.owner-slots-page .owner-reservation-toolbar {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -382,12 +379,12 @@
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 
-.owner-date-filter {
+.owner-slots-page .owner-date-filter {
   flex: 1;
   margin: 0;
 }
 
-.owner-reserve-btn {
+.owner-slots-page .owner-reserve-btn {
   height: 50px;
   margin-bottom: 0;
   white-space: nowrap;
@@ -405,23 +402,24 @@
     box-shadow 0.2s ease;
 }
 
-.owner-reserve-btn:hover {
+.owner-slots-page .owner-reserve-btn:hover {
   background: #e95d3f;
   transform: translateY(-1px);
   box-shadow: 0 10px 22px rgba(255, 107, 74, 0.25);
 }
 
-.owner-reserve-btn:disabled {
+.owner-slots-page .owner-reserve-btn:disabled {
   cursor: not-allowed;
   opacity: 0.6;
   transform: none;
   box-shadow: none;
 }
-.slots-grid {
+
+.owner-slots-page .slots-grid {
   align-items: start;
 }
 
-.slot-card.zauzeto {
+.owner-slots-page .slot-card.zauzeto {
   align-self: start;
   border: 1px solid #e5eaf3;
   border-left: none;
@@ -432,11 +430,11 @@
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
 }
 
-.slot-card.zauzeto:hover {
+.owner-slots-page .slot-card.zauzeto:hover {
   transform: translateY(-2px);
 }
 
-.owner-booking-card-header {
+.owner-slots-page .owner-booking-card-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -444,27 +442,27 @@
   padding: 22px;
 }
 
-.owner-booking-card-header h3 {
+.owner-slots-page .owner-booking-card-header h3 {
   margin: 0 0 10px;
   color: #ff6b4a;
   font-size: 20px;
   font-weight: 800;
 }
 
-.owner-booking-short-info {
+.owner-slots-page .owner-booking-short-info {
   margin: 0;
   color: #475569;
   font-size: 15px;
 }
 
-.owner-booking-card-right {
+.owner-slots-page .owner-booking-card-right {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
 }
 
-.owner-booking-status-badge {
+.owner-slots-page .owner-booking-status-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -477,144 +475,174 @@
   white-space: nowrap;
 }
 
-.owner-booking-arrow {
+.owner-slots-page .owner-booking-arrow {
   color: #334155;
   font-size: 14px;
   transition: transform 0.2s ease;
 }
 
-.owner-booking-arrow.open {
+.owner-slots-page .owner-booking-arrow.open {
   transform: rotate(180deg);
 }
 
-.owner-booking-card-details {
+.owner-slots-page .owner-booking-card-details {
   border-top: 1px solid #e5eaf3;
   background: #f8fafc;
   padding: 18px 22px 22px;
 }
 
-.owner-booking-card-details p {
+.owner-slots-page .owner-booking-card-details p {
   margin: 0 0 13px;
   color: #475569;
   font-size: 15px;
   line-height: 1.45;
 }
 
-.owner-booking-extra-block {
+.owner-slots-page .owner-booking-extra-block {
   margin-top: 14px;
 }
 
-.owner-booking-extra-block strong {
+.owner-slots-page .owner-booking-extra-block strong {
   color: #334155;
 }
 
 /* RESPONSIVE */
 
 @media (max-width: 1024px) {
-  .slots-grid {
+  .owner-slots-page .slots-grid {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
   }
 }
 
 @media (max-width: 768px) {
-  .owner-booking-card-header {
+  .owner-slots-page .owner-booking-card-header {
     padding: 18px;
   }
 
-  .owner-booking-card-header h3 {
+  .owner-slots-page .owner-booking-card-header h3 {
     font-size: 18px;
   }
 
-  .owner-booking-card-right {
+  .owner-slots-page .owner-booking-card-right {
     gap: 8px;
   }
 
-  .owner-booking-status-badge {
+  .owner-slots-page .owner-booking-status-badge {
     padding: 8px 12px;
     font-size: 12px;
   }
 
-  .owner-booking-card-details {
+  .owner-slots-page .owner-booking-card-details {
     padding: 16px 18px 20px;
   }
-  .owner-reservation-toolbar {
+
+  .owner-slots-page .owner-reservation-toolbar {
     flex-direction: column;
     align-items: stretch;
     padding: 18px;
   }
 
-  .owner-reserve-btn {
+  .owner-slots-page .owner-reserve-btn {
     width: 100%;
   }
+
   .owner-slots-page {
     padding: 24px 16px;
   }
 
-  .page-header h1 {
+  .owner-slots-page .page-header h1 {
     font-size: 1.6rem;
   }
 
-  .filters-card {
+  .owner-slots-page .filters-card {
     flex-direction: column;
     gap: 16px;
     padding: 20px;
   }
 
-  .filter-group {
+  .owner-slots-page .filter-group {
     min-width: 100%;
   }
 
-  .slots-grid {
+  .owner-slots-page .slots-grid {
     grid-template-columns: 1fr;
     gap: 16px;
   }
 
-  .slot-card {
+  .owner-slots-page .slot-card {
     padding: 16px;
   }
 
-  .slot-header {
+  .owner-slots-page .slot-header {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .booking-info p {
+  .owner-slots-page .booking-info p {
     display: block;
   }
 
-  .empty-state {
+  .owner-slots-page .empty-state {
     padding: 40px 24px;
   }
 }
 
 @media (max-width: 480px) {
-  .page-header h1 {
+  .owner-slots-page .page-header h1 {
     font-size: 1.4rem;
   }
 
-  .page-header p {
+  .owner-slots-page .page-header p {
     font-size: 0.85rem;
   }
 
-  .filters-card {
+  .owner-slots-page .filters-card {
     padding: 16px;
   }
 
-  .slot-header h3 {
+  .owner-slots-page .slot-header h3 {
     font-size: 1rem;
   }
 
-  .btn-primary {
+  .owner-slots-page .btn-primary {
     padding: 10px;
     font-size: 0.85rem;
   }
-  .playroom-summary h2 {
+
+  .owner-slots-page .playroom-summary h2 {
     font-size: 1.2rem;
   }
 
-  .slot-status {
+  .owner-slots-page .slot-status {
     width: 100%;
     justify-content: center;
+  }
+}
+
+.owner-slots-page .filter-group select:focus-visible,
+.owner-slots-page .filter-group input[type="date"]:focus-visible,
+.owner-slots-page .btn-primary:focus-visible,
+.owner-slots-page .owner-reserve-btn:focus-visible,
+.owner-slots-page .clickable-slot:focus-visible,
+.owner-slots-page .owner-booking-card-header:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .owner-slots-page *,
+  .owner-slots-page *::before,
+  .owner-slots-page *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .owner-slots-page .slot-card:hover,
+  .owner-slots-page .empty-state .btn-primary:hover,
+  .owner-slots-page .btn-primary:hover:not(:disabled),
+  .owner-slots-page .owner-reserve-btn:hover,
+  .owner-slots-page .slot-card.zauzeto:hover {
+    transform: none;
   }
 }

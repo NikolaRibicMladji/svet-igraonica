@@ -231,7 +231,7 @@ const AdminPanel = () => {
           Učitavanje...
         </p>
       ) : playrooms.length === 0 ? (
-        <div className="empty-state">
+        <div className="empty-state" role="status" aria-live="polite">
           <p>🎉 Nema igraonica koje čekaju verifikaciju.</p>
         </div>
       ) : (
@@ -247,6 +247,8 @@ const AdminPanel = () => {
                   type="button"
                   className={`admin-playroom-preview-card ${isActive ? "active" : ""}`}
                   aria-pressed={isActive}
+                  aria-expanded={isActive}
+                  aria-controls={`admin-playroom-details-${playroom._id}`}
                   onClick={() => {
                     setRejectReason("");
 
@@ -275,7 +277,10 @@ const AdminPanel = () => {
 
           <div className="admin-details-panel" ref={detailsPanelRef}>
             {selectedPlayroom && (
-              <div className="admin-playroom-card admin-playroom-details-card">
+              <div
+                id={`admin-playroom-details-${selectedPlayroom._id}`}
+                className="admin-playroom-card admin-playroom-details-card"
+              >
                 <div className="admin-playroom-info">
                   <h3>{selectedPlayroom.naziv}</h3>
                   {selectedProfileImageUrl && (
@@ -478,6 +483,7 @@ const AdminPanel = () => {
                     className="btn-verify"
                     onClick={() => handleVerify(selectedPlayroom._id)}
                     disabled={Boolean(verifyingId) || Boolean(rejectingId)}
+                    aria-busy={verifyingId === selectedPlayroom._id}
                   >
                     {verifyingId === selectedPlayroom._id
                       ? "Verifikujem..."
@@ -498,7 +504,16 @@ const AdminPanel = () => {
                       onChange={(e) => setRejectReason(e.target.value)}
                       placeholder="Unesi razlog odbijanja..."
                       className="admin-reject-textarea"
+                      aria-describedby="rejectReasonHint"
+                      aria-invalid={
+                        rejectReason.trim().length > 0 &&
+                        rejectReason.trim().length < 5
+                      }
                     />
+
+                    <p id="rejectReasonHint" className="admin-field-hint">
+                      Razlog mora imati najmanje 5, a najviše 500 karaktera.
+                    </p>
                   </div>
 
                   <button
@@ -510,6 +525,7 @@ const AdminPanel = () => {
                       Boolean(rejectingId) ||
                       rejectReason.trim().length < 5
                     }
+                    aria-busy={rejectingId === selectedPlayroom._id}
                   >
                     {rejectingId === selectedPlayroom._id
                       ? "Odbijam..."
@@ -529,7 +545,7 @@ const AdminPanel = () => {
           Učitavanje korisnika...
         </p>
       ) : users.length === 0 ? (
-        <div className="empty-state">
+        <div className="empty-state" role="status" aria-live="polite">
           <p>Nema korisnika za prikaz.</p>
         </div>
       ) : (
@@ -577,6 +593,7 @@ const AdminPanel = () => {
                 className="btn-page"
                 onClick={() => setUsersPage((prev) => Math.max(1, prev - 1))}
                 disabled={usersPage === 1}
+                aria-label="Prethodna strana korisnika"
               >
                 ← Prethodna
               </button>
@@ -592,6 +609,7 @@ const AdminPanel = () => {
                   setUsersPage((prev) => Math.min(usersTotalPages, prev + 1))
                 }
                 disabled={usersPage >= usersTotalPages}
+                aria-label="Sledeća strana korisnika"
               >
                 Sledeća →
               </button>
