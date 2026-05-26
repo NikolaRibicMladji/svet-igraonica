@@ -355,32 +355,33 @@
 
 /* TELEFON */
 .contact-row .contact-item:first-child::before {
-  background-image: url("../../public/icons/phone.png");
+  background-image: url("/icons/phone.png");
 }
 
 /* EMAIL */
-.contact-item[href^="mailto"]::before {
-  background-image: url("../../public/icons/email.png");
+.contact-item[href^="mailto"]::before,
+.contact-item[href*="mail.google.com"]::before {
+  background-image: url("/icons/email.png");
 }
 
 /* INSTAGRAM */
 .social-item[href*="instagram"]::before {
-  background-image: url("../../public/icons/instagram.png");
+  background-image: url("/icons/instagram.png");
 }
 
 /* FACEBOOK */
 .social-item[href*="facebook"]::before {
-  background-image: url("../../public/icons/facebook.png");
+  background-image: url("/icons/facebook.png");
 }
 
 /* TIKTOK */
 .social-item[href*="tiktok"]::before {
-  background-image: url("../../public/icons/tiktok.png");
+  background-image: url("/icons/tiktok.png");
 }
 
 /* WEBSITE */
 .social-item.website-link::before {
-  background-image: url("../../public/icons/web.png");
+  background-image: url("/icons/web.png");
 }
 /* ============================================
    EMPTY
@@ -416,5 +417,35 @@
   }
   .playrooms-page {
     padding: 24px 16px;
+  }
+}
+.btn-view:focus-visible,
+.btn-book:focus-visible,
+.btn-page:focus-visible,
+.contact-item:focus-visible,
+.social-item:focus-visible,
+.review-count-link:focus-visible,
+.search-input:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  outline-offset: 3px;
+}
+
+.review-count-link:hover {
+  color: #ff6b4a;
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat,
+  .playroom-card,
+  .playroom-image img,
+  .search-input {
+    transition: none;
+  }
+
+  .stat:hover,
+  .playroom-card:hover,
+  .playroom-card:hover img {
+    transform: none;
   }
 }

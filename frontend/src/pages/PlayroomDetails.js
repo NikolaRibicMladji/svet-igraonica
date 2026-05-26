@@ -8,6 +8,7 @@ import Reviews from "../components/Reviews";
 import VideoPlayer from "../components/VideoPlayer";
 import PlayroomCoverFallback from "../components/PlayroomCoverFallback";
 import { getSafeExternalUrl } from "../utils/urlUtils";
+import { normalizeImageItem } from "../utils/media";
 
 const DAY_LABELS = {
   ponedeljak: "Ponedeljak",
@@ -91,12 +92,16 @@ const PlayroomDetails = () => {
   };
 
   if (loading) {
-    return <div className="container loading">Učitavanje...</div>;
+    return (
+      <div className="container loading" role="status" aria-live="polite">
+        Učitavanje...
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="container">
+      <div className="container" role="alert">
         <h1>Greška</h1>
         <p>{error}</p>
       </div>
@@ -111,7 +116,9 @@ const PlayroomDetails = () => {
     );
   }
 
-  const galleryImages = Array.isArray(playroom.slike) ? playroom.slike : [];
+  const galleryImages = Array.isArray(playroom.slike)
+    ? playroom.slike.map(normalizeImageItem).filter(Boolean)
+    : [];
 
   const modalImages = galleryImages;
 
@@ -184,6 +191,7 @@ const PlayroomDetails = () => {
             <button
               type="button"
               className="review-count-link-large"
+              aria-label={`Prikaži recenzije za ${playroom.naziv}`}
               onClick={scrollToReviews}
             >
               ({playroom.reviewCount || 0} recenzija)
@@ -337,24 +345,19 @@ const PlayroomDetails = () => {
             <h3>📸 Galerija slika</h3>
             <div className="gallery-grid">
               {galleryImages.map((img, idx) => {
-                const imageUrl = getSafeExternalUrl(
-                  img.url || img.secure_url || img.path,
-                );
-
-                if (!imageUrl) return null;
-
                 return (
                   <button
                     type="button"
-                    key={img.publicId || img.public_id || imageUrl || idx}
+                    key={img.publicId || img.public_id || img.url || idx}
                     className="gallery-item"
                     onClick={() => openGalleryModal(idx)}
                     aria-label={`Otvori sliku ${idx + 1}`}
                   >
                     <img
-                      src={imageUrl}
+                      src={img.url}
                       alt={`Slika ${idx + 1}`}
                       loading="lazy"
+                      decoding="async"
                     />
                   </button>
                 );
@@ -407,6 +410,7 @@ const PlayroomDetails = () => {
                 type="button"
                 className="price-modal-close"
                 onClick={() => setShowPriceModal(false)}
+                aria-label="Zatvori cenovnik"
               >
                 ✖
               </button>

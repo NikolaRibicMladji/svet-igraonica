@@ -1,9 +1,49 @@
 import api from "./api";
 
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const QUARTER_MINUTES = [0, 15, 30, 45];
+
+const normalizeId = (id) => String(id || "").trim();
+
+const normalizeIdList = (items) =>
+  Array.isArray(items) ? items.map(normalizeId).filter(Boolean) : [];
+
+const normalizeDate = (value) => {
+  const safeValue = String(value || "").trim();
+
+  return DATE_REGEX.test(safeValue) ? safeValue : "";
+};
+
+const normalizeTime = (value) => {
+  const safeValue = String(value || "").trim();
+
+  if (!TIME_REGEX.test(safeValue)) return "";
+
+  const [, minutes] = safeValue.split(":").map(Number);
+
+  return QUARTER_MINUTES.includes(minutes) ? safeValue : "";
+};
+
+const normalizeText = (value, maxLength = 500) =>
+  String(value || "")
+    .trim()
+    .slice(0, maxLength);
+
+const toSafeCount = (value) => {
+  if (value === "" || value === null || value === undefined) return 0;
+
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue) || numberValue < 0) return 0;
+
+  return Math.floor(numberValue);
+};
+
 // ============ TERMINI ============
 
 export const getTimeSlots = async (playroomId, datum = null) => {
-  const safePlayroomId = String(playroomId || "").trim();
+  const safePlayroomId = normalizeId(playroomId);
 
   if (!safePlayroomId) {
     return {
@@ -15,8 +55,10 @@ export const getTimeSlots = async (playroomId, datum = null) => {
   try {
     const query = new URLSearchParams();
 
-    if (datum) {
-      query.append("datum", String(datum));
+    const safeDatum = normalizeDate(datum);
+
+    if (safeDatum) {
+      query.append("datum", safeDatum);
     }
 
     const queryString = query.toString();
@@ -96,7 +138,7 @@ export const getMyTimeSlots = async () => {
 };
 
 export const deleteTimeSlot = async (id) => {
-  const safeId = String(id || "").trim();
+  const safeId = normalizeId(id);
 
   if (!safeId) {
     return {
@@ -136,21 +178,30 @@ export const createBooking = async (data) => {
   }
   try {
     const payload = {
-      playroomId: data.playroomId,
-      datum: data.datum,
-      vremeOd: data.vremeOd,
-      vremeDo: data.vremeDo,
+      playroomId: normalizeId(data.playroomId),
+      datum: normalizeDate(data.datum),
+      vremeOd: normalizeTime(data.vremeOd),
+      vremeDo: normalizeTime(data.vremeDo),
       acceptedTerms: data.acceptedTerms === true,
-      cenaIds: Array.isArray(data.cenaIds) ? data.cenaIds : [],
-      paketId: data.paketId || null,
-      usluge: Array.isArray(data.usluge) ? data.usluge : [],
-      imeRoditelja: data.imeRoditelja || data.ime,
-      prezimeRoditelja: data.prezimeRoditelja || data.prezime,
-      emailRoditelja: data.emailRoditelja || data.email,
-      telefonRoditelja: data.telefonRoditelja || data.telefon,
-      brojDece: data.brojDece ? Number(data.brojDece) : 0,
-      brojRoditelja: data.brojRoditelja ? Number(data.brojRoditelja) : 0,
-      napomena: data.napomena || "",
+      cenaIds: normalizeIdList(data.cenaIds),
+      paketId: normalizeId(data.paketId) || null,
+      usluge: normalizeIdList(data.usluge),
+      imeRoditelja: normalizeText(data.imeRoditelja || data.ime, 80),
+      prezimeRoditelja: normalizeText(
+        data.prezimeRoditelja || data.prezime,
+        80,
+      ),
+      emailRoditelja: normalizeText(
+        data.emailRoditelja || data.email,
+        120,
+      ).toLowerCase(),
+      telefonRoditelja: normalizeText(
+        data.telefonRoditelja || data.telefon,
+        30,
+      ),
+      brojDece: toSafeCount(data.brojDece),
+      brojRoditelja: toSafeCount(data.brojRoditelja),
+      napomena: normalizeText(data.napomena, 500),
     };
 
     const response = await api.post("/bookings", payload);
@@ -212,7 +263,7 @@ export const getOwnerBookings = async () => {
 };
 
 export const cancelBooking = async (id) => {
-  const safeId = String(id || "").trim();
+  const safeId = normalizeId(id);
 
   if (!safeId) {
     return {
@@ -244,7 +295,7 @@ export const cancelBooking = async (id) => {
 };
 
 export const confirmBooking = async (id) => {
-  const safeId = String(id || "").trim();
+  const safeId = normalizeId(id);
 
   if (!safeId) {
     return {
@@ -275,7 +326,7 @@ export const confirmBooking = async (id) => {
 };
 
 export const generateTimeSlots = async (playroomId) => {
-  const safePlayroomId = String(playroomId || "").trim();
+  const safePlayroomId = normalizeId(playroomId);
 
   if (!safePlayroomId) {
     return {
@@ -306,7 +357,7 @@ export const generateTimeSlots = async (playroomId) => {
 };
 
 export const getAllTimeSlotsForOwner = async (playroomId, datum = null) => {
-  const safePlayroomId = String(playroomId || "").trim();
+  const safePlayroomId = normalizeId(playroomId);
 
   if (!safePlayroomId) {
     return {
@@ -318,8 +369,10 @@ export const getAllTimeSlotsForOwner = async (playroomId, datum = null) => {
   try {
     const query = new URLSearchParams();
 
-    if (datum) {
-      query.append("datum", String(datum));
+    const safeDatum = normalizeDate(datum);
+
+    if (safeDatum) {
+      query.append("datum", safeDatum);
     }
 
     const queryString = query.toString();
@@ -399,23 +452,23 @@ export const createGuestBooking = async (data) => {
   }
   try {
     const payload = {
-      playroomId: data.playroomId,
-      datum: data.datum,
-      vremeOd: data.vremeOd,
-      vremeDo: data.vremeDo,
+      playroomId: normalizeId(data.playroomId),
+      datum: normalizeDate(data.datum),
+      vremeOd: normalizeTime(data.vremeOd),
+      vremeDo: normalizeTime(data.vremeDo),
       acceptedTerms: data.acceptedTerms === true,
-      cenaIds: Array.isArray(data.cenaIds) ? data.cenaIds : [],
-      paketId: data.paketId || null,
-      usluge: Array.isArray(data.usluge) ? data.usluge : [],
-      ime: data.ime,
-      prezime: data.prezime,
-      email: data.email,
-      telefon: data.telefon,
-      password: data.password,
-      confirmPassword: data.confirmPassword,
-      brojDece: data.brojDece ? Number(data.brojDece) : 0,
-      brojRoditelja: data.brojRoditelja ? Number(data.brojRoditelja) : 0,
-      napomena: data.napomena || "",
+      cenaIds: normalizeIdList(data.cenaIds),
+      paketId: normalizeId(data.paketId) || null,
+      usluge: normalizeIdList(data.usluge),
+      ime: normalizeText(data.ime, 80),
+      prezime: normalizeText(data.prezime, 80),
+      email: normalizeText(data.email, 120).toLowerCase(),
+      telefon: normalizeText(data.telefon, 30),
+      password: String(data.password || ""),
+      confirmPassword: String(data.confirmPassword || ""),
+      brojDece: toSafeCount(data.brojDece),
+      brojRoditelja: toSafeCount(data.brojRoditelja),
+      napomena: normalizeText(data.napomena, 500),
     };
 
     const response = await api.post("/bookings/guest", payload);
@@ -462,7 +515,7 @@ export const submitBooking = async ({
 };
 
 export const getAvailableTimeSlots = async (playroomId, datum = null) => {
-  const safePlayroomId = String(playroomId || "").trim();
+  const safePlayroomId = normalizeId(playroomId);
 
   if (!safePlayroomId) {
     return {
@@ -474,8 +527,10 @@ export const getAvailableTimeSlots = async (playroomId, datum = null) => {
   try {
     const query = new URLSearchParams();
 
-    if (datum) {
-      query.append("datum", String(datum));
+    const safeDatum = normalizeDate(datum);
+
+    if (safeDatum) {
+      query.append("datum", safeDatum);
     }
 
     const queryString = query.toString();

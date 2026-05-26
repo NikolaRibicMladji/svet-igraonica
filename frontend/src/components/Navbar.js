@@ -243,6 +243,8 @@ const Navbar = () => {
                     type="button"
                     className="navbar-user-name"
                     onClick={() => setAccountOpen((prev) => !prev)}
+                    aria-expanded={accountOpen}
+                    aria-controls="account-dropdown"
                   >
                     👤{" "}
                     {user?.ime
@@ -252,7 +254,7 @@ const Navbar = () => {
                   </button>
 
                   {accountOpen && (
-                    <div className="account-dropdown">
+                    <div id="account-dropdown" className="account-dropdown">
                       <button
                         type="button"
                         onClick={() => openAccountModal("password")}
@@ -327,11 +329,25 @@ const Navbar = () => {
       )}
       {activeModal && (
         <div className="account-modal-overlay" onClick={closeAccountModal}>
-          <div className="account-modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="account-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={
+              activeModal === "password"
+                ? "Promena lozinke"
+                : activeModal === "email"
+                  ? "Promena emaila"
+                  : "Brisanje profila"
+            }
+          >
             <button
               type="button"
               className="account-modal-close"
               onClick={closeAccountModal}
+              aria-label="Zatvori modal"
+              disabled={submitting}
             >
               ✖
             </button>
@@ -484,7 +500,9 @@ const Navbar = () => {
                   </div>
 
                   {formError && (
-                    <div className="account-error">{formError}</div>
+                    <div className="account-error" role="alert">
+                      {formError}
+                    </div>
                   )}
 
                   <button
@@ -591,7 +609,9 @@ const Navbar = () => {
                   </div>
 
                   {formError && (
-                    <div className="account-error">{formError}</div>
+                    <div className="account-error" role="alert">
+                      {formError}
+                    </div>
                   )}
 
                   <button
@@ -688,7 +708,9 @@ const Navbar = () => {
                   </div>
 
                   {formError && (
-                    <div className="account-error">{formError}</div>
+                    <div className="account-error" role="alert">
+                      {formError}
+                    </div>
                   )}
 
                   <button

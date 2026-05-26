@@ -75,6 +75,13 @@ export const rejectPlayroom = async (id, reason) => {
     };
   }
 
+  if (safeReason.length > 500) {
+    return {
+      success: false,
+      error: "Razlog odbijanja može imati najviše 500 karaktera.",
+    };
+  }
+
   try {
     const response = await api.put(
       `/admin/playrooms/${encodeURIComponent(safeId)}/reject`,
@@ -101,8 +108,16 @@ export const rejectPlayroom = async (id, reason) => {
 
 export const getAllUsers = async (page = 1, limit = 10) => {
   try {
-    const safePage = Math.max(1, Number(page) || 1);
-    const safeLimit = Math.max(1, Number(limit) || 10);
+    const parsedPage = Number(page);
+    const parsedLimit = Number(limit);
+
+    const safePage = Number.isFinite(parsedPage)
+      ? Math.max(1, Math.floor(parsedPage))
+      : 1;
+
+    const safeLimit = Number.isFinite(parsedLimit)
+      ? Math.min(100, Math.max(1, Math.floor(parsedLimit)))
+      : 10;
 
     const query = new URLSearchParams({
       page: String(safePage),

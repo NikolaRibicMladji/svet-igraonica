@@ -1,7 +1,9 @@
 import api from "./api";
+import { normalizeImageItem, normalizeVideoItem } from "../utils/media";
 
 const IMAGE_MAX_SIZE_MB = 5;
 const VIDEO_MAX_SIZE_MB = 20;
+const VIDEO_NAME_MAX_LENGTH = 80;
 
 const IMAGE_MAX_SIZE_BYTES = IMAGE_MAX_SIZE_MB * 1024 * 1024;
 const VIDEO_MAX_SIZE_BYTES = VIDEO_MAX_SIZE_MB * 1024 * 1024;
@@ -54,7 +56,9 @@ export const uploadImage = async (playroomId, file) => {
   );
 
   const data = res.data?.data || null;
-  return data?.image || data?.slika || data?.profilnaSlika || data;
+  const image = data?.image || data?.slika || data?.profilnaSlika || data;
+
+  return normalizeImageItem(image);
 };
 
 export const uploadVideo = async (playroomId, file, naziv = "") => {
@@ -69,7 +73,9 @@ export const uploadVideo = async (playroomId, file, naziv = "") => {
   const formData = new FormData();
   formData.append("video", file);
 
-  const safeNaziv = String(naziv || "").trim();
+  const safeNaziv = String(naziv || "")
+    .trim()
+    .slice(0, VIDEO_NAME_MAX_LENGTH);
 
   if (safeNaziv) {
     formData.append("naziv", safeNaziv);
@@ -83,11 +89,8 @@ export const uploadVideo = async (playroomId, file, naziv = "") => {
   const data = res.data?.data || {};
   const video = data?.video || data;
 
-  return {
+  return normalizeVideoItem({
     ...video,
-    url: video.url || video.secure_url || video.path || "",
-    publicId: video.publicId || video.public_id || "",
     thumbnail: video.thumbnail || video.thumbnailUrl || "",
-    trajanje: Number(video.trajanje ?? video.duration ?? 0),
-  };
+  });
 };

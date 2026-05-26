@@ -73,6 +73,7 @@
   transition: all 0.2s ease;
   white-space: nowrap;
   align-self: center;
+  border: none;
 }
 
 .btn-verify:hover {
@@ -297,6 +298,7 @@
   cursor: pointer;
   font-size: 15px;
   transition: all 0.2s ease;
+  border: none;
 }
 
 .btn-reject:hover:not(:disabled) {
@@ -402,4 +404,32 @@
   .admin-video-gallery {
     grid-template-columns: 1fr;
   }
+}
+
+.btn-verify:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-verify:hover:disabled {
+  background: linear-gradient(135deg, #4caf50, #43a047);
+  transform: none;
+}
+.results-count {
+  margin: 12px 0 18px;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.results-count strong {
+  color: #ff6b4a;
+}
+.admin-playroom-preview-card:focus-visible,
+.btn-verify:focus-visible,
+.btn-reject:focus-visible,
+.btn-page:focus-visible,
+.admin-reject-textarea:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  outline-offset: 3px;
 }

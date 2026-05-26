@@ -7,11 +7,21 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const location = useLocation();
 
   if (loading) {
-    return <div className="container loading">Učitavanje...</div>;
+    return (
+      <div className="container loading" role="status" aria-live="polite">
+        Učitavanje...
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: `${location.pathname}${location.search}` }}
+      />
+    );
   }
 
   if (

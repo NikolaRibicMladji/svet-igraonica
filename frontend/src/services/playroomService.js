@@ -2,22 +2,59 @@ import api from "./api";
 
 const normalizeId = (id) => String(id || "").trim();
 
+const toPositiveInt = (value, fallback = 1, max = 100) => {
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(1, Math.floor(numberValue)));
+};
+
+const normalizeTextParam = (value, maxLength = 100) => {
+  return String(value || "")
+    .trim()
+    .slice(0, maxLength);
+};
+
 export const getAllPlayrooms = async (params = {}) => {
   try {
     const query = new URLSearchParams();
 
-    if (params.page) query.append("page", String(params.page));
-    if (params.limit) query.append("limit", String(params.limit));
-    if (params.grad && params.grad !== "svi") query.append("grad", params.grad);
-
-    if (params.minRating && params.minRating !== "sve") {
-      query.append("minRating", String(params.minRating));
+    if (params.page) {
+      query.append("page", String(toPositiveInt(params.page, 1)));
     }
 
-    if (params.sortBy) query.append("sortBy", params.sortBy);
+    if (params.limit) {
+      query.append("limit", String(toPositiveInt(params.limit, 10, 100)));
+    }
 
-    if (params.search && params.search.trim()) {
-      query.append("search", params.search.trim());
+    const grad = normalizeTextParam(params.grad, 80);
+
+    if (grad && grad !== "svi") {
+      query.append("grad", grad);
+    }
+
+    if (params.minRating && params.minRating !== "sve") {
+      const minRating = Number(params.minRating);
+
+      if (Number.isFinite(minRating) && minRating >= 1 && minRating <= 5) {
+        query.append("minRating", String(minRating));
+      }
+    }
+
+    const allowedSortValues = ["najnovije", "rating", "naziv", "grad"];
+    const sortBy = normalizeTextParam(params.sortBy, 30);
+
+    if (allowedSortValues.includes(sortBy)) {
+      query.append("sortBy", sortBy);
+    }
+
+    const search = normalizeTextParam(params.search, 80);
+
+    if (search) {
+      query.append("search", search);
     }
 
     const queryString = query.toString();

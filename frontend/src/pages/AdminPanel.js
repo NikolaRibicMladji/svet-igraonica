@@ -64,6 +64,7 @@ const AdminPanel = () => {
 
   const loadUsers = useCallback(async (page = 1) => {
     setUsersLoading(true);
+    setError("");
 
     try {
       const result = await getAllUsers(page, 10);
@@ -187,14 +188,16 @@ const AdminPanel = () => {
   if (authLoading) {
     return (
       <div className="container admin-panel">
-        <p>Učitavanje...</p>
+        <p role="status" aria-live="polite">
+          Učitavanje...
+        </p>
       </div>
     );
   }
 
   if (user?.role !== "admin") {
     return (
-      <div className="container admin-panel">
+      <div className="container admin-panel" role="alert">
         <h1>Pristup zabranjen</h1>
         <p>Samo administratori imaju pristup ovoj stranici.</p>
       </div>
@@ -209,13 +212,24 @@ const AdminPanel = () => {
     <div className="container admin-panel">
       <h1>Admin panel</h1>
 
-      {message && <div className="success-message">{message}</div>}
-      {error && <div className="error-message">{error}</div>}
+      {message && (
+        <div className="success-message" role="status" aria-live="polite">
+          {message}
+        </div>
+      )}
+
+      {error && (
+        <div className="error-message" role="alert">
+          {error}
+        </div>
+      )}
 
       <h2>Igraonice koje čekaju verifikaciju</h2>
 
       {loading ? (
-        <p>Učitavanje...</p>
+        <p role="status" aria-live="polite">
+          Učitavanje...
+        </p>
       ) : playrooms.length === 0 ? (
         <div className="empty-state">
           <p>🎉 Nema igraonica koje čekaju verifikaciju.</p>
@@ -232,6 +246,7 @@ const AdminPanel = () => {
                   key={playroom._id}
                   type="button"
                   className={`admin-playroom-preview-card ${isActive ? "active" : ""}`}
+                  aria-pressed={isActive}
                   onClick={() => {
                     setRejectReason("");
 
@@ -443,6 +458,7 @@ const AdminPanel = () => {
                                 controls
                                 preload="metadata"
                                 className="admin-video"
+                                aria-label={video.naziv || `Video ${index + 1}`}
                               />
 
                               <p>{video.naziv || `Video ${index + 1}`}</p>
@@ -461,7 +477,7 @@ const AdminPanel = () => {
                     type="button"
                     className="btn-verify"
                     onClick={() => handleVerify(selectedPlayroom._id)}
-                    disabled={verifyingId === selectedPlayroom._id}
+                    disabled={Boolean(verifyingId) || Boolean(rejectingId)}
                   >
                     {verifyingId === selectedPlayroom._id
                       ? "Verifikujem..."
@@ -476,6 +492,9 @@ const AdminPanel = () => {
                     <textarea
                       id="rejectReason"
                       value={rejectReason}
+                      minLength={5}
+                      maxLength={500}
+                      disabled={rejectingId === selectedPlayroom._id}
                       onChange={(e) => setRejectReason(e.target.value)}
                       placeholder="Unesi razlog odbijanja..."
                       className="admin-reject-textarea"
@@ -487,7 +506,8 @@ const AdminPanel = () => {
                     className="btn-reject"
                     onClick={() => handleReject(selectedPlayroom._id)}
                     disabled={
-                      rejectingId === selectedPlayroom._id ||
+                      Boolean(verifyingId) ||
+                      Boolean(rejectingId) ||
                       rejectReason.trim().length < 5
                     }
                   >
@@ -505,7 +525,9 @@ const AdminPanel = () => {
       <h2>Korisnici</h2>
 
       {usersLoading ? (
-        <p>Učitavanje korisnika...</p>
+        <p role="status" aria-live="polite">
+          Učitavanje korisnika...
+        </p>
       ) : users.length === 0 ? (
         <div className="empty-state">
           <p>Nema korisnika za prikaz.</p>

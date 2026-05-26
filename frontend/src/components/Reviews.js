@@ -9,7 +9,7 @@ const REVIEWS_PER_PAGE = 10;
 
 const Reviews = ({ playroomId }) => {
   const { user, isAuthenticated } = useAuth();
-  const toast = useToast();
+  const { success: showSuccess, error: showError } = useToast();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(5);
@@ -32,7 +32,7 @@ const Reviews = ({ playroomId }) => {
       } else {
         setReviews([]);
         setTotal(0);
-        toast.error(result?.error || "Greška pri učitavanju recenzija.");
+        showError(result?.error || "Greška pri učitavanju recenzija.");
       }
     } catch (err) {
       setReviews([]);
@@ -43,11 +43,11 @@ const Reviews = ({ playroomId }) => {
         err?.message ||
         "Greška pri učitavanju recenzija.";
 
-      toast.error(message);
+      showError(message);
     } finally {
       setLoading(false);
     }
-  }, [playroomId, page, toast]);
+  }, [playroomId, page, showError]);
 
   const checkIfUserCanReview = useCallback(async () => {
     try {
@@ -117,17 +117,17 @@ const Reviews = ({ playroomId }) => {
     if (submitting) return;
 
     if (!isAuthenticated) {
-      toast.error("Morate biti prijavljeni da biste ostavili recenziju.");
+      showError("Morate biti prijavljeni da biste ostavili recenziju.");
       return;
     }
 
     if (user?.role !== "roditelj") {
-      toast.error("Samo roditelj može da ostavi recenziju.");
+      showError("Samo roditelj može da ostavi recenziju.");
       return;
     }
 
     if (!comment.trim()) {
-      toast.error("Komentar je obavezan.");
+      showError("Komentar je obavezan.");
       return;
     }
 
@@ -137,7 +137,7 @@ const Reviews = ({ playroomId }) => {
       const result = await addReview(playroomId, rating, comment.trim());
 
       if (result?.success) {
-        toast.success("Recenzija je uspešno dodata.");
+        showSuccess("Recenzija je uspešno dodata.");
         setComment("");
         setRating(5);
         setCanReview(false);
@@ -148,14 +148,14 @@ const Reviews = ({ playroomId }) => {
           await loadReviews();
         }
       } else {
-        toast.error(result?.error || "Dodavanje recenzije nije uspelo.");
+        showError(result?.error || "Dodavanje recenzije nije uspelo.");
       }
     } catch (err) {
       const message =
         err?.response?.data?.message ||
         err?.message ||
         "Dodavanje recenzije nije uspelo.";
-      toast.error(message);
+      showError(message);
     } finally {
       setSubmitting(false);
     }
@@ -163,7 +163,7 @@ const Reviews = ({ playroomId }) => {
 
   const handleDelete = async (id) => {
     if (!id) {
-      toast.error("Nedostaje ID recenzije za brisanje.");
+      showError("Nedostaje ID recenzije za brisanje.");
       return;
     }
 
@@ -180,7 +180,7 @@ const Reviews = ({ playroomId }) => {
       const result = await deleteReview(id);
 
       if (result?.success) {
-        toast.success("Recenzija je uspešno obrisana.");
+        showSuccess("Recenzija je uspešno obrisana.");
         if (reviews.length === 1 && page > 1) {
           setPage((prev) => prev - 1);
         } else {
@@ -191,14 +191,14 @@ const Reviews = ({ playroomId }) => {
           }
         }
       } else {
-        toast.error(result?.error || "Brisanje recenzije nije uspelo.");
+        showError(result?.error || "Brisanje recenzije nije uspelo.");
       }
     } catch (err) {
       const message =
         err?.response?.data?.message ||
         err?.message ||
         "Brisanje recenzije nije uspelo.";
-      toast.error(message);
+      showError(message);
     } finally {
       setDeletingId("");
     }
@@ -215,6 +215,7 @@ const Reviews = ({ playroomId }) => {
         onClick={() => interactive && setRating(i + 1)}
         disabled={!interactive}
         aria-label={`${i + 1} zvezdica`}
+        aria-pressed={interactive ? i + 1 === value : undefined}
       >
         ★
       </button>
@@ -227,7 +228,11 @@ const Reviews = ({ playroomId }) => {
   }
 
   if (loading && page === 1) {
-    return <div className="reviews-loading">Učitavanje recenzija...</div>;
+    return (
+      <div className="reviews-loading" role="status" aria-live="polite">
+        Učitavanje recenzija...
+      </div>
+    );
   }
 
   return (
@@ -276,7 +281,7 @@ const Reviews = ({ playroomId }) => {
       )}
 
       {isAuthenticated && user?.role === "roditelj" && !canReview && (
-        <div className="info-message">
+        <div className="info-message" role="status" aria-live="polite">
           Recenziju možete ostaviti tek nakon završene rezervacije za ovu
           igraonicu.
         </div>
@@ -325,6 +330,7 @@ const Reviews = ({ playroomId }) => {
                     className="btn-delete-review"
                     onClick={() => handleDelete(review._id)}
                     disabled={deletingId === review._id}
+                    aria-label="Obriši recenziju"
                   >
                     {deletingId === review._id ? "Brisanje..." : "🗑 Obriši"}
                   </button>

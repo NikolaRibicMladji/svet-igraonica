@@ -2,6 +2,16 @@ import api from "./api";
 
 const normalizeId = (id) => String(id || "").trim();
 
+const toPositiveInt = (value, fallback = 1, max = 50) => {
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(1, Math.floor(numberValue)));
+};
+
 export const getReviews = async (playroomId, page = 1, limit = 10) => {
   const safePlayroomId = normalizeId(playroomId);
 
@@ -13,8 +23,8 @@ export const getReviews = async (playroomId, page = 1, limit = 10) => {
   }
 
   try {
-    const safePage = Math.max(1, Number(page) || 1);
-    const safeLimit = Math.min(50, Math.max(1, Number(limit) || 10));
+    const safePage = toPositiveInt(page, 1, 1000);
+    const safeLimit = toPositiveInt(limit, 10, 50);
 
     const query = new URLSearchParams({
       page: String(safePage),
@@ -55,9 +65,12 @@ export const addReview = async (playroomId, rating, comment) => {
   }
 
   const safeRating = Number(rating);
+  const normalizedRating = Number.isFinite(safeRating)
+    ? Math.floor(safeRating)
+    : 0;
   const safeComment = String(comment || "").trim();
 
-  if (!Number.isFinite(safeRating) || safeRating < 1 || safeRating > 5) {
+  if (normalizedRating < 1 || normalizedRating > 5) {
     return {
       success: false,
       error: "Ocena mora biti između 1 i 5.",
@@ -82,7 +95,7 @@ export const addReview = async (playroomId, rating, comment) => {
     const response = await api.post(
       `/reviews/${encodeURIComponent(safePlayroomId)}`,
       {
-        rating: safeRating,
+        rating: normalizedRating,
         comment: safeComment,
       },
     );

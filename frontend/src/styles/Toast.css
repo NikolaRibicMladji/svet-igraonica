@@ -58,6 +58,10 @@
   opacity: 1;
   background: rgba(255, 255, 255, 0.12);
 }
+.toast-close:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
 
 @keyframes toastIn {
   from {
@@ -70,11 +74,24 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+
 @media (max-width: 480px) {
   .toast-container {
     top: 12px;
     right: 12px;
     left: 12px;
     width: auto;
+  }
+  .toast {
+    padding: 12px 14px;
+  }
+
+  .toast-message {
+    font-size: 0.9rem;
   }
 }

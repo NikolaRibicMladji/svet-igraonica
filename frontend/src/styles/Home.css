@@ -270,3 +270,25 @@
     padding: 22px 18px;
   }
 }
+.hero-buttons .btn:focus-visible,
+.cta-container .btn:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  outline-offset: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-emoji {
+    animation: none;
+  }
+
+  .step-card,
+  .feature,
+  .cta-container .btn-primary {
+    transition: none;
+  }
+
+  .step-card:hover,
+  .feature:hover,
+  .cta-container .btn-primary:hover {
+    transform: none;
+  }
+}

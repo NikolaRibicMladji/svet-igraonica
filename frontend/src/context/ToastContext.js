@@ -2,7 +2,9 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -11,19 +13,48 @@ const ToastContext = createContext(null);
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
+  const timersRef = useRef({});
+
+  useEffect(() => {
+    return () => {
+      Object.values(timersRef.current).forEach(clearTimeout);
+      timersRef.current = {};
+    };
+  }, []);
+
   const removeToast = useCallback((id) => {
+    if (timersRef.current[id]) {
+      clearTimeout(timersRef.current[id]);
+      delete timersRef.current[id];
+    }
+
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
   const showToast = useCallback(
     (message, type = "info", duration = 3000) => {
+      const safeMessage = String(message || "").trim();
+
+      if (!safeMessage) return null;
+
+      const allowedTypes = ["success", "error", "info"];
+      const safeType = allowedTypes.includes(type) ? type : "info";
+      const safeDuration = Number.isFinite(Number(duration))
+        ? Math.max(1000, Math.min(10000, Number(duration)))
+        : 3000;
+
       const id = `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
-      setToasts((prev) => [...prev, { id, message, type }]);
+      setToasts((prev) => [
+        ...prev.slice(-4),
+        { id, message: safeMessage, type: safeType },
+      ]);
 
-      setTimeout(() => {
+      timersRef.current[id] = setTimeout(() => {
         removeToast(id);
-      }, duration);
+      }, safeDuration);
+
+      return id;
     },
     [removeToast],
   );

@@ -306,3 +306,25 @@
   white-space: nowrap;
   border: 0;
 }
+.star.interactive:focus-visible,
+.comment-input textarea:focus-visible,
+.btn-submit:focus-visible,
+.btn-delete-review:focus-visible,
+.btn-page:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .star,
+  .comment-input textarea,
+  .btn-submit,
+  .btn-delete-review,
+  .btn-page {
+    transition: none;
+  }
+
+  .star.interactive:hover,
+  .btn-submit:hover:not(:disabled) {
+    transform: none;
+  }
+}

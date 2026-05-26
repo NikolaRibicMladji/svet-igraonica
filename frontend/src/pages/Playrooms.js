@@ -20,7 +20,7 @@ const Playrooms = () => {
   const [filters, setFilters] = useState({
     grad: "svi",
     minRating: "sve",
-    sortBy: "newest",
+    sortBy: "najnovije",
   });
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -151,7 +151,11 @@ const Playrooms = () => {
 
   return (
     <div className="container playrooms-page">
-      {loading && <div className="loading-overlay">Učitavanje...</div>}
+      {loading && (
+        <div className="loading-overlay" role="status" aria-live="polite">
+          Učitavanje...
+        </div>
+      )}
       <h1>Sve igraonice</h1>
       <p>Pronađite savršeno mesto za igru vašeg deteta</p>
 
@@ -180,7 +184,11 @@ const Playrooms = () => {
         />
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <div className="error-message" role="alert">
+          {error}
+        </div>
+      )}
 
       {playrooms.length === 0 && !loading ? (
         <div className="empty-state">
@@ -223,7 +231,12 @@ const Playrooms = () => {
                 >
                   <div className="playroom-image">
                     {imageUrl ? (
-                      <img src={imageUrl} alt={playroom.naziv} />
+                      <img
+                        src={imageUrl}
+                        alt={playroom.naziv}
+                        loading="lazy"
+                        decoding="async"
+                      />
                     ) : (
                       <PlayroomCoverFallback naziv={playroom.naziv} />
                     )}
@@ -318,6 +331,7 @@ const Playrooms = () => {
                       <button
                         type="button"
                         className="review-count-link"
+                        aria-label={`Prikaži recenzije za ${playroom.naziv}`}
                         onClick={() =>
                           navigate(
                             `/playrooms/${encodeURIComponent(playroom._id)}#reviews-section`,

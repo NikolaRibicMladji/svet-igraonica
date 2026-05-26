@@ -6,9 +6,8 @@ import { normalizeText } from "../utils/normalizeText";
 const DEFAULT_FILTERS = {
   grad: "svi",
   minRating: "sve",
-  sortBy: "newest",
+  sortBy: "najnovije",
 };
-
 const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
   const mergedInitialFilters = useMemo(
     () => ({
@@ -58,10 +57,10 @@ const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
   ];
 
   const sortOpcije = [
-    { value: "newest", label: "🆕 Najnovije prvo" },
+    { value: "najnovije", label: "🆕 Najnovije prvo" },
     { value: "rating", label: "⭐ Najbolje ocenjene" },
-    { value: "price_asc", label: "💰 Cena rastuće" },
-    { value: "price_desc", label: "💰 Cena opadajuće" },
+    { value: "naziv", label: "🔤 Naziv" },
+    { value: "grad", label: "📍 Grad" },
   ];
 
   const handleTempChange = (key, value) => {
@@ -89,7 +88,7 @@ const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
     let count = 0;
     if (tempFilters.grad !== "svi") count++;
     if (tempFilters.minRating !== "sve") count++;
-    if (tempFilters.sortBy !== "newest") count++;
+    if (tempFilters.sortBy !== "najnovije") count++;
     return count;
   }, [tempFilters]);
 
@@ -139,6 +138,7 @@ const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
                   className={`sort-btn ${
                     tempFilters.sortBy === option.value ? "active" : ""
                   }`}
+                  aria-pressed={tempFilters.sortBy === option.value}
                   onClick={() => handleTempChange("sortBy", option.value)}
                 >
                   {option.label}

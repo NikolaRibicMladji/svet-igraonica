@@ -73,6 +73,14 @@
   width: 100%;
 }
 
+.navbar-links > a.active {
+  color: #ff6b4a;
+}
+
+.navbar-links > a.active::after {
+  width: 100%;
+}
+
 /* AUTH */
 
 .auth-links {
@@ -504,4 +512,53 @@
 .logout-confirm-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+.navbar-logo:focus-visible,
+.navbar-links > a:focus-visible,
+.auth-links a:focus-visible,
+.logout-btn:focus-visible,
+.hamburger:focus-visible,
+.navbar-user-name:focus-visible,
+.account-dropdown button:focus-visible,
+.account-modal-close:focus-visible,
+.account-form input:focus-visible,
+.account-eye-btn:focus-visible,
+.account-submit-btn:focus-visible,
+.logout-cancel-btn:focus-visible,
+.logout-confirm-btn:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  outline-offset: 3px;
+}
+.account-modal-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@media (max-width: 480px) {
+  .account-modal {
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+
+  .logout-confirm-modal {
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .navbar,
+  .navbar-logo,
+  .navbar-links > a,
+  .navbar-links > a::after,
+  .btn-login,
+  .btn-register,
+  .logout-btn,
+  .hamburger span,
+  .account-dropdown button,
+  .account-submit-btn {
+    transition: none;
+  }
+
+  .account-submit-btn.loading::after {
+    animation: none;
+  }
 }
