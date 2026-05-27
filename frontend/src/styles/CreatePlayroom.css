@@ -500,7 +500,8 @@
    FEEDBACK
 ============================================ */
 
-.error-message {
+.form-container.create-playroom-form > .error-message,
+.edit-form.full-form > .error-message {
   position: fixed;
   top: 20px;
   right: 20px;
@@ -518,7 +519,8 @@
 }
 
 @media (max-width: 600px) {
-  .error-message {
+  .form-container.create-playroom-form > .error-message,
+  .edit-form.full-form > .error-message {
     top: 12px;
     left: 12px;
     right: 12px;

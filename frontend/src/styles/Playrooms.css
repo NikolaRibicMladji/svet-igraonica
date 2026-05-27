@@ -354,7 +354,7 @@
 }
 
 /* TELEFON */
-.contact-row .contact-item:first-child::before {
+.contact-item[href^="tel"]::before {
   background-image: url("../assets/icons/phone.png");
 }
 
