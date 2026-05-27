@@ -254,7 +254,7 @@
   font-weight: 700;
 }
 
-.terms-checkbox {
+.modal-content .terms-checkbox {
   padding: 0 24px;
   margin-bottom: 16px;
 }
@@ -297,11 +297,11 @@
 }
 
 @media (max-width: 480px) {
-  .terms-checkbox {
+  .modal-content .terms-checkbox {
     padding: 0 20px;
   }
 
-  .terms-checkbox-label {
+  .modal-content .terms-checkbox-label {
     flex-direction: column;
   }
 }

@@ -15,6 +15,27 @@ const getPhoneHref = (phone = "") => {
   return safePhone ? `tel:${safePhone}` : "";
 };
 
+const isMobileDevice = () =>
+  /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent);
+
+const copyToClipboard = async (text) => {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const input = document.createElement("input");
+  input.value = text;
+  input.setAttribute("readonly", "");
+  input.style.position = "absolute";
+  input.style.left = "-9999px";
+
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand("copy");
+  document.body.removeChild(input);
+};
+
 const Playrooms = () => {
   const [playrooms, setPlayrooms] = useState([]);
   const [page, setPage] = useState(1);
@@ -28,9 +49,10 @@ const Playrooms = () => {
   const [filters, setFilters] = useState({
     grad: "svi",
     minRating: "sve",
-    sortBy: "najnovije",
+    sortBy: "",
   });
   const [error, setError] = useState("");
+  const [copiedPhoneId, setCopiedPhoneId] = useState("");
   const navigate = useNavigate();
   const observer = useRef(null);
 
@@ -137,6 +159,28 @@ const Playrooms = () => {
   const handleViewDetails = (id) => {
     if (!id) return;
     navigate(`/playrooms/${encodeURIComponent(id)}`);
+  };
+
+  const handlePhoneClick = async (phone, playroomId) => {
+    const href = getPhoneHref(phone);
+
+    if (!phone || !href) return;
+
+    if (isMobileDevice()) {
+      window.location.href = href;
+      return;
+    }
+
+    try {
+      await copyToClipboard(phone);
+      setCopiedPhoneId(playroomId);
+
+      setTimeout(() => {
+        setCopiedPhoneId("");
+      }, 2000);
+    } catch {
+      setCopiedPhoneId("");
+    }
   };
 
   const lastPlayroomRef = useCallback(
@@ -262,9 +306,29 @@ const Playrooms = () => {
                       {/* TELEFON + EMAIL */}
                       <div className="contact-row">
                         {playroom.kontaktTelefon && phoneHref && (
-                          <a href={phoneHref} className="contact-item">
-                            {playroom.kontaktTelefon}
-                          </a>
+                          <span className="contact-phone-wrap">
+                            <button
+                              type="button"
+                              className="contact-item contact-phone-button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handlePhoneClick(
+                                  playroom.kontaktTelefon,
+                                  playroom._id,
+                                );
+                              }}
+                              aria-label={`Telefon ${playroom.kontaktTelefon}`}
+                            >
+                              {playroom.kontaktTelefon}
+                            </button>
+
+                            {copiedPhoneId === playroom._id && (
+                              <span className="contact-copy-message">
+                                Kopirano
+                              </span>
+                            )}
+                          </span>
                         )}
 
                         {playroom.kontaktEmail && (

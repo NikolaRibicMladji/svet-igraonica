@@ -5,7 +5,7 @@ import { getFilterCities } from "../services/playroomService";
 const DEFAULT_FILTERS = {
   grad: "svi",
   minRating: "sve",
-  sortBy: "najnovije",
+  sortBy: "",
 };
 const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
   const mergedInitialFilters = useMemo(
@@ -56,16 +56,21 @@ const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
   ];
 
   const sortOpcije = [
-    { value: "najnovije", label: "🆕 Najnovije prvo" },
+    { value: "newest", label: "🆕 Najnovije prvo" },
     { value: "rating", label: "⭐ Najbolje ocenjene" },
-    { value: "naziv", label: "🔤 Naziv" },
-    { value: "grad", label: "📍 Grad" },
   ];
 
   const handleTempChange = (key, value) => {
     setTempFilters((prev) => ({
       ...prev,
       [key]: value,
+    }));
+  };
+
+  const handleSortToggle = (value) => {
+    setTempFilters((prev) => ({
+      ...prev,
+      sortBy: prev.sortBy === value ? "" : value,
     }));
   };
 
@@ -85,9 +90,19 @@ const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
-    if (tempFilters.grad !== "svi") count++;
-    if (tempFilters.minRating !== "sve") count++;
-    if (tempFilters.sortBy !== "najnovije") count++;
+
+    if (tempFilters.grad && tempFilters.grad !== "svi") {
+      count++;
+    }
+
+    if (tempFilters.minRating && tempFilters.minRating !== "sve") {
+      count++;
+    }
+
+    if (["newest", "rating"].includes(tempFilters.sortBy)) {
+      count++;
+    }
+
     return count;
   }, [tempFilters]);
 
@@ -138,7 +153,7 @@ const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
                     tempFilters.sortBy === option.value ? "active" : ""
                   }`}
                   aria-pressed={tempFilters.sortBy === option.value}
-                  onClick={() => handleTempChange("sortBy", option.value)}
+                  onClick={() => handleSortToggle(option.value)}
                 >
                   {option.label}
                 </button>

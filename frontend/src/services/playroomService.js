@@ -44,11 +44,13 @@ export const getAllPlayrooms = async (params = {}) => {
       }
     }
 
-    const allowedSortValues = ["najnovije", "rating", "naziv", "grad"];
+    const allowedSortValues = ["newest", "rating"];
     const sortBy = normalizeTextParam(params.sortBy, 30);
 
     if (allowedSortValues.includes(sortBy)) {
       query.append("sortBy", sortBy);
+    } else {
+      query.append("sortBy", "newest");
     }
 
     const search = normalizeTextParam(params.search, 80);

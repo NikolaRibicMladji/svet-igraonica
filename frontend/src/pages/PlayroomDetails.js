@@ -18,6 +18,27 @@ const getPhoneHref = (phone = "") => {
   return safePhone ? `tel:${safePhone}` : "";
 };
 
+const isMobileDevice = () =>
+  /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent);
+
+const copyToClipboard = async (text) => {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const input = document.createElement("input");
+  input.value = text;
+  input.setAttribute("readonly", "");
+  input.style.position = "absolute";
+  input.style.left = "-9999px";
+
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand("copy");
+  document.body.removeChild(input);
+};
+
 const DAY_LABELS = {
   ponedeljak: "Ponedeljak",
   utorak: "Utorak",
@@ -39,6 +60,7 @@ const PlayroomDetails = () => {
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [phoneCopyMessage, setPhoneCopyMessage] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -151,6 +173,26 @@ const PlayroomDetails = () => {
   const profileImageUrl = getSafeExternalUrl(playroom.profilnaSlika?.url);
   const phoneHref = getPhoneHref(playroom.kontaktTelefon);
 
+  const handlePhoneClick = async () => {
+    if (!playroom.kontaktTelefon) return;
+
+    if (isMobileDevice() && phoneHref) {
+      window.location.href = phoneHref;
+      return;
+    }
+
+    try {
+      await copyToClipboard(playroom.kontaktTelefon);
+      setPhoneCopyMessage("Telefon je kopiran.");
+
+      setTimeout(() => {
+        setPhoneCopyMessage("");
+      }, 2000);
+    } catch {
+      setPhoneCopyMessage("Nije moguće kopirati telefon.");
+    }
+  };
+
   const getCenaTipLabel = (tip) => {
     if (tip === "po_osobi") return "po osobi";
     if (tip === "po_satu") return "po satu";
@@ -215,8 +257,27 @@ const PlayroomDetails = () => {
         <div className="details-grid">
           <div className="detail-item">
             <div className="detail-label">📞 Telefon</div>
-            {playroom.kontaktTelefon && phoneHref ? (
-              <a href={phoneHref}>{playroom.kontaktTelefon}</a>
+            {playroom.kontaktTelefon ? (
+              <>
+                <button
+                  type="button"
+                  className="phone-copy-button"
+                  onClick={handlePhoneClick}
+                  aria-label={`Telefon ${playroom.kontaktTelefon}`}
+                >
+                  {playroom.kontaktTelefon}
+                </button>
+
+                {phoneCopyMessage && (
+                  <div
+                    className="phone-copy-message"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    {phoneCopyMessage}
+                  </div>
+                )}
+              </>
             ) : (
               <p>-</p>
             )}

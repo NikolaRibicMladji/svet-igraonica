@@ -450,3 +450,54 @@
     transform: none;
   }
 }
+.contact-phone-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contact-phone-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.contact-phone-button::before {
+  content: "📞";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.contact-phone-button:hover {
+  color: #0b7dda;
+  text-decoration: underline;
+}
+
+.contact-phone-button:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.contact-phone-button.contact-item {
+  padding-left: 0;
+}
+
+.contact-phone-button.contact-item::before {
+  position: static;
+  transform: none;
+  width: auto;
+  height: auto;
+  background-image: none;
+  content: "📞";
+  font-size: 14px;
+  line-height: 1;
+}

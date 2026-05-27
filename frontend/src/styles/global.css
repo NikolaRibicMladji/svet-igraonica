@@ -474,3 +474,49 @@ p {
     transform: none;
   }
 }
+
+.auth-page .form-group.terms-checkbox {
+  width: 100%;
+  max-width: none;
+  padding: 0 !important;
+  margin-bottom: 20px;
+}
+
+.auth-page .form-group.terms-checkbox label.terms-checkbox-label {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 52px;
+  box-sizing: border-box;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: nowrap !important;
+
+  padding: 14px 16px !important;
+}
+
+.auth-page .form-group.terms-checkbox label.terms-checkbox-label span {
+  flex: 1 !important;
+  min-width: 0;
+  white-space: nowrap !important;
+  overflow: visible;
+  text-overflow: unset;
+}
+
+.auth-page
+  .form-group.terms-checkbox
+  label.terms-checkbox-label
+  input[type="checkbox"] {
+  flex: 0 0 18px !important;
+  width: 18px !important;
+  height: 18px !important;
+  margin-left: 16px !important;
+}
+
+.auth-page
+  .form-group.terms-checkbox
+  label.terms-checkbox-label
+  input[type="checkbox"] {
+  flex-shrink: 0;
+}
