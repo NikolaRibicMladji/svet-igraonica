@@ -18,6 +18,26 @@ const getPhoneHref = (phone = "") => {
   return safePhone ? `tel:${safePhone}` : "";
 };
 
+const getEmailHref = (email = "", playroomName = "") => {
+  const safeEmail = String(email || "")
+    .trim()
+    .replace(/[\r\n]/g, "");
+
+  if (!/^\S+@\S+\.\S+$/.test(safeEmail)) {
+    return "";
+  }
+
+  const subject = encodeURIComponent(
+    `Upit za igraonicu ${playroomName || ""}`.trim(),
+  );
+
+  const body = encodeURIComponent(
+    "Poštovani,\n\nŽelim da pošaljem upit za vašu igraonicu.\n\n",
+  );
+
+  return `mailto:${safeEmail}?subject=${subject}&body=${body}`;
+};
+
 const isMobileDevice = () =>
   /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent);
 
@@ -171,7 +191,9 @@ const PlayroomDetails = () => {
   const tiktokUrl = getSafeExternalUrl(playroom.drustveneMreze?.tiktok);
   const websiteUrl = getSafeExternalUrl(playroom.drustveneMreze?.website);
   const profileImageUrl = getSafeExternalUrl(playroom.profilnaSlika?.url);
+
   const phoneHref = getPhoneHref(playroom.kontaktTelefon);
+  const emailHref = getEmailHref(playroom.kontaktEmail, playroom.naziv);
 
   const handlePhoneClick = async () => {
     if (!playroom.kontaktTelefon) return;
@@ -285,10 +307,8 @@ const PlayroomDetails = () => {
 
           <div className="detail-item">
             <div className="detail-label">📧 Email</div>
-            {playroom.kontaktEmail ? (
-              <a href={`mailto:${encodeURIComponent(playroom.kontaktEmail)}`}>
-                {playroom.kontaktEmail}
-              </a>
+            {playroom.kontaktEmail && emailHref ? (
+              <a href={emailHref}>{playroom.kontaktEmail}</a>
             ) : (
               <p>-</p>
             )}

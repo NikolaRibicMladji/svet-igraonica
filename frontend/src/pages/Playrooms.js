@@ -15,6 +15,26 @@ const getPhoneHref = (phone = "") => {
   return safePhone ? `tel:${safePhone}` : "";
 };
 
+const getEmailHref = (email = "", playroomName = "") => {
+  const safeEmail = String(email || "")
+    .trim()
+    .replace(/[\r\n]/g, "");
+
+  if (!/^\S+@\S+\.\S+$/.test(safeEmail)) {
+    return "";
+  }
+
+  const subject = encodeURIComponent(
+    `Upit za igraonicu ${playroomName || ""}`.trim(),
+  );
+
+  const body = encodeURIComponent(
+    "Poštovani,\n\nŽelim da pošaljem upit za vašu igraonicu.\n\n",
+  );
+
+  return `mailto:${safeEmail}?subject=${subject}&body=${body}`;
+};
+
 const isMobileDevice = () =>
   /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent);
 
@@ -57,7 +77,11 @@ const Playrooms = () => {
   const observer = useRef(null);
 
   const loadPlayrooms = useCallback(async () => {
-    if (page === 1) setLoading(true);
+    const shouldShowFullLoading = page === 1 && playrooms.length === 0;
+
+    if (shouldShowFullLoading) {
+      setLoading(true);
+    }
     setError("");
 
     try {
@@ -116,10 +140,13 @@ const Playrooms = () => {
           "Greška pri učitavanju igraonica.",
       );
     } finally {
-      setLoading(false);
+      if (shouldShowFullLoading) {
+        setLoading(false);
+      }
+
       setLoadingMore(false);
     }
-  }, [filters, page, debouncedSearch]);
+  }, [filters, page, debouncedSearch, playrooms.length]);
 
   useEffect(() => {
     return () => {
@@ -227,10 +254,8 @@ const Playrooms = () => {
             const value = e.target.value;
 
             setSearchTerm(value);
-            setPlayrooms([]);
             setPage(1);
             setHasMore(true);
-            setLoading(true);
           }}
           className="search-input"
         />
@@ -270,6 +295,10 @@ const Playrooms = () => {
                 playroom.drustveneMreze?.website,
               );
               const phoneHref = getPhoneHref(playroom.kontaktTelefon);
+              const emailHref = getEmailHref(
+                playroom.kontaktEmail,
+                playroom.naziv,
+              );
               const ratingValue = Number(playroom.rating || 0);
               const filledStars = Math.max(
                 0,
@@ -331,10 +360,11 @@ const Playrooms = () => {
                           </span>
                         )}
 
-                        {playroom.kontaktEmail && (
+                        {playroom.kontaktEmail && emailHref && (
                           <a
-                            href={`mailto:${encodeURIComponent(playroom.kontaktEmail)}`}
+                            href={emailHref}
                             className="contact-item"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             {playroom.kontaktEmail}
                           </a>
