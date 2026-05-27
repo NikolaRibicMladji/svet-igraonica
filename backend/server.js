@@ -3,7 +3,7 @@ const path = require("path");
 const mongoose = require("mongoose");
 
 // Load env
-dotenv.config({ path: path.join(__dirname, "../.env") });
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 const connectDB = require("./config/db");
 const app = require("./app");

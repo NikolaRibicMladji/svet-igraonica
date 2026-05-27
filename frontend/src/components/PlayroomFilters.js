@@ -77,10 +77,11 @@ const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
   const handleApply = () => {
     onFilterChange?.({
       ...tempFilters,
-
       minRating:
         tempFilters.minRating === "sve" ? "sve" : Number(tempFilters.minRating),
     });
+
+    setIsExpanded(false);
   };
 
   const handleReset = () => {
