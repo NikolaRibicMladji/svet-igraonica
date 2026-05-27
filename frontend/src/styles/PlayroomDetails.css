@@ -892,3 +892,24 @@
   color: #15803d;
   font-weight: 600;
 }
+.email-send-button {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: #2196f3;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  word-break: break-word;
+}
+
+.email-send-button:hover {
+  color: #0b7dda;
+  text-decoration: underline;
+}
+
+.email-send-button:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  outline-offset: 3px;
+  border-radius: 6px;
+}

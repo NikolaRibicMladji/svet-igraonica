@@ -1164,16 +1164,6 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
       return;
     }
 
-    const safeProfilnaSlika = profilnaSlika?._localFile ? null : profilnaSlika;
-
-    const safeSlike = Array.isArray(slike)
-      ? slike.filter((item) => !item?._localFile)
-      : [];
-
-    const safeVideoGalerija = Array.isArray(videoGalerija)
-      ? videoGalerija.filter((item) => !item?._localFile)
-      : [];
-
     const submitData = {
       ...formData,
       naziv: sanitizeText(formData.naziv),
@@ -1211,9 +1201,7 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
         tip: u.tip || "fiksno",
       })),
       besplatnePogodnosti,
-      profilnaSlika: safeProfilnaSlika,
-      slike: safeSlike,
-      videoGalerija: safeVideoGalerija,
+
       _pendingMedia: {
         profilnaSlikaFile: pendingProfilnaFile,
         imageFiles: pendingImageFiles,

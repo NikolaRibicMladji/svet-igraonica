@@ -8,10 +8,105 @@ import { useToast } from "../context/ToastContext";
 
 const getPlayroomId = (playroom) => playroom?._id || playroom?.id || "";
 
+const createGeneratedProfileImageFile = (playroomName = "Igraonica") =>
+  new Promise((resolve, reject) => {
+    const canvas = document.createElement("canvas");
+    const width = 1200;
+    const height = 900;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+      reject(new Error("Nije moguće generisati profilnu sliku."));
+      return;
+    }
+
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, "#ff6b4a");
+    gradient.addColorStop(1, "#ff8c6e");
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.14)";
+    ctx.beginPath();
+    ctx.arc(180, 160, 120, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(1030, 760, 180, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const safeName = String(playroomName || "Igraonica").trim() || "Igraonica";
+    const words = safeName.split(/\s+/);
+    const lines = [];
+    let currentLine = "";
+
+    ctx.font = "bold 86px Arial, sans-serif";
+
+    words.forEach((word) => {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const metrics = ctx.measureText(testLine);
+
+      if (metrics.width > width - 180 && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    });
+
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+
+    const visibleLines = lines.slice(0, 3);
+    const lineHeight = 104;
+    const startY = height / 2 - ((visibleLines.length - 1) * lineHeight) / 2;
+
+    visibleLines.forEach((line, index) => {
+      ctx.fillText(line, width / 2, startY + index * lineHeight);
+    });
+
+    ctx.font = "500 34px Arial, sans-serif";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.fillText("Svet Igraonica", width / 2, height - 110);
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("Nije moguće kreirati profilnu sliku."));
+          return;
+        }
+
+        resolve(
+          new File([blob], "generisana-profilna-slika.png", {
+            type: "image/png",
+          }),
+        );
+      },
+      "image/png",
+      0.92,
+    );
+  });
+
 const uploadPendingMedia = async (playroomId, pendingMedia = {}) => {
   const errors = [];
 
-  const profilnaFile = pendingMedia.profilnaSlikaFile || null;
+  let profilnaFile = pendingMedia.profilnaSlikaFile || null;
+
+  if (!profilnaFile) {
+    profilnaFile = await createGeneratedProfileImageFile(
+      pendingMedia.playroomName || "Igraonica",
+    );
+  }
   const imageFiles = Array.isArray(pendingMedia.imageFiles)
     ? pendingMedia.imageFiles
     : [];
@@ -100,7 +195,10 @@ const CreatePlayroom = () => {
     setSubmitting(true);
 
     try {
-      const pendingMedia = data?._pendingMedia || {};
+      const pendingMedia = {
+        ...(data?._pendingMedia || {}),
+        playroomName: data?.naziv || "",
+      };
       const { _pendingMedia, ...playroomPayload } = data;
 
       const result = await createPlayroom(playroomPayload);

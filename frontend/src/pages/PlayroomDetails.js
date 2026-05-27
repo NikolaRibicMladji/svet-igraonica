@@ -215,6 +215,12 @@ const PlayroomDetails = () => {
     }
   };
 
+  const handleEmailClick = () => {
+    if (!emailHref) return;
+
+    window.location.href = emailHref;
+  };
+
   const getCenaTipLabel = (tip) => {
     if (tip === "po_osobi") return "po osobi";
     if (tip === "po_satu") return "po satu";
@@ -308,7 +314,14 @@ const PlayroomDetails = () => {
           <div className="detail-item">
             <div className="detail-label">📧 Email</div>
             {playroom.kontaktEmail && emailHref ? (
-              <a href={emailHref}>{playroom.kontaktEmail}</a>
+              <button
+                type="button"
+                className="email-send-button"
+                onClick={handleEmailClick}
+                aria-label={`Pošalji email na ${playroom.kontaktEmail}`}
+              >
+                {playroom.kontaktEmail}
+              </button>
             ) : (
               <p>-</p>
             )}

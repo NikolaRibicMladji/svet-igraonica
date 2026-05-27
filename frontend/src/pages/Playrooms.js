@@ -210,6 +210,12 @@ const Playrooms = () => {
     }
   };
 
+  const handleEmailClick = (emailHref) => {
+    if (!emailHref) return;
+
+    window.location.href = emailHref;
+  };
+
   const lastPlayroomRef = useCallback(
     (node) => {
       if (loading || loadingMore) return;
@@ -361,13 +367,18 @@ const Playrooms = () => {
                         )}
 
                         {playroom.kontaktEmail && emailHref && (
-                          <a
-                            href={emailHref}
-                            className="contact-item"
-                            onClick={(e) => e.stopPropagation()}
+                          <button
+                            type="button"
+                            className="contact-item contact-email-button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleEmailClick(emailHref);
+                            }}
+                            aria-label={`Pošalji email na ${playroom.kontaktEmail}`}
                           >
                             {playroom.kontaktEmail}
-                          </a>
+                          </button>
                         )}
                       </div>
 
