@@ -10,6 +10,16 @@ import {
 import "../styles/OwnerDashboard.css";
 import { useToast } from "../context/ToastContext";
 
+const DAY_NAMES = [
+  "Nedelja",
+  "Ponedeljak",
+  "Utorak",
+  "Sreda",
+  "Četvrtak",
+  "Petak",
+  "Subota",
+];
+
 const OwnerDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const { success: showSuccess, error: showError } = useToast();
@@ -498,16 +508,6 @@ const OwnerDashboard = () => {
     };
   }, [filteredBookings]);
 
-  const dayNames = [
-    "Nedelja",
-    "Ponedeljak",
-    "Utorak",
-    "Sreda",
-    "Četvrtak",
-    "Petak",
-    "Subota",
-  ];
-
   const dayStats = useMemo(() => {
     const map = {};
     let total = 0;
@@ -539,9 +539,9 @@ const OwnerDashboard = () => {
     const worstDay = entries[entries.length - 1];
 
     return {
-      bestDay: dayNames[bestDay[0]],
+      bestDay: DAY_NAMES[bestDay[0]],
       bestDayPercent: total > 0 ? Math.round((bestDay[1] / total) * 100) : 0,
-      worstDay: dayNames[worstDay[0]],
+      worstDay: DAY_NAMES[worstDay[0]],
       worstDayPercent: total > 0 ? Math.round((worstDay[1] / total) * 100) : 0,
     };
   }, [filteredBookings]);

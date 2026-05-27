@@ -119,10 +119,9 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
   };
 
   const isQuarterHour = (time) => {
-    const [_, m] = String(time || "00:00")
-      .split(":")
-      .map(Number);
-    return [0, 15, 30, 45].includes(m);
+    const minutes = Number(String(time || "00:00").split(":")[1]);
+
+    return [0, 15, 30, 45].includes(minutes);
   };
 
   const availableStartTimes =

@@ -31,7 +31,7 @@ const AdminPanel = () => {
     if (selectedPlayroom && detailsPanelRef.current) {
       detailsPanelRef.current.scrollTop = 0;
     }
-  }, [selectedPlayroom?._id]);
+  }, [selectedPlayroom]);
 
   const loadUnverifiedPlayrooms = useCallback(async () => {
     setLoading(true);

@@ -65,7 +65,7 @@ const OwnerTimeSlots = () => {
     } finally {
       setLoadingPlayrooms(false);
     }
-  }, [user?.role]);
+  }, []);
 
   useEffect(() => {
     if (!authLoading) {
