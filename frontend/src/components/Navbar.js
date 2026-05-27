@@ -292,6 +292,16 @@ const Navbar = () => {
           </div>
         </div>
       </nav>
+
+      {menuOpen && (
+        <button
+          type="button"
+          className="navbar-mobile-backdrop"
+          aria-label="Zatvori meni"
+          onClick={closeMenu}
+        />
+      )}
+
       {logoutConfirmOpen && (
         <div className="logout-confirm-overlay" onClick={closeLogoutConfirm}>
           <div

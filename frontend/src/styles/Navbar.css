@@ -562,3 +562,40 @@
     animation: none;
   }
 }
+.navbar-mobile-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    z-index: 1200;
+  }
+
+  .navbar-mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    border: none;
+    padding: 0;
+    background: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(5px);
+    cursor: default;
+  }
+
+  .navbar-links {
+    z-index: 1300;
+    max-height: calc(100vh - 65px);
+    overflow-y: auto;
+  }
+
+  .navbar-links.open {
+    display: flex;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-links {
+    max-height: calc(100vh - 60px);
+  }
+}
