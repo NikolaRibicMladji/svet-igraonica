@@ -109,6 +109,20 @@ const ManagePlayroom = () => {
     }
   };
 
+  const closeDeactivateModal = () => {
+    if (deactivating) return;
+
+    setDeactivateModalOpen(false);
+    setDeactivatePassword("");
+  };
+
+  const closeDeleteModal = () => {
+    if (deleting) return;
+
+    setDeleteModalOpen(false);
+    setDeleteConfirmText("");
+  };
+
   const handleDeactivatePlayroom = async () => {
     if (deactivating) return;
 
@@ -583,12 +597,7 @@ const ManagePlayroom = () => {
         />
       )}
       {deactivateModalOpen && (
-        <div
-          className="delete-playroom-overlay"
-          onClick={() => {
-            if (!deactivating) setDeactivateModalOpen(false);
-          }}
-        >
+        <div className="delete-playroom-overlay" onClick={closeDeactivateModal}>
           <div
             className="delete-playroom-modal"
             role="dialog"
@@ -600,9 +609,7 @@ const ManagePlayroom = () => {
               type="button"
               className="delete-playroom-close"
               aria-label="Zatvori modal za deaktivaciju"
-              onClick={() => {
-                if (!deactivating) setDeactivateModalOpen(false);
-              }}
+              onClick={closeDeactivateModal}
               disabled={deactivating}
             >
               ✖
@@ -641,12 +648,7 @@ const ManagePlayroom = () => {
         </div>
       )}
       {deleteModalOpen && (
-        <div
-          className="delete-playroom-overlay"
-          onClick={() => {
-            if (!deleting) setDeleteModalOpen(false);
-          }}
-        >
+        <div className="delete-playroom-overlay" onClick={closeDeleteModal}>
           <div
             className="delete-playroom-modal"
             role="dialog"
@@ -658,9 +660,7 @@ const ManagePlayroom = () => {
               type="button"
               className="delete-playroom-close"
               aria-label="Zatvori modal za brisanje"
-              onClick={() => {
-                if (!deleting) setDeleteModalOpen(false);
-              }}
+              onClick={closeDeleteModal}
               disabled={deleting}
             >
               ✖

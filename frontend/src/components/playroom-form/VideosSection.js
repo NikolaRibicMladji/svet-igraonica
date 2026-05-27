@@ -2,6 +2,19 @@ import React from "react";
 
 const VIDEO_MAX_COUNT = 3;
 
+const formatVideoDuration = (duration) => {
+  const totalSeconds = Math.floor(Number(duration));
+
+  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) {
+    return "";
+  }
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+};
+
 const VideosSection = ({
   uploadingVideo = false,
   videoGalerija = [],
@@ -74,47 +87,46 @@ const VideosSection = ({
           <div className="videos-list">
             <h4>Postavljeni video snimci:</h4>
 
-            {videoGalerija.map((video, idx) => (
-              <div
-                key={video.publicId || video.public_id || video.url || idx}
-                className="video-item-preview"
-              >
-                <div className="video-preview">
-                  <video
-                    controls
-                    preload="metadata"
-                    className="video-preview-player"
-                    src={video.url}
-                    aria-label={video.naziv || `Video ${idx + 1}`}
-                  />
+            {videoGalerija.map((video, idx) => {
+              const durationLabel = formatVideoDuration(video.trajanje);
 
-                  <div className="video-info">
-                    <span className="video-name">
-                      {video.naziv || `Video ${idx + 1}`}
-                    </span>
+              return (
+                <div
+                  key={video.publicId || video.public_id || video.url || idx}
+                  className="video-item-preview"
+                >
+                  <div className="video-preview">
+                    <video
+                      controls
+                      preload="metadata"
+                      className="video-preview-player"
+                      src={video.url}
+                      aria-label={video.naziv || `Video ${idx + 1}`}
+                    />
 
-                    {Number(video.trajanje) > 0 && (
-                      <span className="video-duration">
-                        {Math.floor(Number(video.trajanje) / 60)}:
-                        {(Number(video.trajanje) % 60)
-                          .toString()
-                          .padStart(2, "0")}
+                    <div className="video-info">
+                      <span className="video-name">
+                        {video.naziv || `Video ${idx + 1}`}
                       </span>
-                    )}
-                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveVideo(idx)}
-                    className="remove-video"
-                    disabled={uploadingVideo}
-                    aria-label={`Obriši video ${idx + 1}`}
-                  >
-                    ✖ Obriši
-                  </button>
+                      {durationLabel && (
+                        <span className="video-duration">{durationLabel}</span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveVideo(idx)}
+                      className="remove-video"
+                      disabled={uploadingVideo}
+                      aria-label={`Obriši video ${idx + 1}`}
+                    >
+                      ✖ Obriši
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

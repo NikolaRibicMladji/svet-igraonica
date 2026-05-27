@@ -28,8 +28,12 @@ const Register = () => {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      if (user?.role === "vlasnik") {
-        navigate("/create-playroom", { replace: true });
+      if (user?.role === "admin") {
+        navigate("/admin", { replace: true });
+      } else if (user?.role === "vlasnik") {
+        navigate(user?.hasPlayroom ? "/owner/dashboard" : "/create-playroom", {
+          replace: true,
+        });
       } else {
         navigate("/", { replace: true });
       }

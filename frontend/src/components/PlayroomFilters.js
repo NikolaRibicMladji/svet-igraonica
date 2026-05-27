@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "../styles/PlayroomFilters.css";
 import { getFilterCities } from "../services/playroomService";
-import { normalizeText } from "../utils/normalizeText";
 
 const DEFAULT_FILTERS = {
   grad: "svi",
@@ -36,7 +35,7 @@ const PlayroomFilters = ({ onFilterChange, initialFilters = {} }) => {
           setGradovi([
             { value: "svi", label: "Svi gradovi" },
             ...result.data.map((city) => ({
-              value: normalizeText(city),
+              value: String(city || "").trim(),
               label: city,
             })),
           ]);

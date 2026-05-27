@@ -59,7 +59,7 @@ const PrivacyPolicy = () => {
       <h2>Kontakt</h2>
       <p>
         Za sva pitanja u vezi sa privatnošću možete nas kontaktirati na:{" "}
-        <strong>TVOJ EMAIL</strong>
+        <a href="mailto:kontakt@svetigraonica.rs">kontakt@svetigraonica.rs</a>
       </p>
     </div>
   );

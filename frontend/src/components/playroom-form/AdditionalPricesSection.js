@@ -92,7 +92,15 @@ const AdditionalPricesSection = ({
               Cena za "{safeNovaCena.naziv}" je već dodata.
             </div>
           )}
-          <button type="button" onClick={handleAddCena}>
+          <button
+            type="button"
+            onClick={handleAddCena}
+            disabled={
+              !safeNovaCena.naziv.trim() ||
+              !safeNovaCena.cena ||
+              Boolean(isDuplicateCena)
+            }
+          >
             + Dodaj
           </button>
         </div>

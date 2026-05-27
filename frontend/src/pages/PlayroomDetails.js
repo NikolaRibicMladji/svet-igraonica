@@ -10,6 +10,14 @@ import PlayroomCoverFallback from "../components/PlayroomCoverFallback";
 import { getSafeExternalUrl } from "../utils/urlUtils";
 import { normalizeImageItem } from "../utils/media";
 
+const getPhoneHref = (phone = "") => {
+  const safePhone = String(phone || "")
+    .trim()
+    .replace(/(?!^\+)[^\d]/g, "");
+
+  return safePhone ? `tel:${safePhone}` : "";
+};
+
 const DAY_LABELS = {
   ponedeljak: "Ponedeljak",
   utorak: "Utorak",
@@ -141,6 +149,7 @@ const PlayroomDetails = () => {
   const tiktokUrl = getSafeExternalUrl(playroom.drustveneMreze?.tiktok);
   const websiteUrl = getSafeExternalUrl(playroom.drustveneMreze?.website);
   const profileImageUrl = getSafeExternalUrl(playroom.profilnaSlika?.url);
+  const phoneHref = getPhoneHref(playroom.kontaktTelefon);
 
   const getCenaTipLabel = (tip) => {
     if (tip === "po_osobi") return "po osobi";
@@ -206,17 +215,17 @@ const PlayroomDetails = () => {
         <div className="details-grid">
           <div className="detail-item">
             <div className="detail-label">📞 Telefon</div>
-            <p>{playroom.kontaktTelefon || "-"}</p>
+            {playroom.kontaktTelefon && phoneHref ? (
+              <a href={phoneHref}>{playroom.kontaktTelefon}</a>
+            ) : (
+              <p>-</p>
+            )}
           </div>
 
           <div className="detail-item">
             <div className="detail-label">📧 Email</div>
             {playroom.kontaktEmail ? (
-              <a
-                href={`mailto:${encodeURIComponent(playroom.kontaktEmail)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <a href={`mailto:${encodeURIComponent(playroom.kontaktEmail)}`}>
                 {playroom.kontaktEmail}
               </a>
             ) : (

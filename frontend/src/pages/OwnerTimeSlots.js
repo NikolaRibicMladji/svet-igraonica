@@ -1,10 +1,22 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyPlayrooms } from "../services/playroomService";
-import { getAllTimeSlotsForOwner } from "../services/bookingService";
+import {
+  getAllTimeSlotsForOwner,
+  manualBookInterval,
+} from "../services/bookingService";
+import ManualBookingModal from "../components/ManualBookingModal";
 import { useAuth } from "../context/AuthContext";
 import { getLocalDate } from "../utils/bookingUtils";
 import "../styles/OwnerTimeSlots.css";
+
+const getPhoneHref = (phone = "") => {
+  const safePhone = String(phone || "")
+    .trim()
+    .replace(/(?!^\+)[^\d]/g, "");
+
+  return safePhone ? `tel:${safePhone}` : "";
+};
 
 const OwnerTimeSlots = () => {
   const { user, loading: authLoading } = useAuth();
@@ -19,7 +31,7 @@ const OwnerTimeSlots = () => {
   const [message, setMessage] = useState("");
 
   const [error, setError] = useState("");
-
+  const [manualSlot, setManualSlot] = useState(null);
   const [expandedBookingId, setExpandedBookingId] = useState(null);
 
   const loadPlayrooms = useCallback(async () => {
@@ -155,20 +167,42 @@ const OwnerTimeSlots = () => {
     return `${cena} RSD`;
   };
 
-  const goToReservationPage = () => {
-    if (!selectedPlayroom || !selectedDate) {
+  const openManualBookingModal = (segment) => {
+    if (!selectedPlayroom || !selectedDate || !selectedPlayroomData) {
       setError("Izaberi igraonicu i datum.");
       return;
     }
 
-    const params = new URLSearchParams({
-      datum: selectedDate,
-      mode: "owner",
-    });
+    const mode = selectedPlayroomData.rezimRezervacije;
+    const isFiksno = mode === "fiksno";
+    const timeSlotId = segment?.timeSlotId || segment?._id || "";
 
-    navigate(
-      `/book/${encodeURIComponent(selectedPlayroom)}?${params.toString()}`,
-    );
+    if (isFiksno && !timeSlotId) {
+      setError("Nedostaje ID fiksnog termina za ručnu rezervaciju.");
+      return;
+    }
+
+    setManualSlot({
+      ...segment,
+      mode,
+      datum: segment?.datum || selectedDate,
+      playroomId: selectedPlayroom,
+      timeSlotId,
+      playroom: selectedPlayroomData,
+    });
+  };
+
+  const handleManualBookingSubmit = async (payload) => {
+    const result = await manualBookInterval(payload);
+
+    if (!result?.success) {
+      throw new Error(result?.error || "Ručna rezervacija nije uspela.");
+    }
+
+    setManualSlot(null);
+    setExpandedBookingId(null);
+    setMessage(result.message || "Termin je uspešno ručno zauzet.");
+    await loadTimeSlots();
   };
 
   const getBookingId = (booking) => {
@@ -185,6 +219,17 @@ const OwnerTimeSlots = () => {
 
   const occupiedSlots = timeSlots.filter(
     (segment) => segment.tip === "zauzeto",
+  );
+
+  const selectedPlayroomData =
+    playrooms.find(
+      (playroom) => String(playroom._id) === String(selectedPlayroom),
+    ) || null;
+
+  const freeSlots = timeSlots.filter(
+    (segment) =>
+      segment.tip === "slobodno" ||
+      (segment.available === true && segment.zauzeto !== true),
   );
 
   const formatBookingName = (booking) => {
@@ -282,174 +327,241 @@ const OwnerTimeSlots = () => {
               />
             </div>
 
-            <button
-              type="button"
-              className="owner-reserve-btn"
-              onClick={goToReservationPage}
-              disabled={!selectedPlayroom || !selectedDate}
-            >
-              ➕ Rezerviši termin
-            </button>
+            <div className="owner-reserve-info">
+              Izaberi slobodan termin ispod za ručno zauzimanje.
+            </div>
           </div>
+
+          {!loadingSlots && freeSlots.length > 0 && (
+            <div className="owner-free-slots-section">
+              <h2>Slobodni termini</h2>
+
+              <div className="slots-grid">
+                {freeSlots.map((segment, index) => (
+                  <div
+                    key={`free-${segment._id || segment.timeSlotId || segment.vremeOd}-${segment.vremeDo}-${index}`}
+                    className="slot-card slobodno"
+                  >
+                    <h3>
+                      ⏰ {segment.vremeOd || "-"} - {segment.vremeDo || "-"}
+                    </h3>
+
+                    <p>
+                      {selectedPlayroomData?.rezimRezervacije === "fiksno"
+                        ? "Fiksni termin"
+                        : "Slobodan interval"}
+                    </p>
+
+                    <p>
+                      Trajanje:{" "}
+                      {calculateDuration(segment.vremeOd, segment.vremeDo)}
+                    </p>
+
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={() => openManualBookingModal(segment)}
+                    >
+                      ➕ Ručno zauzmi
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {loadingSlots ? (
             <div className="loading-slots" role="status" aria-live="polite">
               Učitavanje termina...
             </div>
-          ) : occupiedSlots.length === 0 ? (
+          ) : freeSlots.length === 0 && occupiedSlots.length === 0 ? (
             <div className="empty-state" role="status" aria-live="polite">
-              <p>Nema zauzetih termina za izabrani datum.</p>
+              <p>Nema termina za izabrani datum.</p>
             </div>
-          ) : (
-            <div className="slots-grid">
-              {occupiedSlots.map((segment, index) => (
-                <div
-                  key={`${segment.vremeOd}-${segment.vremeDo}-${index}`}
-                  className={`slot-card clickable-slot ${
-                    segment.tip === "zauzeto" ? "zauzeto" : "slobodno"
-                  }`}
-                >
-                  <div
-                    className="owner-booking-card-header clickable-slot"
-                    onClick={() => handleSlotClick(segment)}
-                    role="button"
-                    tabIndex={0}
-                    aria-expanded={
-                      expandedBookingId === getBookingId(segment.booking)
-                    }
-                    aria-controls={`owner-slot-booking-details-${getBookingId(segment.booking)}`}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleSlotClick(segment);
-                      }
-                    }}
-                  >
-                    <div>
-                      <h3>{formatBookingName(segment.booking)}</h3>
+          ) : occupiedSlots.length > 0 ? (
+            <div className="owner-occupied-slots-section">
+              <h2>Zauzeti termini</h2>
 
-                      <p className="owner-booking-short-info">
-                        🗓{" "}
-                        {segment.booking?.datum
-                          ? new Date(segment.booking.datum).toLocaleDateString(
-                              "sr-RS",
-                            )
-                          : selectedDate
-                            ? new Date(selectedDate).toLocaleDateString("sr-RS")
-                            : "-"}{" "}
-                        | ⏰ {segment.vremeOd || "-"} - {segment.vremeDo || "-"}
-                      </p>
-                    </div>
+              <div className="slots-grid">
+                {occupiedSlots.map((segment, index) => {
+                  const phone = formatBookingPhone(segment.booking);
+                  const phoneHref = getPhoneHref(phone);
 
-                    <div className="owner-booking-card-right">
-                      <span className="owner-booking-status-badge">
-                        Potvrđeno
-                      </span>
-                      <span
-                        className={`owner-booking-arrow ${
-                          expandedBookingId === getBookingId(segment.booking)
-                            ? "open"
-                            : ""
-                        }`}
-                      >
-                        ▼
-                      </span>
-                    </div>
-                  </div>
-
-                  {expandedBookingId === getBookingId(segment.booking) && (
+                  return (
                     <div
-                      id={`owner-slot-booking-details-${getBookingId(segment.booking)}`}
-                      className="owner-booking-card-details"
-                      onClick={(e) => e.stopPropagation()}
+                      key={`${segment.vremeOd}-${segment.vremeDo}-${index}`}
+                      className={`slot-card clickable-slot ${
+                        segment.tip === "zauzeto" ? "zauzeto" : "slobodno"
+                      }`}
                     >
-                      <p>✉️ {formatBookingEmail(segment.booking)}</p>
-                      <p>📞 {formatBookingPhone(segment.booking)}</p>
+                      <div
+                        className="owner-booking-card-header clickable-slot"
+                        onClick={() => handleSlotClick(segment)}
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={
+                          expandedBookingId === getBookingId(segment.booking)
+                        }
+                        aria-controls={`owner-slot-booking-details-${getBookingId(segment.booking)}`}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleSlotClick(segment);
+                          }
+                        }}
+                      >
+                        <div>
+                          <h3>{formatBookingName(segment.booking)}</h3>
 
-                      <p>
-                        🗓{" "}
-                        {segment.booking?.datum
-                          ? new Date(segment.booking.datum).toLocaleDateString(
-                              "sr-RS",
-                            )
-                          : selectedDate
-                            ? new Date(selectedDate).toLocaleDateString("sr-RS")
-                            : "-"}
-                      </p>
+                          <p className="owner-booking-short-info">
+                            🗓{" "}
+                            {segment.booking?.datum
+                              ? new Date(
+                                  segment.booking.datum,
+                                ).toLocaleDateString("sr-RS")
+                              : selectedDate
+                                ? new Date(selectedDate).toLocaleDateString(
+                                    "sr-RS",
+                                  )
+                                : "-"}{" "}
+                            | ⏰ {segment.vremeOd || "-"} -{" "}
+                            {segment.vremeDo || "-"}
+                          </p>
+                        </div>
 
-                      <p>
-                        ⏰ {segment.vremeOd || "-"} - {segment.vremeDo || "-"}
-                      </p>
+                        <div className="owner-booking-card-right">
+                          <span className="owner-booking-status-badge">
+                            Potvrđeno
+                          </span>
+                          <span
+                            className={`owner-booking-arrow ${
+                              expandedBookingId ===
+                              getBookingId(segment.booking)
+                                ? "open"
+                                : ""
+                            }`}
+                          >
+                            ▼
+                          </span>
+                        </div>
+                      </div>
 
-                      <p>👶 Broj dece: {segment.booking?.brojDece ?? 0}</p>
-                      <p>
-                        👨‍👩‍👧 Broj roditelja: {segment.booking?.brojRoditelja ?? 0}
-                      </p>
-                      <p>
-                        💰 Ukupna cena: {segment.booking?.ukupnaCena ?? 0} RSD
-                      </p>
-                      {Array.isArray(segment.booking?.izabraneCene) &&
-                        segment.booking.izabraneCene.length > 0 && (
-                          <div className="owner-booking-extra-block">
-                            <p>
-                              <strong>Izabrane stavke:</strong>
-                            </p>
-
-                            {segment.booking.izabraneCene.map((item, idx) => (
-                              <p key={`cena-${idx}`}>
-                                • {item.naziv} ({item.tip || "fiksno"}) -{" "}
-                                {getItemCalculationText(item, segment)}
-                                {item.opis && <span> - {item.opis}</span>}
-                              </p>
-                            ))}
-                          </div>
-                        )}
-
-                      {segment.booking?.izabraniPaket?.naziv && (
-                        <div className="owner-booking-extra-block">
+                      {expandedBookingId === getBookingId(segment.booking) && (
+                        <div
+                          id={`owner-slot-booking-details-${getBookingId(segment.booking)}`}
+                          className="owner-booking-card-details"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <p>✉️ {formatBookingEmail(segment.booking)}</p>
                           <p>
-                            <strong>Paket:</strong>{" "}
-                            {segment.booking.izabraniPaket.naziv} (
-                            {segment.booking.izabraniPaket.tip || "fiksno"}) -{" "}
-                            {getItemCalculationText(
-                              segment.booking.izabraniPaket,
-                              segment,
-                            )}
+                            📞{" "}
+                            {phoneHref ? <a href={phoneHref}>{phone}</a> : "-"}
                           </p>
 
-                          {segment.booking.izabraniPaket.opis && (
-                            <p>- {segment.booking.izabraniPaket.opis}</p>
+                          <p>
+                            🗓{" "}
+                            {segment.booking?.datum
+                              ? new Date(
+                                  segment.booking.datum,
+                                ).toLocaleDateString("sr-RS")
+                              : selectedDate
+                                ? new Date(selectedDate).toLocaleDateString(
+                                    "sr-RS",
+                                  )
+                                : "-"}
+                          </p>
+
+                          <p>
+                            ⏰ {segment.vremeOd || "-"} -{" "}
+                            {segment.vremeDo || "-"}
+                          </p>
+
+                          <p>👶 Broj dece: {segment.booking?.brojDece ?? 0}</p>
+                          <p>
+                            👨‍👩‍👧 Broj roditelja:{" "}
+                            {segment.booking?.brojRoditelja ?? 0}
+                          </p>
+                          <p>
+                            💰 Ukupna cena: {segment.booking?.ukupnaCena ?? 0}{" "}
+                            RSD
+                          </p>
+                          {Array.isArray(segment.booking?.izabraneCene) &&
+                            segment.booking.izabraneCene.length > 0 && (
+                              <div className="owner-booking-extra-block">
+                                <p>
+                                  <strong>Izabrane stavke:</strong>
+                                </p>
+
+                                {segment.booking.izabraneCene.map(
+                                  (item, idx) => (
+                                    <p key={`cena-${idx}`}>
+                                      • {item.naziv} ({item.tip || "fiksno"}) -{" "}
+                                      {getItemCalculationText(item, segment)}
+                                      {item.opis && <span> - {item.opis}</span>}
+                                    </p>
+                                  ),
+                                )}
+                              </div>
+                            )}
+
+                          {segment.booking?.izabraniPaket?.naziv && (
+                            <div className="owner-booking-extra-block">
+                              <p>
+                                <strong>Paket:</strong>{" "}
+                                {segment.booking.izabraniPaket.naziv} (
+                                {segment.booking.izabraniPaket.tip || "fiksno"})
+                                -{" "}
+                                {getItemCalculationText(
+                                  segment.booking.izabraniPaket,
+                                  segment,
+                                )}
+                              </p>
+
+                              {segment.booking.izabraniPaket.opis && (
+                                <p>- {segment.booking.izabraniPaket.opis}</p>
+                              )}
+                            </div>
+                          )}
+
+                          {Array.isArray(segment.booking?.izabraneUsluge) &&
+                            segment.booking.izabraneUsluge.length > 0 && (
+                              <div className="owner-booking-extra-block">
+                                <p>
+                                  <strong>Dodatne usluge:</strong>
+                                </p>
+
+                                {segment.booking.izabraneUsluge.map(
+                                  (item, idx) => (
+                                    <p key={`usluga-${idx}`}>
+                                      • {item.naziv} ({item.tip || "fiksno"}) -{" "}
+                                      {getItemCalculationText(item, segment)}
+                                      {item.opis && <span> - {item.opis}</span>}
+                                    </p>
+                                  ),
+                                )}
+                              </div>
+                            )}
+
+                          {segment.booking?.napomena && (
+                            <p>📝 Napomena: {segment.booking.napomena}</p>
                           )}
                         </div>
                       )}
-
-                      {Array.isArray(segment.booking?.izabraneUsluge) &&
-                        segment.booking.izabraneUsluge.length > 0 && (
-                          <div className="owner-booking-extra-block">
-                            <p>
-                              <strong>Dodatne usluge:</strong>
-                            </p>
-
-                            {segment.booking.izabraneUsluge.map((item, idx) => (
-                              <p key={`usluga-${idx}`}>
-                                • {item.naziv} ({item.tip || "fiksno"}) -{" "}
-                                {getItemCalculationText(item, segment)}
-                                {item.opis && <span> - {item.opis}</span>}
-                              </p>
-                            ))}
-                          </div>
-                        )}
-
-                      {segment.booking?.napomena && (
-                        <p>📝 Napomena: {segment.booking.napomena}</p>
-                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+                  );
+                })}
+              </div>
             </div>
-          )}
+          ) : null}
         </>
+      )}
+
+      {manualSlot && (
+        <ManualBookingModal
+          slot={manualSlot}
+          onClose={() => setManualSlot(null)}
+          onSubmit={handleManualBookingSubmit}
+        />
       )}
     </div>
   );

@@ -114,10 +114,10 @@ export const addReview = async (playroomId, rating, comment) => {
     };
   }
 
-  if (safeComment.length > 500) {
+  if (safeComment.length > 1000) {
     return {
       success: false,
-      error: "Komentar ne sme imati više od 500 karaktera.",
+      error: "Komentar ne sme imati više od 1000 karaktera.",
     };
   }
 

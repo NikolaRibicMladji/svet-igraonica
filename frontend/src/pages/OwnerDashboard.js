@@ -1531,14 +1531,7 @@ const OwnerDashboard = () => {
                   <div key={review._id} className="owner-review-card">
                     <div className="owner-review-top">
                       <div>
-                        <h4>
-                          {review.user?.ime ||
-                            review.roditeljId?.ime ||
-                            "Korisnik"}{" "}
-                          {review.user?.prezime ||
-                            review.roditeljId?.prezime ||
-                            ""}
-                        </h4>
+                        <h4>{review.userName || "Korisnik"}</h4>
                         <p className="owner-review-date">
                           {review.createdAt
                             ? new Date(review.createdAt).toLocaleDateString(

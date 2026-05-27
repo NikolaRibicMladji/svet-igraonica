@@ -25,12 +25,20 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
   const [selectedUslugeIds, setSelectedUslugeIds] = useState([]);
   const [brojDece, setBrojDece] = useState(0);
   const [brojRoditelja, setBrojRoditelja] = useState(0);
+  const [acceptedManualConsent, setAcceptedManualConsent] = useState(false);
   const brojDeceRef = useRef(null);
+
+  const isFiksno =
+    slot?.mode === "fiksno" || slot?.playroom?.rezimRezervacije === "fiksno";
 
   useEffect(() => {
     if (!slot) return;
 
     setNapomena("");
+    setIme("");
+    setPrezime("");
+    setEmail("");
+    setTelefon("");
     setError("");
     setLoading(false);
     setSelectedCenaIds([]);
@@ -38,6 +46,18 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
     setSelectedUslugeIds([]);
     setBrojDece(0);
     setBrojRoditelja(0);
+    setAcceptedManualConsent(false);
+
+    if (
+      slot?.mode === "fiksno" ||
+      slot?.playroom?.rezimRezervacije === "fiksno"
+    ) {
+      setVremeOd(slot?.vremeOd || "");
+      setVremeDo(slot?.vremeDo || "");
+    } else {
+      setVremeOd("");
+      setVremeDo("");
+    }
   }, [slot]);
 
   useEffect(() => {
@@ -117,11 +137,14 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
         )
       : [];
 
-  const getSlotDurationInHours = () => {
-    if (!vremeOd || !vremeDo) return 0;
+  const effectiveVremeOd = isFiksno ? slot?.vremeOd || "" : vremeOd;
+  const effectiveVremeDo = isFiksno ? slot?.vremeDo || "" : vremeDo;
 
-    const startMinutes = toMinutes(vremeOd);
-    const endMinutes = toMinutes(vremeDo);
+  const getSlotDurationInHours = () => {
+    if (!effectiveVremeOd || !effectiveVremeDo) return 0;
+
+    const startMinutes = toMinutes(effectiveVremeOd);
+    const endMinutes = toMinutes(effectiveVremeDo);
     const diff = endMinutes - startMinutes;
 
     if (!Number.isFinite(diff) || diff <= 0) return 0;
@@ -165,10 +188,10 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
     izabraneUsluge.reduce((sum, usluga) => sum + calculateItemPrice(usluga), 0);
 
   const getSlotDurationLabel = () => {
-    if (!vremeOd || !vremeDo) return "";
+    if (!effectiveVremeOd || !effectiveVremeDo) return "";
 
-    const startMinutes = toMinutes(vremeOd);
-    const endMinutes = toMinutes(vremeDo);
+    const startMinutes = toMinutes(effectiveVremeOd);
+    const endMinutes = toMinutes(effectiveVremeDo);
     const diff = endMinutes - startMinutes;
 
     if (!Number.isFinite(diff) || diff <= 0) return "";
@@ -192,8 +215,8 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
     setError("");
 
     try {
-      if (selectedCenaIds.length === 0) {
-        setError("Izaberi bar jednu stavku iz cenovnika.");
+      if (selectedCenaIds.length === 0 && !selectedPaketId) {
+        setError("Izaberi bar jednu stavku iz cenovnika ili paket.");
         setLoading(false);
         return;
       }
@@ -217,45 +240,61 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
         return;
       }
 
-      if (!/^[0-9]+$/.test(telefon)) {
-        setError("Telefon može sadržati samo brojeve.");
-        setLoading(false);
-        return;
-      }
-      if (!vremeOd || !vremeDo) {
-        setError("Vreme od i vreme do su obavezni.");
+      if (!/^\+?[0-9]+$/.test(telefon.trim())) {
+        setError("Telefon može sadržati samo brojeve i opcioni + na početku.");
         setLoading(false);
         return;
       }
 
-      if (!isQuarterHour(vremeOd) || !isQuarterHour(vremeDo)) {
-        setError("Vreme mora biti u koracima od 15 minuta.");
-        setLoading(false);
-        return;
-      }
+      const safeTimeSlotId = String(slot?.timeSlotId || slot?._id || "").trim();
 
-      if (toMinutes(vremeDo) <= toMinutes(vremeOd)) {
-        setError("Vreme završetka mora biti posle vremena početka.");
-        setLoading(false);
-        return;
-      }
-
-      if (slot?.tip === "slobodno") {
-        if (
-          toMinutes(vremeOd) < toMinutes(slot.vremeOd) ||
-          toMinutes(vremeDo) > toMinutes(slot.vremeDo)
-        ) {
-          setError("Ručna rezervacija mora biti unutar slobodnog intervala.");
+      if (isFiksno) {
+        if (!safeTimeSlotId) {
+          setError("Nedostaje ID fiksnog termina.");
           setLoading(false);
           return;
         }
+      } else {
+        if (!vremeOd || !vremeDo) {
+          setError("Vreme od i vreme do su obavezni.");
+          setLoading(false);
+          return;
+        }
+
+        if (!isQuarterHour(vremeOd) || !isQuarterHour(vremeDo)) {
+          setError("Vreme mora biti u koracima od 15 minuta.");
+          setLoading(false);
+          return;
+        }
+
+        if (toMinutes(vremeDo) <= toMinutes(vremeOd)) {
+          setError("Vreme završetka mora biti posle vremena početka.");
+          setLoading(false);
+          return;
+        }
+
+        if (slot?.tip === "slobodno") {
+          if (
+            toMinutes(vremeOd) < toMinutes(slot.vremeOd) ||
+            toMinutes(vremeDo) > toMinutes(slot.vremeDo)
+          ) {
+            setError("Ručna rezervacija mora biti unutar slobodnog intervala.");
+            setLoading(false);
+            return;
+          }
+        }
       }
 
-      await onSubmit?.({
+      if (!acceptedManualConsent) {
+        setError(
+          "Potvrdi da imaš saglasnost roditelja/staratelja za unos podataka i ručnu rezervaciju.",
+        );
+        setLoading(false);
+        return;
+      }
+
+      const commonPayload = {
         playroomId: slot.playroomId || slot.playroom?._id,
-        datum: slot.datum,
-        vremeOd,
-        vremeDo,
         cenaIds: selectedCenaIds,
         paketId: selectedPaketId || null,
         usluge: selectedUslugeIds,
@@ -263,9 +302,24 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
         brojRoditelja,
         imeRoditelja: ime.trim(),
         prezimeRoditelja: prezime.trim(),
-        emailRoditelja: email.trim(),
+        emailRoditelja: email.trim().toLowerCase(),
         telefonRoditelja: telefon.trim(),
         napomena: napomena.trim(),
+      };
+
+      const timePayload = isFiksno
+        ? {
+            timeSlotId: safeTimeSlotId,
+          }
+        : {
+            datum: slot.datum,
+            vremeOd,
+            vremeDo,
+          };
+
+      await onSubmit?.({
+        ...commonPayload,
+        ...timePayload,
       });
     } catch (err) {
       setError(
@@ -393,9 +447,11 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
               <strong>Datum:</strong> {formatDate(slot.datum)}
             </p>
             <p>
-              <strong>Termin:</strong> {vremeOd || slot.vremeOd || "-"} -{" "}
-              {vremeDo || slot.vremeDo || "-"}
-              {vremeOd && vremeDo ? ` (${getSlotDurationLabel()})` : ""}
+              <strong>Termin:</strong> {effectiveVremeOd || "-"} -{" "}
+              {effectiveVremeDo || "-"}
+              {effectiveVremeOd && effectiveVremeDo
+                ? ` (${getSlotDurationLabel()})`
+                : ""}
             </p>
 
             <p>
@@ -507,42 +563,60 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
               disabled={loading}
             />
           </div>
-          <div className="form-group">
-            <label>⏰ Vreme od</label>
-            <select
-              value={vremeOd}
-              onChange={(e) => {
-                setVremeOd(e.target.value);
-                setVremeDo("");
-              }}
-              disabled={loading}
-            >
-              <option value="">Izaberi vreme</option>
-              {availableStartTimes.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </select>
-          </div>
+          {isFiksno ? (
+            <div className="form-group">
+              <label>⏰ Fiksni termin</label>
+              <div
+                className="booking-info-box"
+                role="status"
+                aria-live="polite"
+              >
+                {effectiveVremeOd || "-"} - {effectiveVremeDo || "-"}
+                {effectiveVremeOd && effectiveVremeDo
+                  ? ` (${getSlotDurationLabel()})`
+                  : ""}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="form-group">
+                <label>⏰ Vreme od</label>
+                <select
+                  value={vremeOd}
+                  onChange={(e) => {
+                    setVremeOd(e.target.value);
+                    setVremeDo("");
+                  }}
+                  disabled={loading}
+                >
+                  <option value="">Izaberi vreme</option>
+                  {availableStartTimes.map((time) => (
+                    <option key={time} value={time}>
+                      {time}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="form-group">
-            <label>⏰ Vreme do</label>
-            <select
-              value={vremeDo}
-              onChange={(e) => setVremeDo(e.target.value)}
-              disabled={loading || !vremeOd}
-            >
-              <option value="">
-                {vremeOd ? "Izaberi vreme" : "Prvo izaberi vreme od"}
-              </option>
-              {availableEndTimes.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </select>
-          </div>
+              <div className="form-group">
+                <label>⏰ Vreme do</label>
+                <select
+                  value={vremeDo}
+                  onChange={(e) => setVremeDo(e.target.value)}
+                  disabled={loading || !vremeOd}
+                >
+                  <option value="">
+                    {vremeOd ? "Izaberi vreme" : "Prvo izaberi vreme od"}
+                  </option>
+                  {availableEndTimes.map((time) => (
+                    <option key={time} value={time}>
+                      {time}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
 
           <div className="form-group">
             <label htmlFor="manual-booking-napomena">
@@ -558,6 +632,25 @@ const ManualBookingModal = ({ onClose, slot, onSubmit }) => {
               disabled={loading}
             />
           </div>
+        </div>
+        <div className="form-group terms-checkbox">
+          <label className="terms-checkbox-label">
+            <span>
+              Potvrđujem da imam saglasnost roditelja/staratelja za unos
+              podataka i ručnu rezervaciju termina.
+            </span>
+
+            <input
+              type="checkbox"
+              checked={acceptedManualConsent}
+              onChange={(e) => {
+                setAcceptedManualConsent(e.target.checked);
+                setError("");
+              }}
+              disabled={loading}
+              aria-label="Potvrđujem saglasnost za ručnu rezervaciju"
+            />
+          </label>
         </div>
         <div className="total-price">
           <span>Ukupno:</span>

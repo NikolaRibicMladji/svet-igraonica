@@ -18,7 +18,11 @@ const BookingPolicy = () => {
       </p>
 
       <h2>Otkazivanje</h2>
-      <p>Otkazivanje rezervacije zavisi od pravila konkretne igraonice.</p>
+      <p>
+        Korisnik može otkazati rezervaciju dok je u statusu čekanja ili
+        potvrđena, ukoliko sistem i pravila igraonice to dozvoljavaju. Nakon
+        otkazivanja termin se oslobađa za nove rezervacije.
+      </p>
 
       <h2>Kašnjenje</h2>
       <p>

@@ -7,6 +7,14 @@ import "../styles/Playrooms.css";
 import { normalizeText } from "../utils/normalizeText";
 import { getSafeExternalUrl } from "../utils/urlUtils";
 
+const getPhoneHref = (phone = "") => {
+  const safePhone = String(phone || "")
+    .trim()
+    .replace(/(?!^\+)[^\d]/g, "");
+
+  return safePhone ? `tel:${safePhone}` : "";
+};
+
 const Playrooms = () => {
   const [playrooms, setPlayrooms] = useState([]);
   const [page, setPage] = useState(1);
@@ -217,6 +225,7 @@ const Playrooms = () => {
               const websiteUrl = getSafeExternalUrl(
                 playroom.drustveneMreze?.website,
               );
+              const phoneHref = getPhoneHref(playroom.kontaktTelefon);
               const ratingValue = Number(playroom.rating || 0);
               const filledStars = Math.max(
                 0,
@@ -252,10 +261,10 @@ const Playrooms = () => {
                     <div className="playroom-contact-preview">
                       {/* TELEFON + EMAIL */}
                       <div className="contact-row">
-                        {playroom.kontaktTelefon && (
-                          <div className="contact-item">
+                        {playroom.kontaktTelefon && phoneHref && (
+                          <a href={phoneHref} className="contact-item">
                             {playroom.kontaktTelefon}
-                          </div>
+                          </a>
                         )}
 
                         {playroom.kontaktEmail && (

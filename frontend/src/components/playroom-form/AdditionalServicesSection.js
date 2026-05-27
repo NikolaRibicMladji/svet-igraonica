@@ -15,6 +15,15 @@ const AdditionalServicesSection = ({
     ...novaUsluga,
   };
 
+  const isDuplicateUsluga =
+    safeNovaUsluga.naziv.trim() &&
+    dodatneUsluge.some(
+      (item) =>
+        String(item?.naziv || "")
+          .trim()
+          .toLowerCase() === safeNovaUsluga.naziv.trim().toLowerCase(),
+    );
+
   const handleNumberKeyDown = (e) => {
     if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
       e.preventDefault();
@@ -80,8 +89,21 @@ const AdditionalServicesSection = ({
               setNovaUsluga((prev) => ({ ...prev, opis: e.target.value }))
             }
           />
+          {isDuplicateUsluga && (
+            <div className="error-message" role="alert">
+              Usluga "{safeNovaUsluga.naziv}" je već dodata.
+            </div>
+          )}
 
-          <button type="button" onClick={handleAddUsluga}>
+          <button
+            type="button"
+            onClick={handleAddUsluga}
+            disabled={
+              !safeNovaUsluga.naziv.trim() ||
+              !safeNovaUsluga.cena ||
+              Boolean(isDuplicateUsluga)
+            }
+          >
             + Dodaj
           </button>
         </div>

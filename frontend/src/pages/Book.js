@@ -45,23 +45,11 @@ import BookingFreeFeatures from "../components/booking/BookingFreeFeatures";
 import BookingAvailabilitySection from "../components/booking/BookingAvailabilitySection";
 
 const DATE_QUERY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
-const TIME_QUERY_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
-const ALLOWED_QUERY_MINUTES = new Set([0, 15, 30, 45]);
 
 const normalizeDateQuery = (value) => {
   const safeValue = String(value || "").trim();
 
   return DATE_QUERY_REGEX.test(safeValue) ? safeValue : "";
-};
-
-const normalizeTimeQuery = (value) => {
-  const safeValue = String(value || "").trim();
-
-  if (!TIME_QUERY_REGEX.test(safeValue)) return "";
-
-  const minutes = Number(safeValue.split(":")[1]);
-
-  return ALLOWED_QUERY_MINUTES.has(minutes) ? safeValue : "";
 };
 
 const Book = () => {
@@ -71,20 +59,13 @@ const Book = () => {
   const queryParams = new URLSearchParams(location.search);
 
   const prefillDate = normalizeDateQuery(queryParams.get("datum"));
-  const prefillStart = normalizeTimeQuery(queryParams.get("vremeOd"));
-  const prefillEnd = normalizeTimeQuery(queryParams.get("vremeDo"));
-  const requestedOwnerBooking = queryParams.get("mode") === "owner";
+
   const {
     user,
     isAuthenticated,
     loading: authLoading,
     handleAuthSuccess,
   } = useAuth();
-
-  const isOwnerBooking =
-    requestedOwnerBooking &&
-    isAuthenticated &&
-    (user?.role === "vlasnik" || user?.role === "admin");
 
   const { error: showError } = useToast();
   const [selectedCenaIds, setSelectedCenaIds] = useState([]);
@@ -98,8 +79,8 @@ const Book = () => {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [playroom, setPlayroom] = useState(null);
   const [availability, setAvailability] = useState(null);
-  const [selectedStartTime, setSelectedStartTime] = useState(prefillStart);
-  const [selectedEndTime, setSelectedEndTime] = useState(prefillEnd);
+  const [selectedStartTime, setSelectedStartTime] = useState("");
+  const [selectedEndTime, setSelectedEndTime] = useState("");
   const [selectedTimeSlotId, setSelectedTimeSlotId] = useState("");
   const startTimeRef = useRef(null);
   const endTimeRef = useRef(null);
@@ -173,7 +154,7 @@ const Book = () => {
       const elementTop =
         brojDeceRef.current.getBoundingClientRect().top + window.pageYOffset;
 
-      const offset = 140; // promeni na 120 ili 160 ako hoćeš malo više/manje
+      const offset = 140;
       const targetTop = elementTop - offset;
 
       window.scrollTo({
@@ -281,13 +262,10 @@ const Book = () => {
 
   const loadTimeSlots = useCallback(async () => {
     setLoadingSlots(true);
+    setSelectedStartTime("");
+    setSelectedEndTime("");
+    setSelectedTimeSlotId("");
     setError("");
-    if (!isOwnerBooking) {
-      setSelectedStartTime("");
-      setSelectedEndTime("");
-      setSelectedTimeSlotId("");
-      setError("");
-    }
 
     try {
       const result = await getAvailableTimeSlots(
@@ -311,29 +289,9 @@ const Book = () => {
     } finally {
       setLoadingSlots(false);
     }
-  }, [id, selectedDate, isOwnerBooking]);
+  }, [id, selectedDate]);
 
   useEffect(() => {
-    if (isOwnerBooking && prefillStart && prefillEnd) {
-      setSelectedStartTime(prefillStart);
-      setSelectedEndTime(prefillEnd);
-    }
-  }, [isOwnerBooking, prefillStart, prefillEnd]);
-
-  useEffect(() => {
-    if (isOwnerBooking) {
-      setKorisnikPodaci({
-        ime: "",
-        prezime: "",
-        email: "",
-        telefon: "",
-        password: "",
-        confirmPassword: "",
-      });
-
-      return;
-    }
-
     if (!authLoading && isAuthenticated && user) {
       setKorisnikPodaci((prev) => ({
         ...prev,
@@ -345,7 +303,7 @@ const Book = () => {
         confirmPassword: "",
       }));
     }
-  }, [authLoading, isAuthenticated, user, isOwnerBooking]);
+  }, [authLoading, isAuthenticated, user]);
 
   useEffect(() => {
     loadPlayroom();
@@ -580,7 +538,7 @@ const Book = () => {
       selectedCenaIds,
       selectedPaketId,
       korisnikPodaci,
-      isAuthenticated: isAuthenticated || isOwnerBooking,
+      isAuthenticated,
       acceptedTerms,
     });
 
@@ -618,7 +576,7 @@ const Book = () => {
       });
 
       const result = await submitBooking({
-        isAuthenticated: isAuthenticated || isOwnerBooking,
+        isAuthenticated,
         bookingPayload,
         password: korisnikPodaci.password,
         confirmPassword: korisnikPodaci.confirmPassword,
@@ -647,11 +605,6 @@ const Book = () => {
         }
 
         await loadTimeSlots();
-
-        if (isOwnerBooking) {
-          navigate("/owner/timeslots", { replace: true });
-          return;
-        }
 
         navigate("/booking-success");
       } else {
@@ -783,7 +736,7 @@ const Book = () => {
                 />
 
                 <BookingUserFields
-                  isAuthenticated={isAuthenticated || isOwnerBooking}
+                  isAuthenticated={isAuthenticated}
                   korisnikPodaci={korisnikPodaci}
                   handleKorisnikChange={handleKorisnikChange}
                   showPassword={showPassword}
@@ -800,9 +753,7 @@ const Book = () => {
                   passwordRef={passwordRef}
                   confirmPasswordRef={confirmPasswordRef}
                   termsRef={termsRef}
-                  title={
-                    isOwnerBooking ? "👤 Podaci roditelja" : "👤 Vaši podaci"
-                  }
+                  title="👤 Vaši podaci"
                 />
                 <BookingOrderSummary
                   selectedCene={selectedCene}
@@ -816,7 +767,7 @@ const Book = () => {
 
                 <BookingSubmitButton
                   submitting={submitting}
-                  isAuthenticated={isAuthenticated || isOwnerBooking}
+                  isAuthenticated={isAuthenticated}
                   onSubmit={handleBook}
                 />
               </div>

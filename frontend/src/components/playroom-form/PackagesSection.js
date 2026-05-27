@@ -15,6 +15,15 @@ const PackagesSection = ({
     ...noviPaket,
   };
 
+  const isDuplicatePaket =
+    safeNoviPaket.naziv.trim() &&
+    paketi.some(
+      (item) =>
+        String(item?.naziv || "")
+          .trim()
+          .toLowerCase() === safeNoviPaket.naziv.trim().toLowerCase(),
+    );
+
   const handleNumberKeyDown = (e) => {
     if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
       e.preventDefault();
@@ -78,8 +87,21 @@ const PackagesSection = ({
               setNoviPaket((prev) => ({ ...prev, opis: e.target.value }))
             }
           />
+          {isDuplicatePaket && (
+            <div className="error-message" role="alert">
+              Paket "{safeNoviPaket.naziv}" je već dodat.
+            </div>
+          )}
 
-          <button type="button" onClick={handleAddPaket}>
+          <button
+            type="button"
+            onClick={handleAddPaket}
+            disabled={
+              !safeNoviPaket.naziv.trim() ||
+              !safeNoviPaket.cena ||
+              Boolean(isDuplicatePaket)
+            }
+          >
             + Dodaj
           </button>
         </div>

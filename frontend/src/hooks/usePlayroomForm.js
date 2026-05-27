@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   deleteImage,
   deleteVideo,
@@ -102,6 +102,18 @@ const createLocalImagePreview = (file) => ({
 
 const getMediaPublicId = (item) =>
   String(item?.publicId || item?.public_id || "").trim();
+
+const revokeLocalMediaUrl = (item) => {
+  if (item?._localFile && item?.url) {
+    URL.revokeObjectURL(item.url);
+  }
+};
+
+const revokeLocalMediaUrls = (items) => {
+  const list = Array.isArray(items) ? items : [items];
+
+  list.forEach(revokeLocalMediaUrl);
+};
 
 const getVideoDuration = (file) =>
   new Promise((resolve, reject) => {
@@ -221,10 +233,33 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
       : [],
   );
   const [uploading, setUploading] = useState(false);
+  const profilnaSlikaRef = useRef(profilnaSlika);
+  const slikeRef = useRef(slike);
+  const videoGalerijaRef = useRef(videoGalerija);
 
   const [pendingProfilnaFile, setPendingProfilnaFile] = useState(null);
   const [pendingImageFiles, setPendingImageFiles] = useState([]);
   const [pendingVideoItems, setPendingVideoItems] = useState([]);
+
+  useEffect(() => {
+    profilnaSlikaRef.current = profilnaSlika;
+  }, [profilnaSlika]);
+
+  useEffect(() => {
+    slikeRef.current = slike;
+  }, [slike]);
+
+  useEffect(() => {
+    videoGalerijaRef.current = videoGalerija;
+  }, [videoGalerija]);
+
+  useEffect(() => {
+    return () => {
+      revokeLocalMediaUrls(profilnaSlikaRef.current);
+      revokeLocalMediaUrls(slikeRef.current);
+      revokeLocalMediaUrls(videoGalerijaRef.current);
+    };
+  }, []);
 
   const [drustveneMreze, setDrustveneMreze] = useState({
     ...DEFAULT_DRUSTVENE_MREZE,
@@ -236,6 +271,10 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
   );
 
   useEffect(() => {
+    revokeLocalMediaUrls(profilnaSlikaRef.current);
+    revokeLocalMediaUrls(slikeRef.current);
+    revokeLocalMediaUrls(videoGalerijaRef.current);
+
     setFormData((prev) => {
       const existingEmail =
         prev.kontaktEmail || initialData?.kontaktEmail || ownerEmail || "";
@@ -641,6 +680,18 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
       return;
     }
 
+    if (
+      paketi.some(
+        (item) =>
+          String(item.naziv || "")
+            .trim()
+            .toLowerCase() === naziv.toLowerCase(),
+      )
+    ) {
+      setError(`Paket "${naziv}" već postoji.`);
+      return;
+    }
+
     if (!Number.isFinite(cena) || cena <= 0) {
       setError("Unesi ispravnu cenu paketa.");
       return;
@@ -662,6 +713,7 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
       opis: "",
       tip: "fiksno",
     });
+    setError("");
   };
 
   const handleRemovePaket = (index) => {
@@ -674,6 +726,18 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
 
     if (!naziv) {
       setError("Unesi naziv dodatne usluge.");
+      return;
+    }
+
+    if (
+      dodatneUsluge.some(
+        (item) =>
+          String(item.naziv || "")
+            .trim()
+            .toLowerCase() === naziv.toLowerCase(),
+      )
+    ) {
+      setError(`Dodatna usluga "${naziv}" već postoji.`);
       return;
     }
 
@@ -693,6 +757,7 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
     ]);
 
     setNovaUsluga({ naziv: "", cena: "", opis: "", tip: "fiksno" });
+    setError("");
   };
 
   const handleRemoveUsluga = (index) => {
@@ -1056,10 +1121,10 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
     if (formData.kapacitet.deca) {
       const kapacitetDece = Number(formData.kapacitet.deca);
 
-      if (!Number.isFinite(kapacitetDece) || kapacitetDece < 0) {
+      if (!Number.isFinite(kapacitetDece) || kapacitetDece < 1) {
         return createError(
           "kapacitet.deca",
-          "Kapacitet dece ne može biti negativan.",
+          "Kapacitet dece mora biti najmanje 1 ako je unet.",
         );
       }
     }

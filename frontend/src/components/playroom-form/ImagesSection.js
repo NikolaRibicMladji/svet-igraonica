@@ -32,7 +32,7 @@ const ImagesSection = ({
 
         {profilnaSlika?.url && (
           <div className="uploaded-image">
-            <img src={profilnaSlika.url} alt="Profilna slika" />
+            <img src={profilnaSlika.url} alt="Profilna slika" loading="lazy" />
             <button type="button" onClick={removeProfilna} disabled={uploading}>
               ✖ Ukloni
             </button>
@@ -64,7 +64,7 @@ const ImagesSection = ({
               key={img.publicId || img.public_id || img.url || idx}
               className="image-item"
             >
-              <img src={img.url} alt={`Slika ${idx + 1}`} />
+              <img src={img.url} alt={`Slika ${idx + 1}`} loading="lazy" />
               <button
                 type="button"
                 onClick={() => removeImage(idx)}
