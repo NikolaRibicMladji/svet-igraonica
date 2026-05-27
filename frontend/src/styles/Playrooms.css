@@ -355,34 +355,35 @@
 
 /* TELEFON */
 .contact-row .contact-item:first-child::before {
-  background-image: url("/icons/phone.png");
+  background-image: url("../assets/icons/phone.png");
 }
 
 /* EMAIL */
 .contact-item[href^="mailto"]::before,
 .contact-item[href*="mail.google.com"]::before {
-  background-image: url("/icons/email.png");
+  background-image: url("../assets/icons/email.png");
 }
 
 /* INSTAGRAM */
 .social-item[href*="instagram"]::before {
-  background-image: url("/icons/instagram.png");
+  background-image: url("../assets/icons/instagram.png");
 }
 
 /* FACEBOOK */
 .social-item[href*="facebook"]::before {
-  background-image: url("/icons/facebook.png");
+  background-image: url("../assets/icons/facebook.png");
 }
 
 /* TIKTOK */
 .social-item[href*="tiktok"]::before {
-  background-image: url("/icons/tiktok.png");
+  background-image: url("../assets/icons/tiktok.png");
 }
 
 /* WEBSITE */
 .social-item.website-link::before {
-  background-image: url("/icons/web.png");
+  background-image: url("../assets/icons/web.png");
 }
+
 /* ============================================
    EMPTY
 ============================================ */

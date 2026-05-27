@@ -43,3 +43,8 @@
     gap: 8px;
   }
 }
+.site-footer-links a:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
