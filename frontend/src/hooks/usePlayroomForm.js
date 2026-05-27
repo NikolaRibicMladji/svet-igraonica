@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { uploadImage, uploadVideo } from "../services/uploadService";
+import {
+  deleteImage,
+  deleteVideo,
+  uploadImage,
+  uploadVideo,
+} from "../services/uploadService";
 import { normalizeImageItem, normalizeVideoItem } from "../utils/media";
 
 const DEFAULT_RADNO_VREME = {
@@ -94,6 +99,9 @@ const createLocalImagePreview = (file) => ({
   url: URL.createObjectURL(file),
   publicId: "",
 });
+
+const getMediaPublicId = (item) =>
+  String(item?.publicId || item?.public_id || "").trim();
 
 const getVideoDuration = (file) =>
   new Promise((resolve, reject) => {
@@ -461,19 +469,45 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
     }
   };
 
-  const handleRemoveVideo = (index) => {
-    setVideoGalerija((prev) => {
-      const item = prev[index];
+  const handleRemoveVideo = async (index) => {
+    if (uploadingVideo) return;
 
-      if (item?._localFile && item?.url) {
-        URL.revokeObjectURL(item.url);
-        setPendingVideoItems((videos) =>
-          videos.filter((video) => video.file !== item._localFile),
-        );
-      }
+    const item = videoGalerija[index];
 
-      return prev.filter((_, i) => i !== index);
-    });
+    if (!item) return;
+
+    if (item?._localFile && item?.url) {
+      URL.revokeObjectURL(item.url);
+      setPendingVideoItems((videos) =>
+        videos.filter((video) => video.file !== item._localFile),
+      );
+      setVideoGalerija((prev) => prev.filter((_, i) => i !== index));
+      return;
+    }
+
+    const publicId = getMediaPublicId(item);
+
+    if (isEditMode && !publicId) {
+      setError("Nije moguće obrisati video jer nedostaje publicId.");
+      return;
+    }
+
+    setUploadingVideo(true);
+    setError("");
+
+    try {
+      await deleteVideo(playroomId, publicId);
+      setVideoGalerija((prev) => prev.filter((_, i) => i !== index));
+    } catch (err) {
+      console.error("Greška pri brisanju videa:", err);
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          "Brisanje videa nije uspelo.",
+      );
+    } finally {
+      setUploadingVideo(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -557,7 +591,14 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
       return;
     }
 
-    if (cene.some((item) => item.naziv === naziv)) {
+    if (
+      cene.some(
+        (item) =>
+          String(item.naziv || "")
+            .trim()
+            .toLowerCase() === naziv.toLowerCase(),
+      )
+    ) {
       setError(`Cena za "${naziv}" već postoji.`);
       return;
     }
@@ -804,28 +845,81 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
     e.target.value = "";
   };
 
-  const removeImage = (index) => {
-    setSlike((prev) => {
-      const item = prev[index];
+  const removeImage = async (index) => {
+    if (uploading) return;
 
-      if (item?._localFile && item?.url) {
-        URL.revokeObjectURL(item.url);
-        setPendingImageFiles((files) =>
-          files.filter((file) => file !== item._localFile),
-        );
-      }
+    const item = slike[index];
 
-      return prev.filter((_, i) => i !== index);
-    });
-  };
+    if (!item) return;
 
-  const removeProfilna = () => {
-    if (profilnaSlika?._localFile && profilnaSlika?.url) {
-      URL.revokeObjectURL(profilnaSlika.url);
+    if (item?._localFile && item?.url) {
+      URL.revokeObjectURL(item.url);
+      setPendingImageFiles((files) =>
+        files.filter((file) => file !== item._localFile),
+      );
+      setSlike((prev) => prev.filter((_, i) => i !== index));
+      return;
     }
 
-    setPendingProfilnaFile(null);
-    setProfilnaSlika(null);
+    const publicId = getMediaPublicId(item);
+
+    if (isEditMode && !publicId) {
+      setError("Nije moguće obrisati sliku jer nedostaje publicId.");
+      return;
+    }
+
+    setUploading(true);
+    setError("");
+
+    try {
+      await deleteImage(playroomId, publicId);
+      setSlike((prev) => prev.filter((_, i) => i !== index));
+    } catch (err) {
+      console.error("Greška pri brisanju slike:", err);
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          "Brisanje slike nije uspelo.",
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeProfilna = async () => {
+    if (uploading) return;
+
+    if (profilnaSlika?._localFile && profilnaSlika?.url) {
+      URL.revokeObjectURL(profilnaSlika.url);
+      setPendingProfilnaFile(null);
+      setProfilnaSlika(null);
+      return;
+    }
+
+    const publicId = getMediaPublicId(profilnaSlika);
+
+    if (isEditMode && !publicId) {
+      setError("Nije moguće obrisati profilnu sliku jer nedostaje publicId.");
+      return;
+    }
+
+    setUploading(true);
+    setError("");
+
+    try {
+      await deleteImage(playroomId, publicId);
+      setPendingProfilnaFile(null);
+      setProfilnaSlika(null);
+    } catch (err) {
+      console.error("Greška pri brisanju profilne slike:", err);
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          "Brisanje profilne slike nije uspelo.",
+      );
+    } finally {
+      setUploading(false);
+    }
   };
 
   const validateForm = () => {

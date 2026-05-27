@@ -35,6 +35,7 @@ const deactivateSlotIfAllowed = async (timeSlot) => {
     {
       _id: timeSlot._id,
       zauzeto: false,
+      aktivno: true,
     },
     {
       $set: {
@@ -70,6 +71,7 @@ const deleteSlotIfAllowed = async (timeSlot) => {
   const deleted = await TimeSlot.findOneAndDelete({
     _id: timeSlot._id,
     zauzeto: false,
+    aktivno: true,
   });
 
   if (!deleted) {

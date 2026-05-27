@@ -43,6 +43,16 @@ const getReviewsSchema = z.object({
   }),
 });
 
+const getMyReviewStatusSchema = z.object({
+  body: z.object({}).optional(),
+
+  params: z.object({
+    playroomId: objectId,
+  }),
+
+  query: z.object({}).optional(),
+});
+
 const deleteReviewSchema = z.object({
   body: z.object({}).optional(),
 
@@ -56,5 +66,6 @@ const deleteReviewSchema = z.object({
 module.exports = {
   addReviewSchema,
   getReviewsSchema,
+  getMyReviewStatusSchema,
   deleteReviewSchema,
 };

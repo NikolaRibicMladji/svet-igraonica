@@ -34,8 +34,8 @@ exports.uploadPlayroomImage = async (req, res, next) => {
       playroom.slike = [];
     }
 
-    if (playroom.slike.length >= 20) {
-      throw new ErrorResponse("Maksimalan broj slika za igraonicu je 20", 400);
+    if (playroom.slike.length >= 10) {
+      throw new ErrorResponse("Maksimalan broj slika za igraonicu je 10", 400);
     }
 
     const result = await uploadFileToCloudinary({

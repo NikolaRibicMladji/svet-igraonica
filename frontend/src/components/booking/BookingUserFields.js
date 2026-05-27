@@ -19,6 +19,7 @@ const BookingUserFields = ({
   passwordRef,
   confirmPasswordRef,
   termsRef,
+  title = "👤 Vaši podaci",
 }) => {
   const clearError = () => {
     if (typeof setError === "function") {
@@ -34,7 +35,7 @@ const BookingUserFields = ({
   return (
     <div className="user-data-section">
       <div className="user-data-header">
-        <h4>👤 Vaši podaci</h4>
+        <h4>{title}</h4>
 
         {!isAuthenticated && (
           <span className="user-info-text">

@@ -100,7 +100,7 @@ const Book = () => {
   const [availability, setAvailability] = useState(null);
   const [selectedStartTime, setSelectedStartTime] = useState(prefillStart);
   const [selectedEndTime, setSelectedEndTime] = useState(prefillEnd);
-
+  const [selectedTimeSlotId, setSelectedTimeSlotId] = useState("");
   const startTimeRef = useRef(null);
   const endTimeRef = useRef(null);
   const brojDeceWrapperRef = useRef(null);
@@ -285,6 +285,7 @@ const Book = () => {
     if (!isOwnerBooking) {
       setSelectedStartTime("");
       setSelectedEndTime("");
+      setSelectedTimeSlotId("");
       setError("");
     }
 
@@ -357,6 +358,7 @@ const Book = () => {
       setAvailability(null);
       setSelectedStartTime("");
       setSelectedEndTime("");
+      setSelectedTimeSlotId("");
     }
   }, [playroom?._id, selectedDate, loadTimeSlots]);
 
@@ -416,7 +418,8 @@ const Book = () => {
     [playroom?.dodatneUsluge, selectedUslugeIds],
   );
 
-  const isFiksno = playroom?.rezimRezervacije === "fiksno";
+  const bookingMode = availability?.mode || playroom?.rezimRezervacije || "";
+  const isFiksno = bookingMode === "fiksno";
   const trajanjeTermina = Number(playroom?.trajanjeTermina) || 60;
 
   const slotDurationHours = useMemo(
@@ -488,23 +491,32 @@ const Book = () => {
     scrollToField(startTimeRef);
   };
 
-  const handleStartTimeSelect = (value) => {
+  const handleStartTimeSelect = (itemOrValue) => {
     setError("");
+
+    const item =
+      itemOrValue && typeof itemOrValue === "object" ? itemOrValue : null;
+
+    const value = item?.value || String(itemOrValue || "");
 
     if (selectedStartTime === value) {
       setSelectedStartTime("");
       setSelectedEndTime("");
+      setSelectedTimeSlotId("");
       return;
     }
 
     setSelectedStartTime(value);
 
     if (isFiksno) {
-      const endMinutes = timeToMinutes(value) + trajanjeTermina;
-      setSelectedEndTime(minutesToTime(endMinutes));
+      setSelectedTimeSlotId(item?.timeSlotId || "");
+      setSelectedEndTime(
+        item?.vremeDo || minutesToTime(timeToMinutes(value) + trajanjeTermina),
+      );
       return;
     }
 
+    setSelectedTimeSlotId("");
     setSelectedEndTime("");
   };
 
@@ -526,6 +538,7 @@ const Book = () => {
     setSelectedCenaIds([]);
     setSelectedPaketId("");
     setSelectedUslugeIds([]);
+    setSelectedTimeSlotId("");
     setBrojDece("");
     setBrojRoditelja("");
     setNapomena("");
@@ -560,6 +573,8 @@ const Book = () => {
       selectedEndTime,
       selectedDate,
       hasPerPersonPricing,
+      bookingMode,
+      selectedTimeSlotId,
       brojDece,
       availability,
       selectedCenaIds,
@@ -593,6 +608,8 @@ const Book = () => {
         selectedCenaIds,
         selectedPaketId,
         selectedUslugeIds,
+        bookingMode,
+        selectedTimeSlotId,
         brojDece,
         brojRoditelja,
         korisnikPodaci,
@@ -630,6 +647,12 @@ const Book = () => {
         }
 
         await loadTimeSlots();
+
+        if (isOwnerBooking) {
+          navigate("/owner/timeslots", { replace: true });
+          return;
+        }
+
         navigate("/booking-success");
       } else {
         await handleBookingFailure(result);
@@ -777,6 +800,9 @@ const Book = () => {
                   passwordRef={passwordRef}
                   confirmPasswordRef={confirmPasswordRef}
                   termsRef={termsRef}
+                  title={
+                    isOwnerBooking ? "👤 Podaci roditelja" : "👤 Vaši podaci"
+                  }
                 />
                 <BookingOrderSummary
                   selectedCene={selectedCene}

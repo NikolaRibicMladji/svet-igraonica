@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { normalizeText } from "../../utils/normalizeText";
+
 import { getPricingLabel } from "../../utils/bookingPriceUtils";
 
 const BookingPricingOptions = ({
@@ -15,10 +15,7 @@ const BookingPricingOptions = ({
   const visibleCene = useMemo(() => {
     if (!Array.isArray(playroom?.cene)) return [];
 
-    return playroom.cene.filter((c) => {
-      const naziv = normalizeText(c?.naziv || "");
-      return naziv !== "dete" && naziv !== "roditelj";
-    });
+    return playroom.cene;
   }, [playroom?.cene]);
 
   const hasVisibleCene = visibleCene.length > 0;

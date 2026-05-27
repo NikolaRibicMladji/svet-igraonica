@@ -213,7 +213,7 @@ const PlayroomDetails = () => {
             <div className="detail-label">📧 Email</div>
             {playroom.kontaktEmail ? (
               <a
-                href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(playroom.kontaktEmail)}`}
+                href={`mailto:${encodeURIComponent(playroom.kontaktEmail)}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -503,7 +503,7 @@ const PlayroomDetails = () => {
               {Array.isArray(playroom.dodatneUsluge) &&
                 playroom.dodatneUsluge.length > 0 && (
                   <div className="price-group">
-                    <h3>🎪 Dodatne pogodnosti</h3>
+                    <h3>🎪 Dodatne usluge</h3>
                     {playroom.dodatneUsluge.map((usluga, idx) => (
                       <div
                         key={`${usluga.naziv}-${idx}`}

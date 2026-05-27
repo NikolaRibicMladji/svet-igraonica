@@ -162,6 +162,55 @@ exports.getReviews = async (req, res, next) => {
   }
 };
 
+// @desc    Proveri da li trenutni korisnik može da ostavi recenziju
+// @route   GET /api/reviews/:playroomId/my-status
+// @access  Private
+exports.getMyReviewStatus = async (req, res, next) => {
+  try {
+    const { playroomId } = req.validated?.params || req.params;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === ROLES.ADMIN;
+
+    if (!mongoose.isValidObjectId(playroomId)) {
+      throw new ErrorResponse("ID igraonice nije validan", 400);
+    }
+
+    const playroom = await Playroom.findById(playroomId)
+      .select("_id verifikovan status")
+      .lean();
+
+    ensurePublicPlayroom(playroom);
+
+    const [existingReview, completedBooking] = await Promise.all([
+      Review.findOne({ playroomId, userId }).select("_id").lean(),
+
+      isAdmin
+        ? Promise.resolve(null)
+        : Booking.exists({
+            playroomId,
+            roditeljId: userId,
+            status: BOOKING_STATUS.ZAVRSENO,
+          }),
+    ]);
+
+    const hasReview = Boolean(existingReview);
+    const hasCompletedBooking = Boolean(completedBooking);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        canReview: !hasReview && (isAdmin || hasCompletedBooking),
+        hasCompletedBooking,
+        hasReview,
+        reviewId: existingReview?._id || null,
+        isAdmin,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Obriši recenziju
 // @route   DELETE /api/reviews/:id
 // @access  Private

@@ -381,8 +381,7 @@ const Navbar = () => {
                     if (result.success) {
                       showToast("Lozinka je uspešno promenjena.", "success");
 
-                      setTimeout(async () => {
-                        await logout();
+                      setTimeout(() => {
                         closeAccountModal();
                         navigate("/login", { replace: true });
                       }, 1200);
@@ -547,8 +546,7 @@ const Navbar = () => {
                     if (result.success) {
                       showToast("Email je uspešno promenjen.", "success");
 
-                      setTimeout(async () => {
-                        await logout();
+                      setTimeout(() => {
                         closeAccountModal();
                         navigate("/login", { replace: true });
                       }, 1200);
@@ -660,10 +658,9 @@ const Navbar = () => {
                     if (result.success) {
                       showToast("Profil je uspešno obrisan.", "success");
 
-                      setTimeout(async () => {
-                        await logout();
+                      setTimeout(() => {
                         closeAccountModal();
-                        navigate("/");
+                        navigate("/login", { replace: true });
                       }, 1200);
                     } else {
                       setFormError(result.error);

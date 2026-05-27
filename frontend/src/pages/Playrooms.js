@@ -260,9 +260,7 @@ const Playrooms = () => {
 
                         {playroom.kontaktEmail && (
                           <a
-                            href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(playroom.kontaktEmail)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            href={`mailto:${encodeURIComponent(playroom.kontaktEmail)}`}
                             className="contact-item"
                           >
                             {playroom.kontaktEmail}

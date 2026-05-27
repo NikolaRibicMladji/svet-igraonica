@@ -156,7 +156,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       setAuthData(userDataRes, token);
-      localStorage.removeItem("pendingVerificationEmail");
+      sessionStorage.removeItem("pendingVerificationEmail");
 
       return { success: true, user: userDataRes };
     },
@@ -182,7 +182,7 @@ export const AuthProvider = ({ children }) => {
         });
 
         if (pendingEmail) {
-          localStorage.setItem("pendingVerificationEmail", pendingEmail);
+          sessionStorage.setItem("pendingVerificationEmail", pendingEmail);
         }
 
         return {
@@ -243,15 +243,19 @@ export const AuthProvider = ({ children }) => {
     [handleAuthError],
   );
 
-  const logout = useCallback(async () => {
+  const clearServerSession = useCallback(async () => {
     try {
       await api.post("/auth/logout");
     } catch (err) {
-      console.error("Logout error:", err);
+      console.error("Clear server session error:", err);
     } finally {
       clearAuthData();
     }
   }, [clearAuthData]);
+
+  const logout = useCallback(async () => {
+    await clearServerSession();
+  }, [clearServerSession]);
 
   const changePassword = useCallback(
     async (payload) => {
@@ -259,7 +263,7 @@ export const AuthProvider = ({ children }) => {
 
       try {
         const response = await api.put("/auth/change-password", payload);
-        clearAuthData();
+        await clearServerSession();
 
         return {
           success: true,
@@ -269,7 +273,7 @@ export const AuthProvider = ({ children }) => {
         return handleAuthError(err, "Greška pri promeni lozinke.");
       }
     },
-    [clearAuthData, handleAuthError],
+    [clearServerSession, handleAuthError],
   );
 
   const changeEmail = useCallback(
@@ -278,7 +282,7 @@ export const AuthProvider = ({ children }) => {
 
       try {
         const response = await api.put("/auth/change-email", payload);
-        clearAuthData();
+        await clearServerSession();
 
         return {
           success: true,
@@ -288,7 +292,7 @@ export const AuthProvider = ({ children }) => {
         return handleAuthError(err, "Greška pri promeni emaila.");
       }
     },
-    [clearAuthData, handleAuthError],
+    [clearServerSession, handleAuthError],
   );
 
   const deleteAccount = useCallback(
@@ -300,7 +304,7 @@ export const AuthProvider = ({ children }) => {
           data: payload,
         });
 
-        clearAuthData();
+        await clearServerSession();
 
         return {
           success: true,
@@ -310,7 +314,7 @@ export const AuthProvider = ({ children }) => {
         return handleAuthError(err, "Greška pri brisanju naloga.");
       }
     },
-    [clearAuthData, handleAuthError],
+    [clearServerSession, handleAuthError],
   );
 
   const value = useMemo(

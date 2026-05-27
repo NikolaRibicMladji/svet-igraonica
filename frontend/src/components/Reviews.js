@@ -1,8 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { addReview, deleteReview, getReviews } from "../services/reviewService";
+import {
+  addReview,
+  deleteReview,
+  getMyReviewStatus,
+  getReviews,
+} from "../services/reviewService";
 import { useAuth } from "../context/AuthContext";
 import "../styles/Reviews.css";
-import { getMyBookings } from "../services/bookingService";
+
 import { useToast } from "../context/ToastContext";
 
 const REVIEWS_PER_PAGE = 10;
@@ -19,6 +24,8 @@ const Reviews = ({ playroomId }) => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [canReview, setCanReview] = useState(false);
+  const [reviewStatus, setReviewStatus] = useState(null);
+  const [reviewStatusLoading, setReviewStatusLoading] = useState(false);
 
   const loadReviews = useCallback(async () => {
     setLoading(true);
@@ -50,52 +57,35 @@ const Reviews = ({ playroomId }) => {
   }, [playroomId, page, showError]);
 
   const checkIfUserCanReview = useCallback(async () => {
+    if (!isAuthenticated || !["roditelj", "admin"].includes(user?.role)) {
+      setCanReview(false);
+      setReviewStatus(null);
+      return;
+    }
+
+    setReviewStatusLoading(true);
+
     try {
-      const [reviewsResult, bookingsResult] = await Promise.all([
-        getReviews(playroomId, 1, REVIEWS_PER_PAGE),
-        getMyBookings(),
-      ]);
+      const result = await getMyReviewStatus(playroomId);
 
-      const reviewList = reviewsResult?.success
-        ? Array.isArray(reviewsResult.data)
-          ? reviewsResult.data
-          : []
-        : [];
+      if (result?.success) {
+        const status = result.data || null;
 
-      const bookingList = bookingsResult?.success
-        ? Array.isArray(bookingsResult.data)
-          ? bookingsResult.data
-          : []
-        : [];
+        setReviewStatus(status);
+        setCanReview(Boolean(status?.canReview));
+        return;
+      }
 
-      const currentUserId = user?._id || user?.id || "";
-
-      const hasCompleted = bookingList.some((booking) => {
-        const bookingPlayroomId =
-          typeof booking.playroomId === "object"
-            ? booking.playroomId?._id
-            : booking.playroomId;
-
-        return (
-          bookingPlayroomId === playroomId && booking.status === "zavrseno"
-        );
-      });
-
-      const hasReview = reviewList.some((review) => {
-        const reviewUserId =
-          typeof review.userId === "object"
-            ? review.userId?._id
-            : review.userId;
-
-        return reviewUserId === currentUserId;
-      });
-
-      setCanReview(Boolean(hasCompleted && !hasReview));
+      setReviewStatus(null);
+      setCanReview(false);
     } catch (err) {
       console.error("Greška pri proveri review prava:", err);
+      setReviewStatus(null);
       setCanReview(false);
+    } finally {
+      setReviewStatusLoading(false);
     }
-  }, [playroomId, user?._id, user?.id]);
+  }, [playroomId, isAuthenticated, user?.role]);
 
   useEffect(() => {
     if (!playroomId) return;
@@ -104,13 +94,8 @@ const Reviews = ({ playroomId }) => {
 
   useEffect(() => {
     if (!playroomId) return;
-
-    if (isAuthenticated && user?.role === "roditelj") {
-      checkIfUserCanReview();
-    } else {
-      setCanReview(false);
-    }
-  }, [playroomId, isAuthenticated, user?.role, checkIfUserCanReview]);
+    checkIfUserCanReview();
+  }, [playroomId, checkIfUserCanReview]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -141,6 +126,7 @@ const Reviews = ({ playroomId }) => {
         setComment("");
         setRating(5);
         setCanReview(false);
+        await checkIfUserCanReview();
 
         if (page !== 1) {
           setPage(1);
@@ -185,10 +171,10 @@ const Reviews = ({ playroomId }) => {
           setPage((prev) => prev - 1);
         } else {
           await loadReviews();
+        }
 
-          if (isAuthenticated && user?.role === "roditelj") {
-            await checkIfUserCanReview();
-          }
+        if (isAuthenticated && ["roditelj", "admin"].includes(user?.role)) {
+          await checkIfUserCanReview();
         }
       } else {
         showError(result?.error || "Brisanje recenzije nije uspelo.");
@@ -280,12 +266,25 @@ const Reviews = ({ playroomId }) => {
         </div>
       )}
 
-      {isAuthenticated && user?.role === "roditelj" && !canReview && (
-        <div className="info-message" role="status" aria-live="polite">
-          Recenziju možete ostaviti tek nakon završene rezervacije za ovu
-          igraonicu.
-        </div>
-      )}
+      {isAuthenticated &&
+        user?.role === "roditelj" &&
+        !reviewStatusLoading &&
+        !canReview &&
+        !reviewStatus?.hasReview && (
+          <div className="info-message" role="status" aria-live="polite">
+            Recenziju možete ostaviti tek nakon završene rezervacije za ovu
+            igraonicu.
+          </div>
+        )}
+
+      {isAuthenticated &&
+        user?.role === "roditelj" &&
+        !reviewStatusLoading &&
+        reviewStatus?.hasReview && (
+          <div className="info-message" role="status" aria-live="polite">
+            Već ste ostavili recenziju za ovu igraonicu.
+          </div>
+        )}
 
       {reviews.length === 0 ? (
         <div className="no-reviews">
@@ -294,12 +293,9 @@ const Reviews = ({ playroomId }) => {
       ) : (
         <div className="reviews-list">
           {reviews.map((review) => {
-            const reviewUserId =
-              typeof review.userId === "object"
-                ? review.userId?._id
-                : review.userId;
-
-            const currentUserId = user?._id || user?.id || "";
+            const canDeleteReview =
+              user?.role === "admin" ||
+              String(reviewStatus?.reviewId || "") === String(review._id || "");
 
             return (
               <div key={review._id} className="review-card">
@@ -324,7 +320,7 @@ const Reviews = ({ playroomId }) => {
                   <p>{review.comment || ""}</p>
                 </div>
 
-                {(user?.role === "admin" || currentUserId === reviewUserId) && (
+                {canDeleteReview && (
                   <button
                     type="button"
                     className="btn-delete-review"

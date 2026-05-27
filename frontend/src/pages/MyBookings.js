@@ -184,7 +184,7 @@ const MyBookings = () => {
   };
 
   const canCancelBooking = (status) =>
-    String(status).toLowerCase() === "potvrdjeno";
+    ["cekanje", "potvrdjeno"].includes(String(status).toLowerCase());
 
   if (loading) {
     return (

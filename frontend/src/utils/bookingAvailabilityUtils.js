@@ -35,6 +35,25 @@ export const doesOverlapBusyInterval = (availability, start, end) => {
 export const buildAvailabilitySegments = (availability) => {
   if (!availability?.workingHours) return [];
 
+  if (availability?.mode === "fleksibilno") {
+    const freeIntervals = Array.isArray(availability?.freeIntervals)
+      ? availability.freeIntervals
+      : [];
+
+    return freeIntervals
+      .filter(
+        (interval) =>
+          interval?.vremeOd &&
+          interval?.vremeDo &&
+          timeToMinutes(interval.vremeDo) > timeToMinutes(interval.vremeOd),
+      )
+      .map((interval) => ({
+        tip: "slobodno",
+        vremeOd: interval.vremeOd,
+        vremeDo: interval.vremeDo,
+      }));
+  }
+
   const workingStart = timeToMinutes(availability.workingHours.vremeOd);
   const workingEnd = timeToMinutes(availability.workingHours.vremeDo);
 
@@ -99,6 +118,30 @@ export const buildStartDropdownItems = ({
 }) => {
   if (!availability?.workingHours) return [];
 
+  if (availability?.mode === "fiksno") {
+    const slots = Array.isArray(availability?.slots) ? availability.slots : [];
+
+    return slots
+      .filter(
+        (slot) =>
+          slot?._id &&
+          slot?.available === true &&
+          slot?.zauzeto !== true &&
+          slot?.vremeOd &&
+          slot?.vremeDo &&
+          !isPastSlotTime(slot.vremeOd, selectedDate),
+      )
+      .map((slot) => ({
+        type: "free",
+        key: `slot-${slot._id}`,
+        value: slot.vremeOd,
+        label: `✅ ${slot.vremeOd}-${slot.vremeDo}`,
+        timeSlotId: String(slot._id),
+        vremeOd: slot.vremeOd,
+        vremeDo: slot.vremeDo,
+      }));
+  }
+
   const items = [];
 
   availabilitySegments.forEach((segment, index) => {
@@ -118,12 +161,7 @@ export const buildStartDropdownItems = ({
 
     intervalOptions.forEach((time) => {
       const startMinutes = timeToMinutes(time);
-      const endMinutes =
-        startMinutes +
-        (playroom?.rezimRezervacije === "fiksno"
-          ? Number(playroom?.trajanjeTermina) || 60
-          : 15);
-
+      const endMinutes = startMinutes + 15;
       const calculatedEndTime = minutesToTime(endMinutes);
 
       const isValid =

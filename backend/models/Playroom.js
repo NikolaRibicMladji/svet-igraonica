@@ -359,7 +359,7 @@ const PlayroomSchema = new mongoose.Schema(
 
     slike: {
       type: [slikaSchema],
-      validate: [(arr) => arr.length <= 20, "Maksimalno 20 slika"],
+      validate: [(arr) => arr.length <= 10, "Maksimalno 10 slika"],
       default: [],
     },
 

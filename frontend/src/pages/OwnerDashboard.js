@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getMyPlayrooms, getPlayroomStats } from "../services/playroomService";
 import { getReviews } from "../services/reviewService";
 import { useAuth } from "../context/AuthContext";
-import { getOwnerBookings, confirmBooking } from "../services/bookingService";
+import {
+  getOwnerBookings,
+  confirmBooking,
+  cancelBooking,
+} from "../services/bookingService";
 import "../styles/OwnerDashboard.css";
 import { useToast } from "../context/ToastContext";
 
@@ -19,6 +23,7 @@ const OwnerDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [, setBookingsLoading] = useState(false);
   const [confirmingId, setConfirmingId] = useState("");
+  const [cancellingId, setCancellingId] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("svi");
   const [dateFilter, setDateFilter] = useState("");
@@ -226,6 +231,45 @@ const OwnerDashboard = () => {
       showError(message);
     } finally {
       setConfirmingId("");
+    }
+  };
+
+  const handleCancel = async (bookingId) => {
+    if (!bookingId) {
+      showError("Nedostaje ID rezervacije za otkazivanje.");
+      return;
+    }
+
+    if (cancellingId) return;
+
+    const confirmed = window.confirm(
+      "Da li ste sigurni da želite da otkažete ovu rezervaciju?",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setCancellingId(bookingId);
+      setError("");
+
+      const res = await cancelBooking(bookingId);
+
+      if (res?.success) {
+        showSuccess(res.message || "Rezervacija je otkazana.");
+        await fetchBookings();
+
+        if (selectedPlayroomId) {
+          await fetchStats(selectedPlayroomId);
+        }
+      } else {
+        showError(res?.error || "Greška pri otkazivanju rezervacije.");
+      }
+    } catch (err) {
+      const message =
+        err?.response?.data?.message || "Greška pri otkazivanju rezervacije.";
+      showError(message);
+    } finally {
+      setCancellingId("");
     }
   };
 
@@ -794,6 +838,25 @@ const OwnerDashboard = () => {
                       {confirmingId === booking._id
                         ? "Potvrđujem..."
                         : "✅ Potvrdi rezervaciju"}
+                    </button>
+                  )}
+                  {["cekanje", "potvrdjeno"].includes(booking.status) && (
+                    <button
+                      type="button"
+                      className="btn-cancel-booking"
+                      onClick={() => handleCancel(booking._id)}
+                      disabled={
+                        cancellingId === booking._id ||
+                        confirmingId === booking._id
+                      }
+                      aria-busy={cancellingId === booking._id}
+                      aria-label={`Otkaži rezervaciju za ${booking.imeRoditelja || ""} ${
+                        booking.prezimeRoditelja || ""
+                      }`.trim()}
+                    >
+                      {cancellingId === booking._id
+                        ? "Otkazujem..."
+                        : "❌ Otkaži rezervaciju"}
                     </button>
                   )}
                 </div>

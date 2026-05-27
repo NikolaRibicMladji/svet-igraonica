@@ -392,7 +392,7 @@ exports.registerGuestParent = async (data, session = null) => {
     );
   }
 
-  const { user } = await createParentUser({
+  const { user, emailVerificationToken } = await createParentUser({
     ime,
     prezime,
     email: normalizedEmail,
@@ -400,9 +400,10 @@ exports.registerGuestParent = async (data, session = null) => {
     telefon,
     role: ROLES.RODITELJ,
     acceptedTerms,
-
     session,
   });
+
+  await sendEmailVerificationEmail(user, emailVerificationToken);
 
   const { accessToken, refreshToken } = await generateAuthResponse(
     user,

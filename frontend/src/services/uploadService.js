@@ -94,3 +94,59 @@ export const uploadVideo = async (playroomId, file, naziv = "") => {
     thumbnail: video.thumbnail || video.thumbnailUrl || "",
   });
 };
+
+export const deleteImage = async (playroomId, publicId) => {
+  const safePlayroomId = normalizeId(playroomId);
+  const safePublicId = String(publicId || "").trim();
+
+  if (!safePlayroomId) {
+    throw new Error("Nedostaje ID igraonice za brisanje slike.");
+  }
+
+  if (!safePublicId) {
+    throw new Error("Nedostaje publicId slike za brisanje.");
+  }
+
+  const res = await api.delete(
+    `/upload/playroom/${encodeURIComponent(safePlayroomId)}/image`,
+    {
+      data: {
+        publicId: safePublicId,
+      },
+    },
+  );
+
+  return {
+    success: Boolean(res.data?.success ?? true),
+    message: res.data?.message || "Slika je obrisana.",
+    data: res.data?.data || null,
+  };
+};
+
+export const deleteVideo = async (playroomId, publicId) => {
+  const safePlayroomId = normalizeId(playroomId);
+  const safePublicId = String(publicId || "").trim();
+
+  if (!safePlayroomId) {
+    throw new Error("Nedostaje ID igraonice za brisanje videa.");
+  }
+
+  if (!safePublicId) {
+    throw new Error("Nedostaje publicId videa za brisanje.");
+  }
+
+  const res = await api.delete(
+    `/upload/playroom/${encodeURIComponent(safePlayroomId)}/video`,
+    {
+      data: {
+        publicId: safePublicId,
+      },
+    },
+  );
+
+  return {
+    success: Boolean(res.data?.success ?? true),
+    message: res.data?.message || "Video je obrisan.",
+    data: res.data?.data || null,
+  };
+};

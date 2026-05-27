@@ -54,6 +54,36 @@ export const getReviews = async (playroomId, page = 1, limit = 10) => {
   }
 };
 
+export const getMyReviewStatus = async (playroomId) => {
+  const safePlayroomId = normalizeId(playroomId);
+
+  if (!safePlayroomId) {
+    return {
+      success: false,
+      error: "Nedostaje ID igraonice za proveru recenzije.",
+    };
+  }
+
+  try {
+    const response = await api.get(
+      `/reviews/${encodeURIComponent(safePlayroomId)}/my-status`,
+    );
+
+    return {
+      success: true,
+      data: response.data?.data || null,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      status: error.response?.status,
+      error:
+        error.response?.data?.message ||
+        "Greška pri proveri prava za recenziju.",
+    };
+  }
+};
+
 export const addReview = async (playroomId, rating, comment) => {
   const safePlayroomId = normalizeId(playroomId);
 

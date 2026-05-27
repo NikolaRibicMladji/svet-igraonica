@@ -40,6 +40,115 @@ const toSafeCount = (value) => {
   return Math.floor(numberValue);
 };
 
+const normalizeBookingMode = (value) => {
+  const safeValue = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  return ["fiksno", "fleksibilno"].includes(safeValue) ? safeValue : "";
+};
+
+const timeToMinutes = (time) => {
+  const safeTime = normalizeTime(time);
+
+  if (!safeTime) return null;
+
+  const [hours, minutes] = safeTime.split(":").map(Number);
+
+  return hours * 60 + minutes;
+};
+
+const buildBookingTimePayload = (data) => {
+  const mode = normalizeBookingMode(data.mode || data.rezimRezervacije);
+  const timeSlotId = normalizeId(data.timeSlotId);
+
+  const shouldUseFixedSlot =
+    mode === "fiksno" || (timeSlotId && mode !== "fleksibilno");
+
+  if (shouldUseFixedSlot) {
+    if (!timeSlotId) {
+      return {
+        error: "Izaberite postojeći termin.",
+      };
+    }
+
+    return {
+      payload: {
+        timeSlotId,
+      },
+    };
+  }
+
+  const datum = normalizeDate(data.datum);
+  const vremeOd = normalizeTime(data.vremeOd);
+  const vremeDo = normalizeTime(data.vremeDo);
+
+  if (!datum || !vremeOd || !vremeDo) {
+    return {
+      error: "Izaberite datum, vreme početka i vreme završetka.",
+    };
+  }
+
+  const startMinutes = timeToMinutes(vremeOd);
+  const endMinutes = timeToMinutes(vremeDo);
+
+  if (
+    startMinutes === null ||
+    endMinutes === null ||
+    endMinutes <= startMinutes
+  ) {
+    return {
+      error: "Vreme završetka mora biti posle vremena početka.",
+    };
+  }
+
+  return {
+    payload: {
+      datum,
+      vremeOd,
+      vremeDo,
+    },
+  };
+};
+
+const buildBookingBasePayload = (data) => {
+  const playroomId = normalizeId(data.playroomId);
+  const cenaIds = normalizeIdList(data.cenaIds);
+  const paketId = normalizeId(data.paketId) || null;
+
+  if (!playroomId) {
+    return {
+      error: "Nedostaje ID igraonice.",
+    };
+  }
+
+  if (cenaIds.length === 0 && !paketId) {
+    return {
+      error: "Izaberite cenu ili paket.",
+    };
+  }
+
+  const timePayloadResult = buildBookingTimePayload(data);
+
+  if (timePayloadResult.error) {
+    return timePayloadResult;
+  }
+
+  return {
+    payload: {
+      playroomId,
+      ...timePayloadResult.payload,
+      acceptedTerms: data.acceptedTerms === true,
+      cenaIds,
+      paketId,
+      usluge: normalizeIdList(data.usluge),
+      brojDece: toSafeCount(data.brojDece),
+      brojRoditelja: toSafeCount(data.brojRoditelja),
+      napomena: normalizeText(data.napomena, 500),
+    },
+  };
+};
+
 // ============ TERMINI ============
 
 export const getTimeSlots = async (playroomId, datum = null) => {
@@ -170,22 +279,25 @@ export const deleteTimeSlot = async (id) => {
 // ============ REZERVACIJE ============
 
 export const createBooking = async (data) => {
-  if (!data?.playroomId || !data?.datum || !data?.vremeOd || !data?.vremeDo) {
+  if (!data || typeof data !== "object") {
     return {
       success: false,
-      error: "Popunite sva obavezna polja.",
+      error: "Nedostaju podaci za rezervaciju.",
     };
   }
+
+  const basePayloadResult = buildBookingBasePayload(data);
+
+  if (basePayloadResult.error) {
+    return {
+      success: false,
+      error: basePayloadResult.error,
+    };
+  }
+
   try {
     const payload = {
-      playroomId: normalizeId(data.playroomId),
-      datum: normalizeDate(data.datum),
-      vremeOd: normalizeTime(data.vremeOd),
-      vremeDo: normalizeTime(data.vremeDo),
-      acceptedTerms: data.acceptedTerms === true,
-      cenaIds: normalizeIdList(data.cenaIds),
-      paketId: normalizeId(data.paketId) || null,
-      usluge: normalizeIdList(data.usluge),
+      ...basePayloadResult.payload,
       imeRoditelja: normalizeText(data.imeRoditelja || data.ime, 80),
       prezimeRoditelja: normalizeText(
         data.prezimeRoditelja || data.prezime,
@@ -199,9 +311,6 @@ export const createBooking = async (data) => {
         data.telefonRoditelja || data.telefon,
         30,
       ),
-      brojDece: toSafeCount(data.brojDece),
-      brojRoditelja: toSafeCount(data.brojRoditelja),
-      napomena: normalizeText(data.napomena, 500),
     };
 
     const response = await api.post("/bookings", payload);
@@ -222,6 +331,7 @@ export const createBooking = async (data) => {
     };
   }
 };
+
 export const getMyBookings = async () => {
   try {
     const response = await api.get("/bookings/my");
@@ -435,40 +545,37 @@ export const manualBookInterval = async (bookingData) => {
 
 export const createGuestBooking = async (data) => {
   if (
-    !data?.playroomId ||
-    !data?.datum ||
-    !data?.vremeOd ||
-    !data?.vremeDo ||
     !data?.ime ||
     !data?.prezime ||
     !data?.email ||
     !data?.telefon ||
-    !data?.password
+    !data?.password ||
+    !data?.confirmPassword
   ) {
     return {
       success: false,
       error: "Popunite sva obavezna polja.",
     };
   }
+
+  const basePayloadResult = buildBookingBasePayload(data);
+
+  if (basePayloadResult.error) {
+    return {
+      success: false,
+      error: basePayloadResult.error,
+    };
+  }
+
   try {
     const payload = {
-      playroomId: normalizeId(data.playroomId),
-      datum: normalizeDate(data.datum),
-      vremeOd: normalizeTime(data.vremeOd),
-      vremeDo: normalizeTime(data.vremeDo),
-      acceptedTerms: data.acceptedTerms === true,
-      cenaIds: normalizeIdList(data.cenaIds),
-      paketId: normalizeId(data.paketId) || null,
-      usluge: normalizeIdList(data.usluge),
+      ...basePayloadResult.payload,
       ime: normalizeText(data.ime, 80),
       prezime: normalizeText(data.prezime, 80),
       email: normalizeText(data.email, 120).toLowerCase(),
       telefon: normalizeText(data.telefon, 30),
       password: String(data.password || ""),
       confirmPassword: String(data.confirmPassword || ""),
-      brojDece: toSafeCount(data.brojDece),
-      brojRoditelja: toSafeCount(data.brojRoditelja),
-      napomena: normalizeText(data.napomena, 500),
     };
 
     const response = await api.post("/bookings/guest", payload);

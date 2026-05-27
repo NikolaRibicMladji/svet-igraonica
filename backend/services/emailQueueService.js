@@ -36,12 +36,13 @@ const queueBookingEmails = async (bookingId) => {
 
     const vlasnik = playroom?.vlasnikId;
     const timeSlot = booking.timeSlotId || booking;
+    const status = String(booking.status || "").toLowerCase();
 
     if (!playroom || !vlasnik) {
       return;
     }
 
-    if (booking.status === "CEKANJE") {
+    if (status === "cekanje") {
       await Promise.all([
         sendBookingConfirmation(booking, roditelj, playroom, timeSlot),
 
@@ -55,7 +56,7 @@ const queueBookingEmails = async (bookingId) => {
       ]);
     }
 
-    if (booking.status === "OTKAZANO") {
+    if (status === "otkazano") {
       await Promise.all([
         sendBookingCancellation(booking, roditelj, playroom, timeSlot),
 

@@ -54,16 +54,38 @@ const verifyPlayroomAndGenerateSlots = async (playroomId) => {
     };
   }
 
+  const previousVerified = playroom.verifikovan;
+  const previousStatus = playroom.status;
+
   playroom.verifikovan = true;
   playroom.status = PLAYROOM_STATUS.AKTIVAN;
   await playroom.save();
 
-  const slotResult = await generateTimeSlotsForPlayroom(playroom._id, 30);
+  try {
+    const slotResult = await generateTimeSlotsForPlayroom(playroom._id, 30);
 
-  return {
-    playroom,
-    slotResult,
-  };
+    return {
+      playroom,
+      slotResult,
+    };
+  } catch (error) {
+    playroom.verifikovan = previousVerified;
+    playroom.status = previousStatus;
+    await playroom.save();
+
+    logger.error(
+      "Greška pri generisanju termina nakon verifikacije igraonice:",
+      {
+        playroomId,
+        message: error.message,
+      },
+    );
+
+    throw new ErrorResponse(
+      "Igraonica nije verifikovana jer termini nisu uspešno generisani.",
+      500,
+    );
+  }
 };
 
 const regenerateSlotsForPlayroom = async (playroomId) => {

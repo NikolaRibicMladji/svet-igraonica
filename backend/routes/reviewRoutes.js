@@ -10,18 +10,28 @@ const {
   addReview,
   getReviews,
   deleteReview,
+  getMyReviewStatus,
 } = require("../controllers/reviewController");
 
 const {
   addReviewSchema,
   getReviewsSchema,
   deleteReviewSchema,
+  getMyReviewStatusSchema,
 } = require("../validations/reviewValidation");
+
+// 🔒 PRIVATNO
+router.get(
+  "/:playroomId/my-status",
+  protect,
+  authorize(ROLES.RODITELJ, ROLES.ADMIN),
+  validate(getMyReviewStatusSchema),
+  getMyReviewStatus,
+);
 
 // 🌐 JAVNO
 router.get("/:playroomId", validate(getReviewsSchema), getReviews);
 
-// 🔒 PRIVATNO
 router.post(
   "/:playroomId",
   protect,

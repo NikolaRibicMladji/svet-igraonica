@@ -5,15 +5,6 @@ const BookingModeSection = ({ formData = {}, handleChange }) => {
   const trajanjeTermina = formData.trajanjeTermina || 60;
   const vremePripremeTermina = formData.vremePripremeTermina ?? 0;
 
-  const handleModeChange = (value) => {
-    handleChange({
-      target: {
-        name: "rezimRezervacije",
-        value,
-      },
-    });
-  };
-
   return (
     <div className="form-section rezimRezervacije-error" tabIndex={-1}>
       <h3>⏰ Način rezervacije</h3>

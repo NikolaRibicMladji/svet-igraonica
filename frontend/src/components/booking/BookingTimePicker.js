@@ -38,15 +38,15 @@ const BookingTimePicker = ({
               className={`time-pill ${
                 selectedStartTime === item.value ? "active" : ""
               } ${item.type !== "free" ? "disabled" : ""}`}
-              onClick={() => onStartSelect?.(item.value)}
+              onClick={() => onStartSelect?.(item)}
               aria-pressed={selectedStartTime === item.value}
               aria-label={
                 item.type === "free"
-                  ? `Izaberi početak termina u ${item.value}`
+                  ? `Izaberi termin ${item.label || item.value}`
                   : item.label
               }
             >
-              {item.type === "free" ? item.value : item.label}
+              {item.type === "free" ? item.label || item.value : item.label}
             </button>
           ))}
 
