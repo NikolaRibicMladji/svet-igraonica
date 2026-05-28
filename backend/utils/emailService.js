@@ -443,6 +443,23 @@ const sendMail = async (options) => {
       throw new Error("EMAIL_FROM missing");
     }
 
+    const existingQueuedEmail = await EmailQueue.findOne({
+      type: options.type,
+      bookingId: options.bookingId || null,
+      to: options.to,
+      status: { $in: ["pending", "processing", "sent"] },
+    });
+
+    if (existingQueuedEmail) {
+      logger.warn("Email već postoji u queue, preskačem duplikat", {
+        to: options.to,
+        type: options.type,
+        bookingId: options.bookingId || null,
+      });
+
+      return true;
+    }
+
     await EmailQueue.create({
       to: options.to,
       subject: options.subject,
@@ -490,6 +507,25 @@ exports.sendBookingConfirmation = async (
     html: generateEmailHtml(
       "Zahtev za rezervaciju primljen",
       "Vaš zahtev je uspešno poslat i čeka potvrdu vlasnika igraonice.",
+      booking,
+      roditelj,
+      playroom,
+      timeSlot,
+      false,
+    ),
+  });
+};
+
+exports.sendBookingApproved = async (booking, roditelj, playroom, timeSlot) => {
+  return sendMail({
+    type: "booking_approved",
+    bookingId: booking._id,
+    playroomId: playroom._id,
+    to: roditelj.email,
+    subject: `✅ Rezervacija potvrđena - ${escapeHtml(playroom.naziv)}`,
+    html: generateEmailHtml(
+      "Rezervacija potvrđena",
+      "Vlasnik igraonice je potvrdio vašu rezervaciju.",
       booking,
       roditelj,
       playroom,

@@ -6,6 +6,7 @@ const {
   sendBookingConfirmationToOwner,
   sendBookingCancellation,
   sendCancellationToOwner,
+  sendBookingApproved,
 } = require("../utils/emailService");
 
 const queueBookingEmails = async (bookingId) => {
@@ -54,6 +55,10 @@ const queueBookingEmails = async (bookingId) => {
           vlasnik,
         ),
       ]);
+    }
+
+    if (status === "potvrdjeno") {
+      await sendBookingApproved(booking, roditelj, playroom, timeSlot);
     }
 
     if (status === "otkazano") {
