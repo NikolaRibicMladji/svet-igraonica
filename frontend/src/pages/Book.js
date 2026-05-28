@@ -99,7 +99,7 @@ const Book = () => {
   const [loading, setLoading] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [, setError] = useState("");
   const brojDeceRef = useRef(null);
   const [selectedDate, setSelectedDate] = useState(
     prefillDate || getLocalDate(),
@@ -247,18 +247,22 @@ const Book = () => {
       if (result?.success) {
         setPlayroom(result.data);
       } else {
-        setError(result?.error || "Greška pri učitavanju igraonice.");
+        const message = result?.error || "Greška pri učitavanju igraonice.";
+        setError(message);
+        showError(message);
       }
     } catch (err) {
-      setError(
+      const message =
         err?.response?.data?.message ||
-          err?.message ||
-          "Greška pri učitavanju igraonice.",
-      );
+        err?.message ||
+        "Greška pri učitavanju igraonice.";
+
+      setError(message);
+      showError(message);
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, showError]);
 
   const loadTimeSlots = useCallback(async () => {
     setLoadingSlots(true);
@@ -277,19 +281,22 @@ const Book = () => {
         setAvailability(result.data || null);
       } else {
         setAvailability(null);
-        setError(result?.error || "Greška pri učitavanju termina.");
+        const message = result?.error || "Greška pri učitavanju termina.";
+        setError(message);
+        showError(message);
       }
     } catch (err) {
-      setAvailability(null);
-      setError(
+      const message =
         err?.response?.data?.message ||
-          err?.message ||
-          "Greška pri učitavanju termina.",
-      );
+        err?.message ||
+        "Greška pri učitavanju termina.";
+
+      setError(message);
+      showError(message);
     } finally {
       setLoadingSlots(false);
     }
-  }, [id, selectedDate]);
+  }, [id, selectedDate, showError]);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && user) {
@@ -331,23 +338,39 @@ const Book = () => {
   };
 
   const scrollToField = (ref) => {
-    if (!ref?.current) {
-      scrollToTop();
+    const target = ref?.current || topRef.current;
+
+    if (!target) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
-    const elementTop =
-      ref.current.getBoundingClientRect().top + window.pageYOffset;
+    const elementTop = target.getBoundingClientRect().top + window.pageYOffset;
 
     window.scrollTo({
-      top: elementTop - 120,
+      top: Math.max(elementTop - 130, 0),
       behavior: "smooth",
     });
 
     setTimeout(() => {
-      const input = ref.current.querySelector("input, textarea, select");
-      if (input) input.focus();
-    }, 400);
+      const focusable = target.matches?.("input, textarea, select, button")
+        ? target
+        : target.querySelector?.(
+            "input, textarea, select, button:not([disabled])",
+          );
+
+      if (focusable) {
+        focusable.focus({ preventScroll: true });
+      }
+    }, 450);
+  };
+
+  const showScreenError = (message, ref) => {
+    const safeMessage = message || "Došlo je do greške.";
+
+    setError("");
+    showError(safeMessage);
+    scrollToField(ref);
   };
 
   const selectedCene = useMemo(
@@ -445,8 +468,7 @@ const Book = () => {
       await loadTimeSlots();
     }
 
-    setError(message);
-    scrollToField(startTimeRef);
+    showScreenError(message, startTimeRef);
   };
 
   const handleStartTimeSelect = (itemOrValue) => {
@@ -543,15 +565,11 @@ const Book = () => {
     });
 
     if (!bookingValidation.success) {
-      setError(bookingValidation.error);
+      showScreenError(
+        bookingValidation.error,
+        getBookingValidationRef(bookingValidation.field),
+      );
 
-      if (bookingValidation.field === "brojDece") {
-        showBrojDeceRequiredNotice();
-        focusBrojDeceField();
-        return;
-      }
-
-      scrollToField(getBookingValidationRef(bookingValidation.field));
       return;
     }
 
@@ -667,12 +685,6 @@ const Book = () => {
             </p>
           </div>
         </div>
-
-        {error && (
-          <div className="error-message" role="alert">
-            {error}
-          </div>
-        )}
 
         <BookingDateSelector
           selectedDate={selectedDate}
