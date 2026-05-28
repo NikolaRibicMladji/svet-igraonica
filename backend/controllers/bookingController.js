@@ -9,9 +9,8 @@ const {
 const bookingService = require("../services/bookingService");
 const authService = require("../services/authService");
 const mongoose = require("mongoose");
-const logger = require("../utils/logger");
+
 const ErrorResponse = require("../utils/errorResponse");
-const { queueBookingEmails } = require("../services/emailQueueService");
 
 const getBookingModePlayroom = async ({ playroomId, session = null }) => {
   let query = Playroom.findById(playroomId).select("_id rezimRezervacije");
@@ -217,10 +216,6 @@ exports.createGuestBooking = async (req, res, next) => {
     }
 
     await session.commitTransaction();
-
-    queueBookingEmails(createdBooking._id).catch((err) => {
-      logger.error("QUEUE EMAIL ERROR:", err.message);
-    });
 
     res.cookie("refreshToken", refreshToken, authService.cookieOptions);
 

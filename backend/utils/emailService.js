@@ -443,21 +443,23 @@ const sendMail = async (options) => {
       throw new Error("EMAIL_FROM missing");
     }
 
-    const existingQueuedEmail = await EmailQueue.findOne({
-      type: options.type,
-      bookingId: options.bookingId || null,
-      to: options.to,
-      status: { $in: ["pending", "processing", "sent"] },
-    });
-
-    if (existingQueuedEmail) {
-      logger.warn("Email već postoji u queue, preskačem duplikat", {
-        to: options.to,
+    if (options.bookingId) {
+      const existingQueuedEmail = await EmailQueue.findOne({
         type: options.type,
-        bookingId: options.bookingId || null,
+        bookingId: options.bookingId,
+        to: options.to,
+        status: { $in: ["pending", "processing", "sent"] },
       });
 
-      return true;
+      if (existingQueuedEmail) {
+        logger.warn("Email već postoji u queue, preskačem duplikat", {
+          to: options.to,
+          type: options.type,
+          bookingId: options.bookingId,
+        });
+
+        return true;
+      }
     }
 
     await EmailQueue.create({

@@ -15,6 +15,8 @@ const Booking = require("../models/Booking");
 const Playroom = require("../models/Playroom");
 const ErrorResponse = require("../utils/errorResponse");
 const BOOKING_STATUS = require("../constants/bookingStatus");
+const { queueBookingEmails } = require("../services/emailQueueService");
+const logger = require("../utils/logger");
 
 const getRequestMetadata = (req) => ({
   userAgent: req.get("user-agent") || "",
@@ -291,6 +293,19 @@ exports.verifyEmail = async (req, res, next) => {
     await user.save({
       validateBeforeSave: false,
     });
+
+    const pendingBookings = await Booking.find({
+      roditeljId: user._id,
+      status: BOOKING_STATUS.CEKANJE,
+    })
+      .select("_id")
+      .lean();
+
+    for (const booking of pendingBookings) {
+      queueBookingEmails(booking._id).catch((err) => {
+        logger.error("QUEUE EMAIL ERROR AFTER EMAIL VERIFY:", err.message);
+      });
+    }
 
     return res.status(200).json({
       success: true,
