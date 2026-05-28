@@ -760,7 +760,11 @@ exports.sendPlayroomRejectedEmail = async (playroom, owner, reason) => {
   });
 };
 
-exports.sendEmailVerificationEmail = async (user, verificationToken) => {
+exports.sendEmailVerificationEmail = async (
+  user,
+  verificationToken,
+  options = {},
+) => {
   const frontendUrl = (
     process.env.FRONTEND_URL || "http://localhost:3000"
   ).replace(/\/$/, "");
@@ -769,12 +773,52 @@ exports.sendEmailVerificationEmail = async (user, verificationToken) => {
     verificationToken,
   )}`;
 
+  const isGuestBooking = options.context === "guest_booking";
+
+  const subject = isGuestBooking
+    ? "Potvrdite email za slanje rezervacije - Svet Igraonica"
+    : "Potvrdite email adresu - Svet Igraonica";
+
+  const title = isGuestBooking
+    ? "Potvrdite email i pošaljite rezervaciju"
+    : "Potvrdite email adresu";
+
+  const introHtml = isGuestBooking
+    ? `
+      <p style="font-size:15px;line-height:1.8;color:#374151;">
+        Primili smo vaš zahtev za rezervaciju termina.
+      </p>
+
+      <p style="font-size:15px;line-height:1.8;color:#374151;">
+        Da biste poslali zahtev za rezervaciju vlasniku igraonice i aktivirali nalog,
+        potrebno je da potvrdite vašu email adresu.
+      </p>
+
+      <p style="font-size:15px;line-height:1.8;color:#374151;">
+        Nakon potvrde emaila, zahtev za rezervaciju biće poslat vlasniku igraonice na potvrdu.
+      </p>
+    `
+    : `
+      <p style="font-size:15px;line-height:1.8;color:#374151;">
+        Hvala vam na registraciji na platformi
+        <strong>Svet Igraonica</strong>.
+      </p>
+
+      <p style="font-size:15px;line-height:1.8;color:#374151;">
+        Da biste aktivirali nalog, potrebno je da potvrdite vašu email adresu.
+      </p>
+    `;
+
+  const buttonText = isGuestBooking
+    ? "Potvrdi email i pošalji zahtev"
+    : "Potvrdi email adresu";
+
   return sendMail({
     type: "email_verification",
 
     to: user.email,
 
-    subject: "Potvrdite email adresu - Svet Igraonica",
+    subject,
 
     html: `
       <div style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
@@ -783,7 +827,7 @@ exports.sendEmailVerificationEmail = async (user, verificationToken) => {
           
           <div style="background:#ff6b4a;padding:32px 24px;text-align:center;">
             <h1 style="margin:0;color:#ffffff;font-size:30px;">
-              Potvrdite email adresu
+              ${title}
             </h1>
           </div>
 
@@ -793,14 +837,7 @@ exports.sendEmailVerificationEmail = async (user, verificationToken) => {
               Zdravo ${escapeHtml(user.ime)},
             </p>
 
-            <p style="font-size:15px;line-height:1.8;color:#374151;">
-              Hvala vam na registraciji na platformi
-              <strong>Svet Igraonica</strong>.
-            </p>
-
-            <p style="font-size:15px;line-height:1.8;color:#374151;">
-              Da biste aktivirali nalog, potrebno je da potvrdite vašu email adresu.
-            </p>
+            ${introHtml}
 
             <div style="margin:36px 0;text-align:center;">
               <a
@@ -816,7 +853,7 @@ exports.sendEmailVerificationEmail = async (user, verificationToken) => {
                   font-weight:700;
                 "
               >
-                Potvrdi email adresu
+                ${buttonText}
               </a>
             </div>
 
@@ -825,7 +862,7 @@ exports.sendEmailVerificationEmail = async (user, verificationToken) => {
             </p>
 
             <p style="font-size:14px;line-height:1.7;color:#6b7280;">
-              Ako niste vi kreirali nalog, slobodno ignorišite ovaj email.
+              Ako niste vi kreirali nalog ili rezervaciju, slobodno ignorišite ovaj email.
             </p>
 
           </div>

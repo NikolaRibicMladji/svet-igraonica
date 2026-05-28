@@ -403,7 +403,9 @@ exports.registerGuestParent = async (data, session = null) => {
     session,
   });
 
-  await sendEmailVerificationEmail(user, emailVerificationToken);
+  await sendEmailVerificationEmail(user, emailVerificationToken, {
+    context: "guest_booking",
+  });
 
   const { accessToken, refreshToken } = await generateAuthResponse(
     user,

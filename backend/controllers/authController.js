@@ -374,7 +374,14 @@ exports.resendVerificationEmail = async (req, res, next) => {
       validateBeforeSave: false,
     });
 
-    await sendEmailVerificationEmail(user, rawToken);
+    const hasPendingBooking = await Booking.exists({
+      roditeljId: user._id,
+      status: BOOKING_STATUS.CEKANJE,
+    });
+
+    await sendEmailVerificationEmail(user, rawToken, {
+      context: hasPendingBooking ? "guest_booking" : "standard_registration",
+    });
 
     return res.status(200).json({
       success: true,
