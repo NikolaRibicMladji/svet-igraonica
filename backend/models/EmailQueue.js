@@ -104,4 +104,19 @@ EmailQueueSchema.index({
   attempts: 1,
 });
 
+EmailQueueSchema.index(
+  {
+    bookingId: 1,
+    type: 1,
+    to: 1,
+  },
+  {
+    unique: true,
+    partialFilterExpression: {
+      bookingId: { $type: "objectId" },
+      status: { $in: ["pending", "processing", "sent"] },
+    },
+  },
+);
+
 module.exports = mongoose.model("EmailQueue", EmailQueueSchema);
