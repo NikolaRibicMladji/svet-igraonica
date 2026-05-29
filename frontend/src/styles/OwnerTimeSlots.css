@@ -520,12 +520,68 @@
 }
 
 @media (max-width: 768px) {
+  .owner-slots-page .owner-reservation-toolbar {
+    padding: 14px 16px;
+    margin-bottom: 18px;
+    border-radius: 16px;
+    min-height: auto;
+  }
+
+  .owner-slots-page .owner-date-filter {
+    max-width: 280px;
+    min-width: 0;
+  }
+
+  .owner-slots-page .owner-date-filter label {
+    font-size: 0.8rem;
+    margin-bottom: 8px;
+  }
+
+  .owner-slots-page .owner-date-filter input[type="date"] {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    border-radius: 12px;
+  }
+
   .owner-slots-page .owner-occupied-slots-section .slots-grid {
-    column-count: 1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
 
   .owner-slots-page .owner-occupied-slots-section .slot-card {
-    margin-bottom: 16px;
+    margin: 0;
+    border-radius: 16px;
+  }
+
+  .owner-slots-page .owner-booking-card-header {
+    padding: 14px;
+    gap: 8px;
+  }
+
+  .owner-slots-page .owner-booking-card-header h3 {
+    font-size: 15px;
+    line-height: 1.25;
+    margin-bottom: 8px;
+  }
+
+  .owner-slots-page .owner-booking-short-info {
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .owner-slots-page .owner-booking-card-right {
+    gap: 6px;
+  }
+
+  .owner-slots-page .owner-booking-status-badge {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+
+  .owner-slots-page .owner-booking-arrow {
+    font-size: 12px;
   }
 
   .owner-slots-page .owner-slots-tabs {
@@ -618,6 +674,41 @@
 }
 
 @media (max-width: 480px) {
+  .owner-slots-page {
+    padding: 18px 10px;
+  }
+
+  .owner-slots-page .owner-slots-tabs {
+    gap: 10px;
+  }
+
+  .owner-slots-page .owner-slot-tab {
+    padding: 12px;
+    font-size: 0.82rem;
+  }
+
+  .owner-slots-page .owner-slot-tab strong {
+    min-width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+
+  .owner-slots-page .owner-occupied-slots-section .slots-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .owner-slots-page .owner-booking-card-header {
+    padding: 12px;
+  }
+
+  .owner-slots-page .owner-booking-card-header h3 {
+    font-size: 14px;
+  }
+
+  .owner-slots-page .owner-booking-short-info {
+    font-size: 12px;
+  }
   .owner-slots-page .page-header h1 {
     font-size: 1.4rem;
   }
@@ -740,14 +831,14 @@
   outline-offset: 3px;
 }
 .owner-slots-page .owner-occupied-slots-section .slots-grid {
-  display: block;
-  column-count: 2;
-  column-gap: 24px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
 }
 
 .owner-slots-page .owner-occupied-slots-section .slot-card {
   width: 100%;
-  display: inline-block;
-  margin: 0 0 24px;
-  break-inside: avoid;
+  display: block;
+  margin: 0;
 }

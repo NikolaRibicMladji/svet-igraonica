@@ -138,7 +138,6 @@ const buildBookingBasePayload = (data) => {
     payload: {
       playroomId,
       ...timePayloadResult.payload,
-      acceptedTerms: data.acceptedTerms === true,
       cenaIds,
       paketId,
       usluge: normalizeIdList(data.usluge),
@@ -668,20 +667,15 @@ export const submitBooking = async ({
   bookingPayload,
   password = "",
   confirmPassword = "",
-  acceptedTerms = false,
 }) => {
   if (isAuthenticated) {
-    return createBooking({
-      ...bookingPayload,
-      acceptedTerms,
-    });
+    return createBooking(bookingPayload);
   }
 
   return createGuestBooking({
     ...bookingPayload,
     password,
     confirmPassword,
-    acceptedTerms,
   });
 };
 

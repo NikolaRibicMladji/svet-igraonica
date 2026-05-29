@@ -113,6 +113,7 @@ const Book = () => {
   const [selectedTimeSlotId, setSelectedTimeSlotId] = useState("");
   const startTimeRef = useRef(null);
   const endTimeRef = useRef(null);
+  const bookingDetailsRef = useRef(null);
   const brojDeceWrapperRef = useRef(null);
   const pricingRef = useRef(null);
   const imeRef = useRef(null);
@@ -420,6 +421,28 @@ const Book = () => {
     }, 100);
   };
 
+  const isMobileViewport = () =>
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 768px)").matches;
+
+  const scrollToElementOnMobile = (ref, offset = 115) => {
+    if (!isMobileViewport()) return;
+
+    const target = ref?.current;
+
+    if (!target) return;
+
+    setTimeout(() => {
+      const elementTop =
+        target.getBoundingClientRect().top + window.pageYOffset;
+
+      window.scrollTo({
+        top: Math.max(elementTop - offset, 0),
+        behavior: "smooth",
+      });
+    }, 150);
+  };
+
   const scrollToField = (ref) => {
     const target = ref?.current || topRef.current;
 
@@ -648,6 +671,8 @@ const Book = () => {
 
     setSelectedTimeSlotId("");
     setSelectedEndTime("");
+
+    scrollToElementOnMobile(endTimeRef);
   };
 
   const handleEndTimeSelect = (value) => {
@@ -659,6 +684,8 @@ const Book = () => {
     }
 
     setSelectedEndTime(value);
+
+    scrollToElementOnMobile(bookingDetailsRef);
   };
 
   const handleDateChange = (value) => {
@@ -873,7 +900,7 @@ const Book = () => {
             />
 
             {availability?.workingHours && !loadingSlots && (
-              <div className="booking-form">
+              <div className="booking-form" ref={bookingDetailsRef}>
                 <h3>Detalji rezervacije</h3>
 
                 <BookingSelectedSlotSummary
