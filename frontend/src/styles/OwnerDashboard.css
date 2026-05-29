@@ -165,6 +165,8 @@
   justify-content: center;
   padding: 20px;
   z-index: 999;
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .dashboard-container .modal {
@@ -173,6 +175,8 @@
   max-width: 900px;
   max-height: 85vh;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   border-radius: 22px;
   padding: 24px;
   box-shadow: 0 25px 60px rgba(15, 23, 42, 0.3);
@@ -381,7 +385,7 @@
 
 .dashboard-container .dashboard-filters {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr auto;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
   gap: 16px;
   margin-bottom: 18px;
   align-items: end;
@@ -447,6 +451,22 @@
   margin-bottom: 22px;
   color: #475569;
   font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dashboard-container .desktop-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  padding: 9px 14px;
+  font-size: 0.85rem;
+  border-radius: 12px;
+  white-space: nowrap;
 }
 .dashboard-container .dark {
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -512,6 +532,10 @@
 }
 
 @media (max-width: 768px) {
+  .dashboard-container .desktop-reset-btn {
+    display: none;
+  }
+
   .dashboard-container .mobile-filters-toggle-wrap {
     display: flex;
     justify-content: flex-end;
@@ -606,11 +630,11 @@
 @media (max-width: 480px) {
   .dashboard-container .modal-overlay {
     align-items: flex-start;
-    overflow-y: auto;
+    overflow: hidden;
   }
 
   .dashboard-container .modal {
-    max-height: calc(100vh - 40px);
+    max-height: calc(100dvh - 40px);
     overflow-y: auto;
   }
   .dashboard-container .dashboard-header h2 {

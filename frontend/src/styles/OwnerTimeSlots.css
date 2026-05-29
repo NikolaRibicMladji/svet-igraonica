@@ -995,3 +995,134 @@
     grid-template-columns: 1fr;
   }
 }
+/* Owner timeslots confirm modal */
+
+.owner-confirm-booking-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.owner-confirm-booking-modal {
+  width: 100%;
+  max-width: 460px;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 28px;
+  box-shadow: 0 30px 70px rgba(15, 23, 42, 0.28);
+  text-align: center;
+}
+
+.owner-confirm-booking-modal h2 {
+  margin: 0 0 12px;
+  color: #0f172a;
+  font-size: 1.5rem;
+}
+
+.owner-confirm-booking-modal p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.owner-confirm-booking-info {
+  margin: 18px 0 22px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.owner-confirm-booking-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.owner-confirm-back-btn,
+.owner-confirm-final-btn {
+  border: none;
+  border-radius: 14px;
+  padding: 13px 16px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.owner-confirm-back-btn {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.owner-confirm-final-btn {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(34, 197, 94, 0.22);
+}
+
+.owner-confirm-back-btn:hover:not(:disabled),
+.owner-confirm-final-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.owner-confirm-back-btn:disabled,
+.owner-confirm-final-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.owner-confirm-back-btn:focus-visible,
+.owner-confirm-final-btn:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  outline-offset: 3px;
+}
+
+@media (max-width: 520px) {
+  .owner-confirm-booking-modal {
+    padding: 22px;
+  }
+
+  .owner-confirm-booking-actions {
+    grid-template-columns: 1fr;
+  }
+}
+/* Owner timeslot status badge colors */
+
+.owner-slots-page .owner-booking-status-badge.pending {
+  background: #fef3c7;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.owner-slots-page .owner-booking-status-badge.confirmed {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #86efac;
+}
+
+.owner-slots-page .owner-booking-status-badge.cancelled {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.owner-slots-page .owner-booking-status-badge.completed {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.owner-slots-page .owner-booking-status-badge.busy {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #e2e8f0;
+}

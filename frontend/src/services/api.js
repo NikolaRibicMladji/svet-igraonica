@@ -36,7 +36,7 @@ const isAuthRoute = (url = "") =>
   url.includes("/auth/refresh") ||
   url.includes("/auth/logout");
 
-const refreshAccessToken = async () => {
+export const refreshAccessToken = async () => {
   if (!refreshPromise) {
     refreshPromise = axios
       .post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })

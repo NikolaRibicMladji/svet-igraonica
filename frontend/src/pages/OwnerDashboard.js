@@ -38,8 +38,25 @@ const OwnerDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("svi");
   const [dateFilter, setDateFilter] = useState("");
+  const [monthFilter, setMonthFilter] = useState("");
   const [timeFromFilter, setTimeFromFilter] = useState("");
   const [timeToFilter, setTimeToFilter] = useState("");
+  const hasActiveFilters =
+    searchTerm.trim() ||
+    statusFilter !== "svi" ||
+    dateFilter ||
+    monthFilter ||
+    timeFromFilter ||
+    timeToFilter;
+
+  const resetFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("svi");
+    setDateFilter("");
+    setMonthFilter("");
+    setTimeFromFilter("");
+    setTimeToFilter("");
+  };
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showConfirmedModal, setShowConfirmedModal] = useState(false);
   const [showPendingModal, setShowPendingModal] = useState(false);
@@ -52,6 +69,38 @@ const OwnerDashboard = () => {
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsError, setReviewsError] = useState("");
+
+  const isAnyDashboardModalOpen =
+    showStatsModal ||
+    showConfirmedModal ||
+    showPendingModal ||
+    showAllBookingsModal ||
+    showCompletedModal ||
+    showTodayBookingsModal ||
+    showActiveBookingsModal ||
+    showReviewsModal ||
+    Boolean(cancelConfirmBooking);
+
+  useEffect(() => {
+    if (!isAnyDashboardModalOpen) return undefined;
+
+    const originalOverflow = document.body.style.overflow;
+    const originalPaddingRight = document.body.style.paddingRight;
+
+    const scrollbarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = "hidden";
+
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.paddingRight = originalPaddingRight;
+    };
+  }, [isAnyDashboardModalOpen]);
 
   const toggleOwnerBookingDetails = (bookingId) => {
     setExpandedOwnerBookingId((prev) =>
@@ -182,11 +231,16 @@ const OwnerDashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (!authLoading) {
-      fetchMyPlayrooms();
-      fetchBookings();
+    if (authLoading) return;
+
+    if (user?.role !== "vlasnik" && user?.role !== "admin") {
+      setLoading(false);
+      return;
     }
-  }, [authLoading, fetchMyPlayrooms, fetchBookings]);
+
+    fetchMyPlayrooms();
+    fetchBookings();
+  }, [authLoading, user?.role, fetchMyPlayrooms, fetchBookings]);
 
   useEffect(() => {
     if (selectedPlayroomId) {
@@ -199,7 +253,11 @@ const OwnerDashboard = () => {
   }, [selectedPlayroomId, fetchStats, fetchReviews]);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading) return undefined;
+
+    if (user?.role !== "vlasnik" && user?.role !== "admin") {
+      return undefined;
+    }
 
     const interval = setInterval(() => {
       fetchBookings();
@@ -207,10 +265,10 @@ const OwnerDashboard = () => {
       if (selectedPlayroomId) {
         fetchStats(selectedPlayroomId, false);
       }
-    }, 10000);
+    }, 30000);
 
     return () => clearInterval(interval);
-  }, [authLoading, selectedPlayroomId, fetchBookings, fetchStats]);
+  }, [authLoading, user?.role, selectedPlayroomId, fetchBookings, fetchStats]);
 
   const handleConfirm = async (bookingId) => {
     if (!bookingId) {
@@ -382,6 +440,11 @@ const OwnerDashboard = () => {
         if (!booking.datum) return false;
         return booking.datum.slice(0, 10) === dateFilter;
       });
+    } else if (monthFilter) {
+      result = result.filter((booking) => {
+        if (!booking.datum) return false;
+        return booking.datum.slice(0, 7) === monthFilter;
+      });
     }
     if (timeFromFilter || timeToFilter) {
       result = result.filter((booking) => {
@@ -408,6 +471,7 @@ const OwnerDashboard = () => {
     searchTerm,
     statusFilter,
     dateFilter,
+    monthFilter,
     timeFromFilter,
     timeToFilter,
     getPlayroomId,
@@ -1045,19 +1109,15 @@ const OwnerDashboard = () => {
           <div className="pretraga-header">
             <label htmlFor="booking-search">Pretraga</label>
 
-            <button
-              type="button"
-              className="btn-reset-filters mobile-reset-btn"
-              onClick={() => {
-                setSearchTerm("");
-                setStatusFilter("svi");
-                setDateFilter("");
-                setTimeFromFilter("");
-                setTimeToFilter("");
-              }}
-            >
-              Resetuj
-            </button>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                className="btn-reset-filters mobile-reset-btn"
+                onClick={resetFilters}
+              >
+                Resetuj
+              </button>
+            )}
           </div>
           <input
             id="booking-search"
@@ -1090,12 +1150,28 @@ const OwnerDashboard = () => {
         </div>
 
         <div className="dashboard-filter-group">
+          <label htmlFor="booking-month-filter">Mesec</label>
+          <input
+            id="booking-month-filter"
+            type="month"
+            value={monthFilter}
+            onChange={(e) => {
+              setMonthFilter(e.target.value);
+              setDateFilter("");
+            }}
+          />
+        </div>
+
+        <div className="dashboard-filter-group">
           <label htmlFor="booking-date-filter">Datum</label>
           <input
             id="booking-date-filter"
             type="date"
             value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
+            onChange={(e) => {
+              setDateFilter(e.target.value);
+              setMonthFilter("");
+            }}
           />
         </div>
 
@@ -1115,7 +1191,19 @@ const OwnerDashboard = () => {
         </div>
       </div>
       <div className="dashboard-filter-results">
-        Prikazano rezervacija: <strong>{filteredBookings.length}</strong>
+        <span>
+          Prikazano rezervacija: <strong>{filteredBookings.length}</strong>
+        </span>
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            className="btn-reset-filters desktop-reset-btn"
+            onClick={resetFilters}
+          >
+            Resetuj filtere
+          </button>
+        )}
       </div>
       {statsLoading ? (
         <div className="loading-container" role="status" aria-live="polite">
@@ -1130,7 +1218,7 @@ const OwnerDashboard = () => {
           >
             <span className="stat-icon">📊</span>
             <div className="stat-info">
-              <h3>{stats?.totalBookings ?? 0}</h3>
+              <h3>{filteredBookings.length}</h3>
               <p>Ukupno rezervacija</p>
             </div>
           </button>

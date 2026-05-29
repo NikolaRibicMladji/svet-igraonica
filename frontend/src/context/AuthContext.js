@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import api, {
   clearAccessToken,
+  refreshAccessToken,
   setAccessToken,
   setUnauthorizedHandler,
 } from "../services/api";
@@ -87,22 +88,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
 
     try {
-      const refreshResponse = await api.post("/auth/refresh");
-      const authData = extractAuthPayload(refreshResponse);
-
-      const token = authData?.accessToken || authData?.token || null;
-
-      if (!token) {
-        clearAuthData();
-        return null;
-      }
-
-      setAccessToken(token);
-
-      if (authData?.user) {
-        setUser(authData.user);
-        return authData.user;
-      }
+      await refreshAccessToken();
 
       const meResponse = await api.get("/auth/me");
       const loadedUser = extractUserFromMeResponse(meResponse);
