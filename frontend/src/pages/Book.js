@@ -94,7 +94,7 @@ const Book = () => {
     isAuthenticated &&
     (user?.role === "vlasnik" || user?.role === "admin");
 
-  const { error: showError } = useToast();
+  const { error: showError, removeToast } = useToast();
   const [selectedCenaIds, setSelectedCenaIds] = useState([]);
   const [selectedPaketId, setSelectedPaketId] = useState("");
   const [selectedUslugeIds, setSelectedUslugeIds] = useState([]);
@@ -103,6 +103,8 @@ const Book = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const topRef = useRef(null);
+  const validationToastIdRef = useRef(null);
+  const [activeValidationField, setActiveValidationField] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [playroom, setPlayroom] = useState(null);
   const [availability, setAvailability] = useState(null);
@@ -171,9 +173,14 @@ const Book = () => {
   }, [playroom, selectedCenaIds, selectedPaketId, selectedUslugeIds]);
 
   const showBrojDeceRequiredNotice = () => {
-    showError(
+    clearValidationToast();
+
+    validationToastIdRef.current = showError(
       "Broj dece je obavezan jer je izabrana stavka koja se naplaćuje po osobi.",
+      0,
     );
+
+    setActiveValidationField("brojDece");
   };
 
   const focusBrojDeceField = () => {
@@ -441,11 +448,25 @@ const Book = () => {
     }, 450);
   };
 
-  const showScreenError = (message, ref) => {
+  const clearValidationToast = () => {
+    if (validationToastIdRef.current) {
+      removeToast(validationToastIdRef.current);
+      validationToastIdRef.current = null;
+    }
+
+    setActiveValidationField("");
+  };
+
+  const showScreenError = (message, ref, field = "") => {
     const safeMessage = message || "Došlo je do greške.";
 
+    clearValidationToast();
+
     setError("");
-    showError(safeMessage);
+
+    validationToastIdRef.current = showError(safeMessage, 0);
+    setActiveValidationField(field);
+
     scrollToField(ref);
   };
 
@@ -536,6 +557,59 @@ const Book = () => {
       trajanjeTermina,
     ],
   );
+
+  useEffect(() => {
+    if (!activeValidationField) return;
+
+    const hasPricing = selectedCenaIds.length > 0 || Boolean(selectedPaketId);
+
+    const isValidEmail = /^\S+@\S+\.\S+$/.test(
+      String(korisnikPodaci.email || "").trim(),
+    );
+
+    const phoneDigits = String(korisnikPodaci.telefon || "").replace(/\D/g, "");
+
+    const fieldFixed = {
+      startTime:
+        Boolean(selectedStartTime) &&
+        (!isFiksno || Boolean(selectedTimeSlotId)),
+      endTime: Boolean(selectedEndTime),
+      pricing: hasPricing,
+      brojDece: !hasPerPersonPricing || Number(brojDece) > 0,
+      ime: String(korisnikPodaci.ime || "").trim().length >= 2,
+      prezime: String(korisnikPodaci.prezime || "").trim().length >= 2,
+      email: isValidEmail,
+      telefon: phoneDigits.length >= 8,
+      password:
+        isAuthenticated ||
+        isOwnerBooking ||
+        korisnikPodaci.password.length >= 8,
+      confirmPassword:
+        isAuthenticated ||
+        isOwnerBooking ||
+        (korisnikPodaci.confirmPassword &&
+          korisnikPodaci.password === korisnikPodaci.confirmPassword),
+      terms: isAuthenticated || isOwnerBooking || acceptedTerms,
+    };
+
+    if (fieldFixed[activeValidationField]) {
+      clearValidationToast();
+    }
+  }, [
+    activeValidationField,
+    selectedStartTime,
+    selectedEndTime,
+    selectedTimeSlotId,
+    selectedCenaIds,
+    selectedPaketId,
+    brojDece,
+    hasPerPersonPricing,
+    korisnikPodaci,
+    acceptedTerms,
+    isAuthenticated,
+    isOwnerBooking,
+    isFiksno,
+  ]);
 
   const handleBookingFailure = async (failure) => {
     const message = getBookingFailureMessage(failure);
@@ -644,6 +718,7 @@ const Book = () => {
       showScreenError(
         bookingValidation.error,
         getBookingValidationRef(bookingValidation.field),
+        bookingValidation.field,
       );
 
       return;

@@ -967,3 +967,46 @@
     transform: none;
   }
 }
+/* Booking pricing cards - naziv/cena/tip gore, opis ispod */
+
+.book-page .option-check-row {
+  align-items: center;
+  padding-right: 34px;
+}
+
+.book-page .option-check-row > div.option-card-content {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.book-page .option-card-main {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  line-height: 1.25;
+}
+
+.book-page .option-card-title {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.book-page .option-card-meta {
+  flex: 0 0 auto;
+  color: #ff6b4a;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.book-page .item-opis {
+  display: block;
+  margin-top: 6px;
+  margin-left: 0;
+  font-size: 10px;
+  line-height: 1.35;
+  color: #64748b;
+  opacity: 0.9;
+}

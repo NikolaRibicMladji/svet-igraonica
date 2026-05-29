@@ -39,9 +39,14 @@ export const ToastProvider = ({ children }) => {
 
       const allowedTypes = ["success", "error", "info"];
       const safeType = allowedTypes.includes(type) ? type : "info";
-      const safeDuration = Number.isFinite(Number(duration))
-        ? Math.max(1000, Math.min(10000, Number(duration)))
-        : 3000;
+
+      const isPersistent = duration === 0;
+
+      const safeDuration = isPersistent
+        ? 0
+        : Number.isFinite(Number(duration))
+          ? Math.max(1000, Math.min(10000, Number(duration)))
+          : 3000;
 
       const id = `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
@@ -50,9 +55,11 @@ export const ToastProvider = ({ children }) => {
         { id, message: safeMessage, type: safeType },
       ]);
 
-      timersRef.current[id] = setTimeout(() => {
-        removeToast(id);
-      }, safeDuration);
+      if (!isPersistent) {
+        timersRef.current[id] = setTimeout(() => {
+          removeToast(id);
+        }, safeDuration);
+      }
 
       return id;
     },
@@ -61,21 +68,21 @@ export const ToastProvider = ({ children }) => {
 
   const success = useCallback(
     (message, duration) => {
-      showToast(message, "success", duration);
+      return showToast(message, "success", duration);
     },
     [showToast],
   );
 
   const error = useCallback(
     (message, duration) => {
-      showToast(message, "error", duration);
+      return showToast(message, "error", duration);
     },
     [showToast],
   );
 
   const info = useCallback(
     (message, duration) => {
-      showToast(message, "info", duration);
+      return showToast(message, "info", duration);
     },
     [showToast],
   );

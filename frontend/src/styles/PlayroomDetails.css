@@ -730,11 +730,30 @@
   }
 
   .price-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: minmax(90px, 1fr) auto auto;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 4px;
   }
 
+  .price-item span:first-child {
+    min-width: 0;
+  }
+
+  .price-item strong {
+    white-space: nowrap;
+  }
+
+  .price-item .price-type {
+    white-space: nowrap;
+    margin-left: 0;
+  }
+
+  .price-item .price-desc {
+    grid-column: 1 / -1;
+    margin-left: 0;
+  }
   .hour-item {
     flex-direction: column;
     gap: 4px;

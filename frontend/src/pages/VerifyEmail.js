@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { verifyEmailAddress } from "../services/authService";
+import { useAuth } from "../context/AuthContext";
 import "../styles/global.css";
 
 const REDIRECT_DELAY_MS = 2000;
@@ -8,13 +9,33 @@ const REDIRECT_DELAY_MS = 2000;
 const VerifyEmail = () => {
   const { token } = useParams();
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
+
+  const verificationStartedRef = useRef(false);
+  const authRef = useRef({
+    isAuthenticated: false,
+    user: null,
+  });
 
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("Potvrđujemo vašu email adresu...");
 
   useEffect(() => {
+    authRef.current = {
+      isAuthenticated,
+      user,
+    };
+  }, [isAuthenticated, user]);
+
+  useEffect(() => {
     let isMounted = true;
     let redirectTimer = null;
+
+    if (verificationStartedRef.current) {
+      return undefined;
+    }
+
+    verificationStartedRef.current = true;
 
     const handleVerifyEmail = async () => {
       if (!token) {
@@ -37,10 +58,29 @@ const VerifyEmail = () => {
         sessionStorage.removeItem("pendingVerificationEmail");
 
         redirectTimer = setTimeout(() => {
+          const currentAuth = authRef.current;
+
+          if (
+            currentAuth.isAuthenticated &&
+            currentAuth.user?.role === "roditelj"
+          ) {
+            navigate("/my-bookings", {
+              replace: true,
+              state: {
+                successMessage:
+                  "Email je uspešno potvrđen. Vaš zahtev za rezervaciju je poslat.",
+              },
+            });
+
+            return;
+          }
+
           navigate("/login", {
             replace: true,
             state: {
-              registrationSuccess: "Email je uspešno potvrđen. Prijavite se.",
+              registrationSuccess:
+                "Email je uspešno potvrđen. Prijavite se da vidite vaše rezervacije.",
+              from: "/my-bookings",
             },
           });
         }, REDIRECT_DELAY_MS);
@@ -86,7 +126,7 @@ const VerifyEmail = () => {
 
         {status === "success" && (
           <p className="auth-switch-text">
-            <Link to="/login">Prijavite se</Link>
+            Preusmeravamo vas na vaše rezervacije...
           </p>
         )}
 

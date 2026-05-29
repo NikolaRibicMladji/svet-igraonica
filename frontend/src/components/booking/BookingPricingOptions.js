@@ -44,11 +44,16 @@ const BookingPricingOptions = ({
             {visibleCene.map((cena) => (
               <div key={cena._id} className="option-card">
                 <label className="option-check-row">
-                  <div>
-                    <span>
-                      <strong>{cena.naziv}</strong> - {cena.cena} RSD (
-                      {getPricingLabel(cena)})
-                    </span>
+                  <div className="option-card-content">
+                    <div className="option-card-main">
+                      <span className="option-card-title">
+                        <strong>{cena.naziv}</strong> - {cena.cena} RSD
+                      </span>
+
+                      <span className="option-card-meta">
+                        ({getPricingLabel(cena)})
+                      </span>
+                    </div>
 
                     {cena.opis && (
                       <span className="item-opis">({cena.opis})</span>
@@ -81,13 +86,16 @@ const BookingPricingOptions = ({
             {playroom.paketi.map((p) => (
               <div key={p._id} className="option-card">
                 <label className="option-check-row">
-                  <div>
-                    <span>
-                      {p.naziv} - {p.cena} RSD{" "}
-                      <span className="inline-bracket-text">
+                  <div className="option-card-content">
+                    <div className="option-card-main">
+                      <span className="option-card-title">
+                        {p.naziv} - {p.cena} RSD
+                      </span>
+
+                      <span className="option-card-meta">
                         ({getPricingLabel(p)})
                       </span>
-                    </span>
+                    </div>
 
                     {p.opis && <span className="item-opis">({p.opis})</span>}
                   </div>
@@ -119,13 +127,16 @@ const BookingPricingOptions = ({
             {playroom.dodatneUsluge.map((u) => (
               <div key={u._id} className="option-card">
                 <label className="option-check-row">
-                  <div>
-                    <span>
-                      {u.naziv} - {u.cena} RSD{" "}
-                      <span className="inline-bracket-text">
+                  <div className="option-card-content">
+                    <div className="option-card-main">
+                      <span className="option-card-title">
+                        {u.naziv} - {u.cena} RSD
+                      </span>
+
+                      <span className="option-card-meta">
                         ({getPricingLabel(u)})
                       </span>
-                    </span>
+                    </div>
 
                     {u.opis && <span className="item-opis">({u.opis})</span>}
                   </div>
