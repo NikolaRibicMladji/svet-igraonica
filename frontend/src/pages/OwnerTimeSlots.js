@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyPlayrooms } from "../services/playroomService";
-import { getAllTimeSlotsForOwner } from "../services/bookingService";
+import {
+  getAllTimeSlotsForOwner,
+  confirmBooking,
+  cancelBooking,
+} from "../services/bookingService";
 import { useAuth } from "../context/AuthContext";
 import { getLocalDate } from "../utils/bookingUtils";
 import "../styles/OwnerTimeSlots.css";
@@ -29,6 +33,9 @@ const OwnerTimeSlots = () => {
   const [error, setError] = useState("");
 
   const [expandedBookingId, setExpandedBookingId] = useState(null);
+  const [confirmingId, setConfirmingId] = useState("");
+  const [cancellingId, setCancellingId] = useState("");
+  const [cancelConfirmBooking, setCancelConfirmBooking] = useState(null);
 
   const loadPlayrooms = useCallback(async () => {
     setLoadingPlayrooms(true);
@@ -239,6 +246,97 @@ const OwnerTimeSlots = () => {
 
       return isClosing ? null : slotExpandId;
     });
+  };
+
+  const handleConfirmBooking = async (segment) => {
+    const bookingId = getBookingId(segment?.booking);
+
+    if (!bookingId) {
+      setError("Nedostaje ID rezervacije za potvrdu.");
+      return;
+    }
+
+    if (confirmingId || cancellingId) return;
+
+    try {
+      setConfirmingId(bookingId);
+      setError("");
+      setMessage("");
+
+      const result = await confirmBooking(bookingId);
+
+      if (result?.success) {
+        setMessage(result.message || "Rezervacija je potvrđena.");
+        await loadTimeSlots();
+      } else {
+        setError(result?.error || "Greška pri potvrdi rezervacije.");
+      }
+    } catch (err) {
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Greška pri potvrdi rezervacije.",
+      );
+    } finally {
+      setConfirmingId("");
+    }
+  };
+
+  const openCancelConfirm = (segment) => {
+    const booking = segment?.booking;
+    const bookingId = getBookingId(booking);
+
+    if (!bookingId || confirmingId || cancellingId) return;
+
+    setCancelConfirmBooking({
+      ...booking,
+      _id: bookingId,
+      vremeOd: booking?.vremeOd || segment?.vremeOd || "",
+      vremeDo: booking?.vremeDo || segment?.vremeDo || "",
+      datum: booking?.datum || selectedDate,
+    });
+  };
+
+  const closeCancelConfirm = () => {
+    if (cancellingId) return;
+
+    setCancelConfirmBooking(null);
+  };
+
+  const handleCancelBooking = async () => {
+    const bookingId = cancelConfirmBooking?._id;
+
+    if (!bookingId) {
+      setError("Nedostaje ID rezervacije za otkazivanje.");
+      return;
+    }
+
+    if (cancellingId) return;
+
+    try {
+      setCancellingId(bookingId);
+      setError("");
+      setMessage("");
+
+      const result = await cancelBooking(bookingId);
+
+      if (result?.success) {
+        setMessage(result.message || "Rezervacija je otkazana.");
+        setCancelConfirmBooking(null);
+        setExpandedBookingId(null);
+        await loadTimeSlots();
+      } else {
+        setError(result?.error || "Greška pri otkazivanju rezervacije.");
+      }
+    } catch (err) {
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Greška pri otkazivanju rezervacije.",
+      );
+    } finally {
+      setCancellingId("");
+    }
   };
 
   const occupiedSlots = timeSlots.filter(
@@ -614,6 +712,49 @@ const OwnerTimeSlots = () => {
                           {segment.booking?.napomena && (
                             <p>📝 Napomena: {segment.booking.napomena}</p>
                           )}
+                          {String(
+                            segment.booking?.status || "",
+                          ).toLowerCase() === "cekanje" && (
+                            <button
+                              type="button"
+                              className="btn-confirm-booking"
+                              onClick={() => handleConfirmBooking(segment)}
+                              disabled={
+                                confirmingId ===
+                                  getBookingId(segment.booking) ||
+                                cancellingId === getBookingId(segment.booking)
+                              }
+                              aria-busy={
+                                confirmingId === getBookingId(segment.booking)
+                              }
+                            >
+                              {confirmingId === getBookingId(segment.booking)
+                                ? "Potvrđujem..."
+                                : "✅ Potvrdi rezervaciju"}
+                            </button>
+                          )}
+
+                          {["cekanje", "potvrdjeno"].includes(
+                            String(segment.booking?.status || "").toLowerCase(),
+                          ) && (
+                            <button
+                              type="button"
+                              className="btn-cancel-booking"
+                              onClick={() => openCancelConfirm(segment)}
+                              disabled={
+                                cancellingId ===
+                                  getBookingId(segment.booking) ||
+                                confirmingId === getBookingId(segment.booking)
+                              }
+                              aria-busy={
+                                cancellingId === getBookingId(segment.booking)
+                              }
+                            >
+                              {cancellingId === getBookingId(segment.booking)
+                                ? "Otkazujem..."
+                                : "❌ Otkaži rezervaciju"}
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -623,6 +764,74 @@ const OwnerTimeSlots = () => {
             </div>
           ) : null}
         </>
+      )}
+      {cancelConfirmBooking && (
+        <div
+          className="owner-cancel-confirm-overlay"
+          onClick={closeCancelConfirm}
+        >
+          <div
+            className="owner-cancel-confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Potvrda otkazivanja rezervacije"
+          >
+            <h2>Otkazivanje rezervacije</h2>
+
+            <p>
+              Da li ste sigurni da želite da otkažete rezervaciju za{" "}
+              <strong>
+                {cancelConfirmBooking.imeRoditelja ||
+                  cancelConfirmBooking.ime ||
+                  ""}{" "}
+                {cancelConfirmBooking.prezimeRoditelja ||
+                  cancelConfirmBooking.prezime ||
+                  ""}
+              </strong>
+              ?
+            </p>
+
+            <div className="owner-cancel-booking-info">
+              <span>
+                📅{" "}
+                {cancelConfirmBooking.datum
+                  ? new Date(cancelConfirmBooking.datum).toLocaleDateString(
+                      "sr-RS",
+                    )
+                  : "-"}
+              </span>
+
+              <span>
+                ⏰ {cancelConfirmBooking.vremeOd || "-"} -{" "}
+                {cancelConfirmBooking.vremeDo || "-"}
+              </span>
+            </div>
+
+            <div className="owner-cancel-confirm-actions">
+              <button
+                type="button"
+                className="owner-cancel-keep-btn"
+                onClick={closeCancelConfirm}
+                disabled={cancellingId === cancelConfirmBooking._id}
+              >
+                Ne, zadrži rezervaciju
+              </button>
+
+              <button
+                type="button"
+                className="owner-cancel-confirm-btn"
+                onClick={handleCancelBooking}
+                disabled={cancellingId === cancelConfirmBooking._id}
+                aria-busy={cancellingId === cancelConfirmBooking._id}
+              >
+                {cancellingId === cancelConfirmBooking._id
+                  ? "Otkazujem..."
+                  : "Da, otkaži rezervaciju"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
