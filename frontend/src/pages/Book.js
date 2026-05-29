@@ -9,6 +9,8 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   getAvailableTimeSlots,
   submitBooking,
+  manualBookInterval,
+  manualBookTimeSlot,
 } from "../services/bookingService";
 import { getPlayroomById } from "../services/playroomService";
 import { useAuth } from "../context/AuthContext";
@@ -46,6 +48,21 @@ import BookingAvailabilitySection from "../components/booking/BookingAvailabilit
 
 const DATE_QUERY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
+const TIME_QUERY_REGEX = /^([01]\d|2[0-3]):(00|15|30|45)$/;
+const ID_QUERY_REGEX = /^[a-f\d]{24}$/i;
+
+const normalizeTimeQuery = (value) => {
+  const safeValue = String(value || "").trim();
+
+  return TIME_QUERY_REGEX.test(safeValue) ? safeValue : "";
+};
+
+const normalizeIdQuery = (value) => {
+  const safeValue = String(value || "").trim();
+
+  return ID_QUERY_REGEX.test(safeValue) ? safeValue : "";
+};
+
 const normalizeDateQuery = (value) => {
   const safeValue = String(value || "").trim();
 
@@ -60,12 +77,22 @@ const Book = () => {
 
   const prefillDate = normalizeDateQuery(queryParams.get("datum"));
 
+  const prefillStart = normalizeTimeQuery(queryParams.get("vremeOd"));
+  const prefillEnd = normalizeTimeQuery(queryParams.get("vremeDo"));
+  const prefillTimeSlotId = normalizeIdQuery(queryParams.get("timeSlotId"));
+  const requestedOwnerBooking = queryParams.get("mode") === "owner";
+
   const {
     user,
     isAuthenticated,
     loading: authLoading,
     handleAuthSuccess,
   } = useAuth();
+
+  const isOwnerBooking =
+    requestedOwnerBooking &&
+    isAuthenticated &&
+    (user?.role === "vlasnik" || user?.role === "admin");
 
   const { error: showError } = useToast();
   const [selectedCenaIds, setSelectedCenaIds] = useState([]);
@@ -278,7 +305,34 @@ const Book = () => {
       );
 
       if (result?.success) {
-        setAvailability(result.data || null);
+        const availabilityData = result.data || null;
+
+        setAvailability(availabilityData);
+
+        if (isOwnerBooking) {
+          const mode =
+            availabilityData?.mode || playroom?.rezimRezervacije || "";
+
+          if (mode === "fiksno" && prefillTimeSlotId) {
+            const matchedSlot = Array.isArray(availabilityData?.slots)
+              ? availabilityData.slots.find(
+                  (slot) =>
+                    String(slot._id) === String(prefillTimeSlotId) ||
+                    String(slot.timeSlotId) === String(prefillTimeSlotId),
+                )
+              : null;
+
+            setSelectedTimeSlotId(prefillTimeSlotId);
+            setSelectedStartTime(matchedSlot?.vremeOd || prefillStart || "");
+            setSelectedEndTime(matchedSlot?.vremeDo || prefillEnd || "");
+          }
+
+          if (mode === "fleksibilno") {
+            setSelectedTimeSlotId("");
+            setSelectedStartTime(prefillStart || "");
+            setSelectedEndTime(prefillEnd || "");
+          }
+        }
       } else {
         setAvailability(null);
         const message = result?.error || "Greška pri učitavanju termina.";
@@ -296,9 +350,31 @@ const Book = () => {
     } finally {
       setLoadingSlots(false);
     }
-  }, [id, selectedDate, showError]);
+  }, [
+    id,
+    selectedDate,
+    showError,
+    isOwnerBooking,
+    prefillStart,
+    prefillEnd,
+    prefillTimeSlotId,
+    playroom?.rezimRezervacije,
+  ]);
 
   useEffect(() => {
+    if (!authLoading && isOwnerBooking) {
+      setKorisnikPodaci({
+        ime: "",
+        prezime: "",
+        email: "",
+        telefon: "",
+        password: "",
+        confirmPassword: "",
+      });
+
+      return;
+    }
+
     if (!authLoading && isAuthenticated && user) {
       setKorisnikPodaci((prev) => ({
         ...prev,
@@ -310,7 +386,7 @@ const Book = () => {
         confirmPassword: "",
       }));
     }
-  }, [authLoading, isAuthenticated, user]);
+  }, [authLoading, isAuthenticated, user, isOwnerBooking]);
 
   useEffect(() => {
     loadPlayroom();
@@ -593,13 +669,17 @@ const Book = () => {
         napomena,
       });
 
-      const result = await submitBooking({
-        isAuthenticated,
-        bookingPayload,
-        password: korisnikPodaci.password,
-        confirmPassword: korisnikPodaci.confirmPassword,
-        acceptedTerms,
-      });
+      const result = isOwnerBooking
+        ? isFiksno
+          ? await manualBookTimeSlot(selectedTimeSlotId, bookingPayload)
+          : await manualBookInterval(bookingPayload)
+        : await submitBooking({
+            isAuthenticated,
+            bookingPayload,
+            password: korisnikPodaci.password,
+            confirmPassword: korisnikPodaci.confirmPassword,
+            acceptedTerms,
+          });
 
       if (result?.success) {
         if (!isAuthenticated) {
@@ -623,6 +703,11 @@ const Book = () => {
         }
 
         await loadTimeSlots();
+
+        if (isOwnerBooking) {
+          navigate("/owner/timeslots", { replace: true });
+          return;
+        }
 
         navigate("/booking-success");
       } else {
@@ -667,13 +752,15 @@ const Book = () => {
 
   return (
     <div className="container book-page" ref={topRef}>
-      <button
-        type="button"
-        className="back-link"
-        onClick={() => navigate(`/playrooms/${encodeURIComponent(id)}`)}
-      >
-        ← Nazad na igraonicu
-      </button>
+      {!isOwnerBooking && (
+        <button
+          type="button"
+          className="back-link"
+          onClick={() => navigate(`/playrooms/${encodeURIComponent(id)}`)}
+        >
+          ← Nazad na igraonicu
+        </button>
+      )}
 
       <div className="book-card">
         <div className="book-header">
@@ -765,7 +852,9 @@ const Book = () => {
                   passwordRef={passwordRef}
                   confirmPasswordRef={confirmPasswordRef}
                   termsRef={termsRef}
-                  title="👤 Vaši podaci"
+                  title={
+                    isOwnerBooking ? "👤 Podaci roditelja" : "👤 Vaši podaci"
+                  }
                 />
                 <BookingOrderSummary
                   selectedCene={selectedCene}
@@ -779,7 +868,7 @@ const Book = () => {
 
                 <BookingSubmitButton
                   submitting={submitting}
-                  isAuthenticated={isAuthenticated}
+                  isAuthenticated={isAuthenticated || isOwnerBooking}
                   onSubmit={handleBook}
                 />
               </div>

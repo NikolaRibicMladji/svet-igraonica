@@ -1,12 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyPlayrooms } from "../services/playroomService";
-import {
-  getAllTimeSlotsForOwner,
-  manualBookInterval,
-  manualBookTimeSlot,
-} from "../services/bookingService";
-import ManualBookingModal from "../components/ManualBookingModal";
+import { getAllTimeSlotsForOwner } from "../services/bookingService";
 import { useAuth } from "../context/AuthContext";
 import { getLocalDate } from "../utils/bookingUtils";
 import "../styles/OwnerTimeSlots.css";
@@ -32,7 +27,7 @@ const OwnerTimeSlots = () => {
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState(null);
   const [error, setError] = useState("");
-  const [manualSlot, setManualSlot] = useState(null);
+
   const [expandedBookingId, setExpandedBookingId] = useState(null);
 
   const loadPlayrooms = useCallback(async () => {
@@ -168,7 +163,7 @@ const OwnerTimeSlots = () => {
     return `${cena} RSD`;
   };
 
-  const openManualBookingModal = (segment) => {
+  const openManualBookingPage = (segment) => {
     if (!selectedPlayroom || !selectedDate || !selectedPlayroomData) {
       setError("Izaberi igraonicu i datum.");
       return;
@@ -183,53 +178,47 @@ const OwnerTimeSlots = () => {
       return;
     }
 
-    setManualSlot({
-      ...segment,
-      mode,
-      datum: segment?.datum || selectedDate,
-      playroomId: selectedPlayroom,
-      timeSlotId,
-      playroom: selectedPlayroomData,
+    const query = new URLSearchParams({
+      mode: "owner",
+      datum: selectedDate,
     });
-  };
 
-  const handleManualBookingSubmit = async (payload) => {
-    const mode =
-      manualSlot?.mode ||
-      manualSlot?.playroom?.rezimRezervacije ||
-      selectedPlayroomData?.rezimRezervacije ||
-      "";
-
-    const isFiksno = mode === "fiksno";
-
-    const result = isFiksno
-      ? await manualBookTimeSlot(
-          manualSlot?.timeSlotId || manualSlot?._id || payload?.timeSlotId,
-          payload,
-        )
-      : await manualBookInterval(payload);
-
-    if (!result?.success) {
-      throw new Error(result?.error || "Ručna rezervacija nije uspela.");
+    if (isFiksno) {
+      query.set("timeSlotId", timeSlotId);
     }
 
-    setManualSlot(null);
-    setExpandedBookingId(null);
-    setActiveTab("occupied");
-    setMessage(result.message || "Termin je uspešno ručno zauzet.");
-    await loadTimeSlots();
+    if (segment?.vremeOd) {
+      query.set("vremeOd", segment.vremeOd);
+    }
+
+    if (segment?.vremeDo) {
+      query.set("vremeDo", segment.vremeDo);
+    }
+
+    navigate(
+      `/book/${encodeURIComponent(selectedPlayroom)}?${query.toString()}`,
+    );
   };
 
   const getBookingId = (booking) => {
     return booking?._id || booking?.id || null;
   };
 
-  const handleSlotClick = (segment) => {
-    const bookingId = getBookingId(segment.booking);
+  const getSlotExpandId = (segment, index = "") => {
+    return String(
+      getBookingId(segment.booking) ||
+        segment?.timeSlotId ||
+        segment?._id ||
+        `${segment?.vremeOd || ""}-${segment?.vremeDo || ""}-${index}`,
+    );
+  };
 
-    if (!bookingId) return;
+  const handleSlotClick = (segment, index = "") => {
+    const slotExpandId = getSlotExpandId(segment, index);
 
-    setExpandedBookingId((prev) => (prev === bookingId ? null : bookingId));
+    setExpandedBookingId((prev) =>
+      prev === slotExpandId ? null : slotExpandId,
+    );
   };
 
   const occupiedSlots = timeSlots.filter(
@@ -352,7 +341,6 @@ const OwnerTimeSlots = () => {
                   setError("");
                   setExpandedBookingId(null);
                   setActiveTab(null);
-                  setManualSlot(null);
                 }}
               />
             </div>
@@ -416,7 +404,7 @@ const OwnerTimeSlots = () => {
                     <button
                       type="button"
                       className="btn-primary"
-                      onClick={() => openManualBookingModal(segment)}
+                      onClick={() => openManualBookingPage(segment)}
                     >
                       ➕ Rezervisi
                     </button>
@@ -460,17 +448,17 @@ const OwnerTimeSlots = () => {
                     >
                       <div
                         className="owner-booking-card-header clickable-slot"
-                        onClick={() => handleSlotClick(segment)}
+                        onClick={() => handleSlotClick(segment, index)}
                         role="button"
                         tabIndex={0}
                         aria-expanded={
-                          expandedBookingId === getBookingId(segment.booking)
+                          expandedBookingId === getSlotExpandId(segment, index)
                         }
-                        aria-controls={`owner-slot-booking-details-${getBookingId(segment.booking)}`}
+                        aria-controls={`owner-slot-booking-details-${getSlotExpandId(segment, index)}`}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            handleSlotClick(segment);
+                            handleSlotClick(segment, index);
                           }
                         }}
                       >
@@ -497,22 +485,19 @@ const OwnerTimeSlots = () => {
                           <span className="owner-booking-status-badge">
                             {getBookingStatusLabel(segment.booking?.status)}
                           </span>
-                          <span
-                            className={`owner-booking-arrow ${
-                              expandedBookingId ===
-                              getBookingId(segment.booking)
-                                ? "open"
-                                : ""
-                            }`}
-                          >
-                            ▼
+                          <span className="owner-booking-arrow">
+                            {expandedBookingId ===
+                            getSlotExpandId(segment, index)
+                              ? "▲"
+                              : "▼"}
                           </span>
                         </div>
                       </div>
 
-                      {expandedBookingId === getBookingId(segment.booking) && (
+                      {expandedBookingId ===
+                        getSlotExpandId(segment, index) && (
                         <div
-                          id={`owner-slot-booking-details-${getBookingId(segment.booking)}`}
+                          id={`owner-slot-booking-details-${getSlotExpandId(segment, index)}`}
                           className="owner-booking-card-details"
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -618,14 +603,6 @@ const OwnerTimeSlots = () => {
             </div>
           ) : null}
         </>
-      )}
-
-      {manualSlot && (
-        <ManualBookingModal
-          slot={manualSlot}
-          onClose={() => setManualSlot(null)}
-          onSubmit={handleManualBookingSubmit}
-        />
       )}
     </div>
   );
