@@ -520,3 +520,26 @@ p {
   input[type="checkbox"] {
   flex-shrink: 0;
 }
+
+/* FIX: Register terms checkbox mobile wrapping */
+
+.auth-page .form-group.terms-checkbox label.terms-checkbox-label {
+  align-items: flex-start !important;
+  gap: 12px !important;
+}
+
+.auth-page .form-group.terms-checkbox label.terms-checkbox-label span {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+  line-height: 1.6;
+}
+
+.auth-page
+  .form-group.terms-checkbox
+  label.terms-checkbox-label
+  input[type="checkbox"] {
+  flex: 0 0 18px !important;
+  margin-top: 3px !important;
+  margin-left: 8px !important;
+}
