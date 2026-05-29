@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getPlayroomById } from "../services/playroomService";
 import { normalizeText } from "../utils/normalizeText";
 import "../styles/PlayroomDetails.css";
@@ -73,6 +73,7 @@ const PlayroomDetails = () => {
   const { id } = useParams();
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [playroom, setPlayroom] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -228,12 +229,21 @@ const PlayroomDetails = () => {
     return "";
   };
 
+  const handleBackToPlayrooms = () => {
+    if (location.state?.fromPlayrooms) {
+      navigate(-1);
+      return;
+    }
+
+    navigate("/playrooms");
+  };
+
   return (
     <div className="container playroom-details">
       <button
         type="button"
         className="btn-back"
-        onClick={() => navigate("/playrooms")}
+        onClick={handleBackToPlayrooms}
       >
         ← Nazad na igraonice
       </button>

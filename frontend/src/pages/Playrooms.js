@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllPlayrooms } from "../services/playroomService";
 import PlayroomFilters from "../components/PlayroomFilters";
@@ -55,6 +61,8 @@ const copyToClipboard = async (text) => {
   document.execCommand("copy");
   document.body.removeChild(input);
 };
+
+const PLAYROOMS_SCROLL_KEY = "svet_igraonica_playrooms_scroll_y";
 
 const Playrooms = () => {
   const [playrooms, setPlayrooms] = useState([]);
@@ -172,6 +180,40 @@ const Playrooms = () => {
     loadPlayrooms();
   }, [loadPlayrooms]);
 
+  useEffect(() => {
+    const previousScrollRestoration = window.history.scrollRestoration;
+
+    window.history.scrollRestoration = "manual";
+
+    return () => {
+      window.history.scrollRestoration = previousScrollRestoration;
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const savedScrollY = sessionStorage.getItem(PLAYROOMS_SCROLL_KEY);
+
+    if (!savedScrollY || loading || playrooms.length === 0) {
+      return;
+    }
+
+    const scrollY = Number(savedScrollY);
+
+    if (!Number.isFinite(scrollY)) {
+      sessionStorage.removeItem(PLAYROOMS_SCROLL_KEY);
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      window.scrollTo({
+        top: scrollY,
+        behavior: "auto",
+      });
+
+      sessionStorage.removeItem(PLAYROOMS_SCROLL_KEY);
+    });
+  }, [loading, playrooms.length]);
+
   const handleFilterChange = useCallback((newFilters) => {
     setFilters((prev) => ({
       ...prev,
@@ -185,7 +227,14 @@ const Playrooms = () => {
 
   const handleViewDetails = (id) => {
     if (!id) return;
-    navigate(`/playrooms/${encodeURIComponent(id)}`);
+
+    sessionStorage.setItem(PLAYROOMS_SCROLL_KEY, String(window.scrollY));
+
+    navigate(`/playrooms/${encodeURIComponent(id)}`, {
+      state: {
+        fromPlayrooms: true,
+      },
+    });
   };
 
   const handlePhoneClick = async (phone, playroomId) => {
@@ -315,6 +364,7 @@ const Playrooms = () => {
                 <div
                   key={playroom._id}
                   className="playroom-card"
+                  data-playroom-id={playroom._id}
                   ref={index === playrooms.length - 1 ? lastPlayroomRef : null}
                 >
                   <div className="playroom-image">
@@ -447,6 +497,11 @@ const Playrooms = () => {
                         onClick={() =>
                           navigate(
                             `/playrooms/${encodeURIComponent(playroom._id)}#reviews-section`,
+                            {
+                              state: {
+                                fromPlayrooms: true,
+                              },
+                            },
                           )
                         }
                       >
