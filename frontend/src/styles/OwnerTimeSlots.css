@@ -524,11 +524,14 @@
     padding: 14px 16px;
     margin-bottom: 18px;
     border-radius: 16px;
-    min-height: auto;
+    min-height: 0;
+    height: auto;
   }
 
   .owner-slots-page .owner-date-filter {
+    flex: none !important;
     max-width: 280px;
+    width: 100%;
     min-width: 0;
   }
 

@@ -216,9 +216,29 @@ const OwnerTimeSlots = () => {
   const handleSlotClick = (segment, index = "") => {
     const slotExpandId = getSlotExpandId(segment, index);
 
-    setExpandedBookingId((prev) =>
-      prev === slotExpandId ? null : slotExpandId,
-    );
+    setExpandedBookingId((prev) => {
+      const isClosing = prev === slotExpandId;
+
+      if (!isClosing) {
+        setTimeout(() => {
+          const detailsElement = document.getElementById(
+            `owner-slot-booking-details-${slotExpandId}`,
+          );
+
+          if (!detailsElement) return;
+
+          const elementTop =
+            detailsElement.getBoundingClientRect().top + window.pageYOffset;
+
+          window.scrollTo({
+            top: Math.max(elementTop - 120, 0),
+            behavior: "smooth",
+          });
+        }, 120);
+      }
+
+      return isClosing ? null : slotExpandId;
+    });
   };
 
   const occupiedSlots = timeSlots.filter(
