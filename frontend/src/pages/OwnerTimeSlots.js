@@ -4,6 +4,7 @@ import { getMyPlayrooms } from "../services/playroomService";
 import {
   getAllTimeSlotsForOwner,
   manualBookInterval,
+  manualBookTimeSlot,
 } from "../services/bookingService";
 import ManualBookingModal from "../components/ManualBookingModal";
 import { useAuth } from "../context/AuthContext";
@@ -29,7 +30,7 @@ const OwnerTimeSlots = () => {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedDate, setSelectedDate] = useState(getLocalDate());
   const [message, setMessage] = useState("");
-
+  const [activeTab, setActiveTab] = useState("free");
   const [error, setError] = useState("");
   const [manualSlot, setManualSlot] = useState(null);
   const [expandedBookingId, setExpandedBookingId] = useState(null);
@@ -193,7 +194,20 @@ const OwnerTimeSlots = () => {
   };
 
   const handleManualBookingSubmit = async (payload) => {
-    const result = await manualBookInterval(payload);
+    const mode =
+      manualSlot?.mode ||
+      manualSlot?.playroom?.rezimRezervacije ||
+      selectedPlayroomData?.rezimRezervacije ||
+      "";
+
+    const isFiksno = mode === "fiksno";
+
+    const result = isFiksno
+      ? await manualBookTimeSlot(
+          manualSlot?.timeSlotId || manualSlot?._id || payload?.timeSlotId,
+          payload,
+        )
+      : await manualBookInterval(payload);
 
     if (!result?.success) {
       throw new Error(result?.error || "Ručna rezervacija nije uspela.");
@@ -201,6 +215,7 @@ const OwnerTimeSlots = () => {
 
     setManualSlot(null);
     setExpandedBookingId(null);
+    setActiveTab("occupied");
     setMessage(result.message || "Termin je uspešno ručno zauzet.");
     await loadTimeSlots();
   };
@@ -228,8 +243,10 @@ const OwnerTimeSlots = () => {
 
   const freeSlots = timeSlots.filter(
     (segment) =>
-      segment.tip === "slobodno" ||
-      (segment.available === true && segment.zauzeto !== true),
+      segment.tip === "slobodno" &&
+      segment.zauzeto !== true &&
+      segment.isPast !== true &&
+      segment.available !== false,
   );
 
   const formatBookingName = (booking) => {
@@ -260,6 +277,17 @@ const OwnerTimeSlots = () => {
       booking?.parentPhone ||
       "-"
     );
+  };
+
+  const getBookingStatusLabel = (status = "") => {
+    const normalizedStatus = String(status || "").toLowerCase();
+
+    if (normalizedStatus === "cekanje") return "Čeka potvrdu";
+    if (normalizedStatus === "potvrdjeno") return "Potvrđeno";
+    if (normalizedStatus === "otkazano") return "Otkazano";
+    if (normalizedStatus === "zavrseno") return "Završeno";
+
+    return "Zauzeto";
   };
 
   if (authLoading || loadingPlayrooms) {
@@ -323,6 +351,8 @@ const OwnerTimeSlots = () => {
                   setMessage("");
                   setError("");
                   setExpandedBookingId(null);
+                  setActiveTab("free");
+                  setManualSlot(null);
                 }}
               />
             </div>
@@ -332,7 +362,41 @@ const OwnerTimeSlots = () => {
             </div>
           </div>
 
-          {!loadingSlots && freeSlots.length > 0 && (
+          <div
+            className="owner-slots-tabs"
+            role="tablist"
+            aria-label="Pregled termina"
+          >
+            <button
+              type="button"
+              className={`owner-slot-tab ${activeTab === "free" ? "active" : ""}`}
+              onClick={() => {
+                setActiveTab("free");
+                setExpandedBookingId(null);
+              }}
+              role="tab"
+              aria-selected={activeTab === "free"}
+            >
+              <span>✅ Slobodni termini</span>
+              <strong>{freeSlots.length}</strong>
+            </button>
+
+            <button
+              type="button"
+              className={`owner-slot-tab ${activeTab === "occupied" ? "active" : ""}`}
+              onClick={() => {
+                setActiveTab("occupied");
+                setExpandedBookingId(null);
+              }}
+              role="tab"
+              aria-selected={activeTab === "occupied"}
+            >
+              <span>🔒 Zauzeti termini</span>
+              <strong>{occupiedSlots.length}</strong>
+            </button>
+          </div>
+
+          {!loadingSlots && activeTab === "free" && freeSlots.length > 0 && (
             <div className="owner-free-slots-section">
               <h2>Slobodni termini</h2>
 
@@ -378,7 +442,15 @@ const OwnerTimeSlots = () => {
             <div className="empty-state" role="status" aria-live="polite">
               <p>Nema termina za izabrani datum.</p>
             </div>
-          ) : occupiedSlots.length > 0 ? (
+          ) : activeTab === "free" && freeSlots.length === 0 ? (
+            <div className="empty-state" role="status" aria-live="polite">
+              <p>Nema slobodnih termina za izabrani datum.</p>
+            </div>
+          ) : activeTab === "occupied" && occupiedSlots.length === 0 ? (
+            <div className="empty-state" role="status" aria-live="polite">
+              <p>Nema zauzetih termina za izabrani datum.</p>
+            </div>
+          ) : activeTab === "occupied" && occupiedSlots.length > 0 ? (
             <div className="owner-occupied-slots-section">
               <h2>Zauzeti termini</h2>
 
@@ -431,7 +503,7 @@ const OwnerTimeSlots = () => {
 
                         <div className="owner-booking-card-right">
                           <span className="owner-booking-status-badge">
-                            Potvrđeno
+                            {getBookingStatusLabel(segment.booking?.status)}
                           </span>
                           <span
                             className={`owner-booking-arrow ${

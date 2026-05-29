@@ -531,6 +531,7 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
     const { datum } = req.validated.query;
 
     const playroom = await Playroom.findById(playroomId);
+
     if (!playroom) {
       throw new ErrorResponse("Igraonica nije pronađena", 404);
     }
@@ -552,21 +553,50 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
       targetDate,
     );
 
+    const playroomPayload = {
+      id: playroom._id,
+      naziv: playroom.naziv,
+      grad: playroom.grad,
+      rezimRezervacije: playroom.rezimRezervacije,
+      vremePripremeTermina: playroom.vremePripremeTermina,
+    };
+
     if (!workingHours) {
       return res.status(200).json({
         success: true,
         count: 0,
         data: [],
-        playroom: {
-          id: playroom._id,
-          naziv: playroom.naziv,
-          grad: playroom.grad,
-        },
+        playroom: playroomPayload,
       });
     }
 
     const startDate = startOfDayInAppTimezone(targetDate);
     const endDate = endOfDayInAppTimezone(startDate);
+
+    const bookingSelect =
+      "_id roditeljId timeSlotId imeRoditelja prezimeRoditelja emailRoditelja telefonRoditelja napomena status createdAt ukupnaCena datum vremeOd vremeDo brojDece brojRoditelja izabraneCene izabraniPaket izabraneUsluge";
+
+    const normalizeBooking = (booking) => ({
+      _id: booking._id,
+      id: booking._id,
+      roditelj: booking.roditeljId,
+      imeRoditelja: booking.imeRoditelja,
+      prezimeRoditelja: booking.prezimeRoditelja,
+      emailRoditelja: booking.emailRoditelja,
+      telefonRoditelja: booking.telefonRoditelja,
+      ukupnaCena: booking.ukupnaCena,
+      brojDece: booking.brojDece,
+      brojRoditelja: booking.brojRoditelja,
+      izabraneCene: booking.izabraneCene || [],
+      izabraniPaket: booking.izabraniPaket || null,
+      izabraneUsluge: booking.izabraneUsluge || [],
+      napomena: booking.napomena,
+      status: booking.status,
+      datum: booking.datum,
+      vremeOd: booking.vremeOd,
+      vremeDo: booking.vremeDo,
+      createdAt: booking.createdAt,
+    });
 
     const bookings = await Booking.find({
       playroomId,
@@ -576,12 +606,78 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
       },
       status: { $in: getBlockingStatuses() },
     })
-      .select(
-        "_id roditeljId imeRoditelja prezimeRoditelja emailRoditelja telefonRoditelja napomena status createdAt ukupnaCena vremeOd vremeDo brojDece brojRoditelja izabraneCene izabraniPaket izabraneUsluge",
-      )
+      .select(bookingSelect)
       .populate("roditeljId", "ime prezime email telefon")
       .sort({ vremeOd: 1 })
       .lean();
+
+    if (playroom.rezimRezervacije === "fiksno") {
+      const slots = await TimeSlot.find({
+        playroomId,
+        datum: {
+          $gte: startDate,
+          $lte: endDate,
+        },
+        aktivno: true,
+        vanRadnogVremena: false,
+      })
+        .select("_id datum vremeOd vremeDo cena zauzeto aktivno")
+        .sort({ vremeOd: 1 })
+        .lean();
+
+      const bookingsBySlotId = new Map();
+      const bookingsByInterval = new Map();
+
+      bookings.forEach((booking) => {
+        if (booking.timeSlotId) {
+          bookingsBySlotId.set(String(booking.timeSlotId), booking);
+        }
+
+        bookingsByInterval.set(
+          `${booking.vremeOd}_${booking.vremeDo}`,
+          booking,
+        );
+      });
+
+      const now = getNowInAppTimezone();
+
+      const isToday =
+        formatInTimeZone(startDate, APP_TIMEZONE, "yyyy-MM-dd") ===
+        formatInTimeZone(now, APP_TIMEZONE, "yyyy-MM-dd");
+
+      const normalizedSlots = slots.map((slot) => {
+        const booking =
+          bookingsBySlotId.get(String(slot._id)) ||
+          bookingsByInterval.get(`${slot.vremeOd}_${slot.vremeDo}`) ||
+          null;
+
+        const slotEnd = buildDateTimeInAppTimezone(slot.datum, slot.vremeDo);
+        const isPast = isToday && slotEnd && slotEnd <= now;
+
+        const isBusy = Boolean(slot.zauzeto) || Boolean(booking);
+
+        return {
+          _id: slot._id,
+          timeSlotId: slot._id,
+          tip: isBusy ? "zauzeto" : "slobodno",
+          datum: slot.datum,
+          vremeOd: slot.vremeOd,
+          vremeDo: slot.vremeDo,
+          cena: slot.cena,
+          zauzeto: isBusy,
+          available: !isBusy && !isPast,
+          isPast,
+          booking: booking ? normalizeBooking(booking) : null,
+        };
+      });
+
+      return res.status(200).json({
+        success: true,
+        count: normalizedSlots.length,
+        data: normalizedSlots,
+        playroom: playroomPayload,
+      });
+    }
 
     const segments = bookingService.buildDaySegments({
       workingHours,
@@ -590,23 +686,7 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
         _id: booking._id,
         vremeOd: booking.vremeOd,
         vremeDo: booking.vremeDo,
-        booking: {
-          id: booking._id,
-          roditelj: booking.roditeljId,
-          imeRoditelja: booking.imeRoditelja,
-          prezimeRoditelja: booking.prezimeRoditelja,
-          emailRoditelja: booking.emailRoditelja,
-          telefonRoditelja: booking.telefonRoditelja,
-          ukupnaCena: booking.ukupnaCena,
-          brojDece: booking.brojDece,
-          brojRoditelja: booking.brojRoditelja,
-          izabraneCene: booking.izabraneCene || [],
-          izabraniPaket: booking.izabraniPaket || null,
-          izabraneUsluge: booking.izabraneUsluge || [],
-          napomena: booking.napomena,
-          status: booking.status,
-          createdAt: booking.createdAt,
-        },
+        booking: normalizeBooking(booking),
       })),
     });
 
@@ -619,15 +699,11 @@ exports.getAllTimeSlotsForOwner = async (req, res, next) => {
       booking: segment.booking?.booking || segment.booking || null,
     }));
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: normalizedSegments.length,
       data: normalizedSegments,
-      playroom: {
-        id: playroom._id,
-        naziv: playroom.naziv,
-        grad: playroom.grad,
-      },
+      playroom: playroomPayload,
     });
   } catch (error) {
     next(error);

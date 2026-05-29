@@ -511,6 +511,70 @@ export const getAllTimeSlotsForOwner = async (playroomId, datum = null) => {
   }
 };
 
+export const manualBookTimeSlot = async (slotId, bookingData) => {
+  const safeSlotId = normalizeId(slotId);
+
+  if (!safeSlotId) {
+    return {
+      success: false,
+      error: "Nedostaje ID fiksnog termina.",
+    };
+  }
+
+  if (!bookingData || typeof bookingData !== "object") {
+    return {
+      success: false,
+      error: "Nedostaju podaci za ručno zauzimanje termina.",
+    };
+  }
+
+  const payload = {
+    cenaIds: normalizeIdList(bookingData.cenaIds),
+    paketId: normalizeId(bookingData.paketId) || null,
+    usluge: normalizeIdList(bookingData.usluge),
+    brojDece: toSafeCount(bookingData.brojDece),
+    brojRoditelja: toSafeCount(bookingData.brojRoditelja),
+    imeRoditelja: normalizeText(bookingData.imeRoditelja, 100),
+    prezimeRoditelja: normalizeText(bookingData.prezimeRoditelja, 100),
+    emailRoditelja: normalizeText(
+      bookingData.emailRoditelja,
+      120,
+    ).toLowerCase(),
+    telefonRoditelja: normalizeText(bookingData.telefonRoditelja, 30),
+    napomena: normalizeText(bookingData.napomena, 500),
+  };
+
+  if (payload.cenaIds.length === 0 && !payload.paketId) {
+    return {
+      success: false,
+      error: "Izaberite cenu ili paket.",
+    };
+  }
+
+  try {
+    const response = await api.post(
+      `/timeslots/${encodeURIComponent(safeSlotId)}/manual-book`,
+      payload,
+    );
+
+    return {
+      success: true,
+      data: response.data?.data || null,
+      message: response.data?.message || "Termin je uspešno ručno zauzet.",
+    };
+  } catch (error) {
+    console.error("Greška pri ručnom zauzimanju fiksnog termina:", error);
+
+    return {
+      success: false,
+      status: error.response?.status,
+      error:
+        error.response?.data?.message ||
+        "Greška pri ručnom zauzimanju fiksnog termina.",
+    };
+  }
+};
+
 export const manualBookInterval = async (bookingData) => {
   if (!bookingData || typeof bookingData !== "object") {
     return {
