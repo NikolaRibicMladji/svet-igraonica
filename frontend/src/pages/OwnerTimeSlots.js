@@ -30,7 +30,7 @@ const OwnerTimeSlots = () => {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedDate, setSelectedDate] = useState(getLocalDate());
   const [message, setMessage] = useState("");
-  const [activeTab, setActiveTab] = useState("free");
+  const [activeTab, setActiveTab] = useState(null);
   const [error, setError] = useState("");
   const [manualSlot, setManualSlot] = useState(null);
   const [expandedBookingId, setExpandedBookingId] = useState(null);
@@ -351,31 +351,22 @@ const OwnerTimeSlots = () => {
                   setMessage("");
                   setError("");
                   setExpandedBookingId(null);
-                  setActiveTab("free");
+                  setActiveTab(null);
                   setManualSlot(null);
                 }}
               />
             </div>
-
-            <div className="owner-reserve-info">
-              Izaberi slobodan termin ispod za ručno zauzimanje.
-            </div>
           </div>
 
-          <div
-            className="owner-slots-tabs"
-            role="tablist"
-            aria-label="Pregled termina"
-          >
+          <div className="owner-slots-tabs" aria-label="Pregled termina">
             <button
               type="button"
               className={`owner-slot-tab ${activeTab === "free" ? "active" : ""}`}
               onClick={() => {
-                setActiveTab("free");
+                setActiveTab((prev) => (prev === "free" ? null : "free"));
                 setExpandedBookingId(null);
               }}
-              role="tab"
-              aria-selected={activeTab === "free"}
+              aria-expanded={activeTab === "free"}
             >
               <span>✅ Slobodni termini</span>
               <strong>{freeSlots.length}</strong>
@@ -385,11 +376,12 @@ const OwnerTimeSlots = () => {
               type="button"
               className={`owner-slot-tab ${activeTab === "occupied" ? "active" : ""}`}
               onClick={() => {
-                setActiveTab("occupied");
+                setActiveTab((prev) =>
+                  prev === "occupied" ? null : "occupied",
+                );
                 setExpandedBookingId(null);
               }}
-              role="tab"
-              aria-selected={activeTab === "occupied"}
+              aria-expanded={activeTab === "occupied"}
             >
               <span>🔒 Zauzeti termini</span>
               <strong>{occupiedSlots.length}</strong>
@@ -426,7 +418,7 @@ const OwnerTimeSlots = () => {
                       className="btn-primary"
                       onClick={() => openManualBookingModal(segment)}
                     >
-                      ➕ Ručno zauzmi
+                      ➕ Rezervisi
                     </button>
                   </div>
                 ))}
