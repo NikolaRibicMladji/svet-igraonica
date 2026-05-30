@@ -899,82 +899,87 @@ const Book = () => {
               onEndSelect={handleEndTimeSelect}
             />
 
-            {availability?.workingHours && !loadingSlots && (
-              <div className="booking-form" ref={bookingDetailsRef}>
-                <h3>Detalji rezervacije</h3>
+            {availability?.workingHours &&
+              !loadingSlots &&
+              selectedStartTime &&
+              selectedEndTime && (
+                <div className="booking-form" ref={bookingDetailsRef}>
+                  <h3>Detalji rezervacije</h3>
 
-                <BookingSelectedSlotSummary
-                  selectedDate={selectedDate}
-                  selectedStartTime={selectedStartTime}
-                  selectedEndTime={selectedEndTime}
-                  slotDurationLabel={slotDurationLabel}
-                />
+                  <BookingSelectedSlotSummary
+                    selectedDate={selectedDate}
+                    selectedStartTime={selectedStartTime}
+                    selectedEndTime={selectedEndTime}
+                    slotDurationLabel={slotDurationLabel}
+                  />
 
-                <BookingPricingOptions
-                  playroom={playroom}
-                  pricingRef={pricingRef}
-                  selectedCenaIds={selectedCenaIds}
-                  selectedPaketId={selectedPaketId}
-                  selectedUslugeIds={selectedUslugeIds}
-                  handleCenaToggle={handleCenaToggle}
-                  handlePaketToggle={handlePaketToggle}
-                  handleUslugaToggle={handleUslugaToggle}
-                />
+                  <BookingPricingOptions
+                    playroom={playroom}
+                    pricingRef={pricingRef}
+                    selectedCenaIds={selectedCenaIds}
+                    selectedPaketId={selectedPaketId}
+                    selectedUslugeIds={selectedUslugeIds}
+                    handleCenaToggle={handleCenaToggle}
+                    handlePaketToggle={handlePaketToggle}
+                    handleUslugaToggle={handleUslugaToggle}
+                  />
 
-                <BookingFreeFeatures features={playroom.besplatnePogodnosti} />
+                  <BookingFreeFeatures
+                    features={playroom.besplatnePogodnosti}
+                  />
 
-                <BookingDetailsFields
-                  brojDece={brojDece}
-                  setBrojDece={setBrojDece}
-                  brojRoditelja={brojRoditelja}
-                  setBrojRoditelja={setBrojRoditelja}
-                  napomena={napomena}
-                  setNapomena={setNapomena}
-                  hasPerPersonPricing={hasPerPersonPricing}
-                  setError={setError}
-                  brojDeceRef={brojDeceRef}
-                  brojDeceWrapperRef={brojDeceWrapperRef}
-                />
+                  <BookingDetailsFields
+                    brojDece={brojDece}
+                    setBrojDece={setBrojDece}
+                    brojRoditelja={brojRoditelja}
+                    setBrojRoditelja={setBrojRoditelja}
+                    napomena={napomena}
+                    setNapomena={setNapomena}
+                    hasPerPersonPricing={hasPerPersonPricing}
+                    setError={setError}
+                    brojDeceRef={brojDeceRef}
+                    brojDeceWrapperRef={brojDeceWrapperRef}
+                  />
 
-                <BookingUserFields
-                  isAuthenticated={isAuthenticated}
-                  korisnikPodaci={korisnikPodaci}
-                  handleKorisnikChange={handleKorisnikChange}
-                  showPassword={showPassword}
-                  setShowPassword={setShowPassword}
-                  showConfirmPassword={showConfirmPassword}
-                  setShowConfirmPassword={setShowConfirmPassword}
-                  acceptedTerms={acceptedTerms}
-                  setAcceptedTerms={setAcceptedTerms}
-                  setError={setError}
-                  imeRef={imeRef}
-                  prezimeRef={prezimeRef}
-                  emailRef={emailRef}
-                  telefonRef={telefonRef}
-                  passwordRef={passwordRef}
-                  confirmPasswordRef={confirmPasswordRef}
-                  termsRef={termsRef}
-                  title={
-                    isOwnerBooking ? "👤 Podaci roditelja" : "👤 Vaši podaci"
-                  }
-                />
-                <BookingOrderSummary
-                  selectedCene={selectedCene}
-                  selectedPaket={selectedPaket}
-                  selectedUsluge={selectedUsluge}
-                  brojDece={brojDece}
-                  brojRoditelja={brojRoditelja}
-                  slotDurationHours={slotDurationHours}
-                  totalPrice={totalPrice}
-                />
+                  <BookingUserFields
+                    isAuthenticated={isAuthenticated}
+                    korisnikPodaci={korisnikPodaci}
+                    handleKorisnikChange={handleKorisnikChange}
+                    showPassword={showPassword}
+                    setShowPassword={setShowPassword}
+                    showConfirmPassword={showConfirmPassword}
+                    setShowConfirmPassword={setShowConfirmPassword}
+                    acceptedTerms={acceptedTerms}
+                    setAcceptedTerms={setAcceptedTerms}
+                    setError={setError}
+                    imeRef={imeRef}
+                    prezimeRef={prezimeRef}
+                    emailRef={emailRef}
+                    telefonRef={telefonRef}
+                    passwordRef={passwordRef}
+                    confirmPasswordRef={confirmPasswordRef}
+                    termsRef={termsRef}
+                    title={
+                      isOwnerBooking ? "👤 Podaci roditelja" : "👤 Vaši podaci"
+                    }
+                  />
+                  <BookingOrderSummary
+                    selectedCene={selectedCene}
+                    selectedPaket={selectedPaket}
+                    selectedUsluge={selectedUsluge}
+                    brojDece={brojDece}
+                    brojRoditelja={brojRoditelja}
+                    slotDurationHours={slotDurationHours}
+                    totalPrice={totalPrice}
+                  />
 
-                <BookingSubmitButton
-                  submitting={submitting}
-                  isAuthenticated={isAuthenticated || isOwnerBooking}
-                  onSubmit={handleBook}
-                />
-              </div>
-            )}
+                  <BookingSubmitButton
+                    submitting={submitting}
+                    isAuthenticated={isAuthenticated || isOwnerBooking}
+                    onSubmit={handleBook}
+                  />
+                </div>
+              )}
           </>
         )}
       </div>

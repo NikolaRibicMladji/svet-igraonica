@@ -24,6 +24,9 @@ const DAY_NAMES = [
   "Subota",
 ];
 
+const OWNER_BOOKINGS_PAGE_LIMIT = 50;
+const OWNER_BOOKINGS_MAX_PAGES = 20;
+
 const OwnerDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const { success: showSuccess, error: showError } = useToast();
@@ -38,6 +41,12 @@ const OwnerDashboard = () => {
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [, setBookingsLoading] = useState(false);
+  const [bookingsPagination, setBookingsPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: OWNER_BOOKINGS_PAGE_LIMIT,
+    pages: 0,
+  });
   const [confirmingId, setConfirmingId] = useState("");
   const [cancellingId, setCancellingId] = useState("");
   const [cancelConfirmBooking, setCancelConfirmBooking] = useState(null);
@@ -186,24 +195,87 @@ const OwnerDashboard = () => {
     }
   }, []);
 
-  const fetchBookings = useCallback(async () => {
-    try {
-      setBookingsLoading(true);
-
-      const res = await getOwnerBookings();
-
-      if (res?.success) {
-        setBookings(Array.isArray(res.data) ? res.data : []);
-      } else {
+  const fetchBookings = useCallback(
+    async (playroomId = selectedPlayroomId) => {
+      if (!playroomId) {
         setBookings([]);
+        setBookingsPagination({
+          total: 0,
+          page: 1,
+          limit: OWNER_BOOKINGS_PAGE_LIMIT,
+          pages: 0,
+        });
+        return;
       }
-    } catch (err) {
-      console.error("Greška pri učitavanju rezervacija:", err);
-      setBookings([]);
-    } finally {
-      setBookingsLoading(false);
-    }
-  }, []);
+
+      try {
+        setBookingsLoading(true);
+
+        const firstPage = await getOwnerBookings({
+          page: 1,
+          limit: OWNER_BOOKINGS_PAGE_LIMIT,
+          playroomId,
+        });
+
+        if (!firstPage?.success) {
+          setBookings([]);
+          setBookingsPagination({
+            total: 0,
+            page: 1,
+            limit: OWNER_BOOKINGS_PAGE_LIMIT,
+            pages: 0,
+          });
+          return;
+        }
+
+        const allBookings = Array.isArray(firstPage.data)
+          ? [...firstPage.data]
+          : [];
+
+        const totalPages = Math.min(
+          Number(firstPage.pagination?.pages) || 1,
+          OWNER_BOOKINGS_MAX_PAGES,
+        );
+
+        for (let page = 2; page <= totalPages; page += 1) {
+          const nextPage = await getOwnerBookings({
+            page,
+            limit: OWNER_BOOKINGS_PAGE_LIMIT,
+            playroomId,
+          });
+
+          if (!nextPage?.success || !Array.isArray(nextPage.data)) {
+            break;
+          }
+
+          allBookings.push(...nextPage.data);
+        }
+
+        setBookingsPagination(
+          firstPage.pagination || {
+            total: allBookings.length,
+            page: 1,
+            limit: OWNER_BOOKINGS_PAGE_LIMIT,
+            pages: totalPages,
+          },
+        );
+
+        setBookings(allBookings);
+      } catch (err) {
+        console.error("Greška pri učitavanju rezervacija:", err);
+        setBookings([]);
+        setBookingsPagination({
+          total: 0,
+          page: 1,
+          limit: OWNER_BOOKINGS_PAGE_LIMIT,
+          pages: 0,
+        });
+      } finally {
+        setBookingsLoading(false);
+      }
+    },
+    [selectedPlayroomId],
+  );
 
   const fetchMonthlyAnalytics = useCallback(
     async (playroomId, selectedMonth) => {
@@ -271,18 +343,25 @@ const OwnerDashboard = () => {
     }
 
     fetchMyPlayrooms();
-    fetchBookings();
-  }, [authLoading, user?.role, fetchMyPlayrooms, fetchBookings]);
+  }, [authLoading, user?.role, fetchMyPlayrooms]);
 
   useEffect(() => {
     if (selectedPlayroomId) {
       fetchStats(selectedPlayroomId, true);
       fetchReviews(selectedPlayroomId);
+      fetchBookings(selectedPlayroomId);
     } else {
       setStats(null);
       setReviews([]);
+      setBookings([]);
+      setBookingsPagination({
+        total: 0,
+        page: 1,
+        limit: OWNER_BOOKINGS_PAGE_LIMIT,
+        pages: 0,
+      });
     }
-  }, [selectedPlayroomId, fetchStats, fetchReviews]);
+  }, [selectedPlayroomId, fetchStats, fetchReviews, fetchBookings]);
 
   useEffect(() => {
     if (authLoading) return undefined;
@@ -292,9 +371,8 @@ const OwnerDashboard = () => {
     }
 
     const interval = setInterval(() => {
-      fetchBookings();
-
       if (selectedPlayroomId) {
+        fetchBookings(selectedPlayroomId);
         fetchStats(selectedPlayroomId, false);
       }
     }, 30000);
@@ -322,7 +400,7 @@ const OwnerDashboard = () => {
 
       if (res?.success) {
         showSuccess(res.message || "Rezervacija je potvrđena.");
-        await fetchBookings();
+        await fetchBookings(selectedPlayroomId);
 
         if (selectedPlayroomId) {
           await fetchStats(selectedPlayroomId);
@@ -371,7 +449,7 @@ const OwnerDashboard = () => {
         showSuccess(res.message || "Rezervacija je otkazana.");
         setCancelConfirmBooking(null);
 
-        await fetchBookings();
+        await fetchBookings(selectedPlayroomId);
 
         if (selectedPlayroomId) {
           await fetchStats(selectedPlayroomId);
@@ -1182,6 +1260,8 @@ const OwnerDashboard = () => {
       <div className="dashboard-filter-results">
         <span>
           Prikazano rezervacija: <strong>{filteredBookings.length}</strong>
+          {" / "}
+          Ukupno za igraonicu: <strong>{bookingsPagination.total}</strong>
         </span>
 
         {hasActiveFilters && (

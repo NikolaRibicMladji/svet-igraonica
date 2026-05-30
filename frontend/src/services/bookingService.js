@@ -40,6 +40,49 @@ const toSafeCount = (value) => {
   return Math.floor(numberValue);
 };
 
+const BOOKING_STATUSES = ["cekanje", "potvrdjeno", "otkazano", "zavrseno"];
+
+const toSafePage = (value) => {
+  const numberValue = Number(value);
+
+  if (!Number.isInteger(numberValue) || numberValue < 1) return 1;
+
+  return numberValue;
+};
+
+const toSafeLimit = (value) => {
+  const numberValue = Number(value);
+
+  if (!Number.isInteger(numberValue) || numberValue < 1) return 10;
+
+  return Math.min(numberValue, 50);
+};
+
+const buildBookingsQuery = (params = {}, options = {}) => {
+  const query = new URLSearchParams();
+
+  query.append("page", String(toSafePage(params.page)));
+  query.append("limit", String(toSafeLimit(params.limit)));
+
+  const status = String(params.status || "")
+    .trim()
+    .toLowerCase();
+
+  if (BOOKING_STATUSES.includes(status)) {
+    query.append("status", status);
+  }
+
+  if (options.includePlayroomId) {
+    const playroomId = normalizeId(params.playroomId);
+
+    if (playroomId) {
+      query.append("playroomId", playroomId);
+    }
+  }
+
+  return query.toString();
+};
+
 const normalizeBookingMode = (value) => {
   const safeValue = String(value || "")
     .trim()
@@ -331,12 +374,21 @@ export const createBooking = async (data) => {
   }
 };
 
-export const getMyBookings = async () => {
+export const getMyBookings = async (params = {}) => {
   try {
-    const response = await api.get("/bookings/my");
+    const queryString = buildBookingsQuery(params);
+
+    const response = await api.get(`/bookings/my?${queryString}`);
 
     return {
       success: true,
+      count: Number(response.data?.count) || 0,
+      pagination: response.data?.pagination || {
+        total: 0,
+        page: toSafePage(params.page),
+        limit: toSafeLimit(params.limit),
+        pages: 0,
+      },
       data: Array.isArray(response.data?.data) ? response.data.data : [],
     };
   } catch (error) {
@@ -347,16 +399,35 @@ export const getMyBookings = async () => {
       status: error.response?.status,
       error:
         error.response?.data?.message || "Greška pri dohvatanju rezervacija.",
+      data: [],
+      count: 0,
+      pagination: {
+        total: 0,
+        page: toSafePage(params.page),
+        limit: toSafeLimit(params.limit),
+        pages: 0,
+      },
     };
   }
 };
 
-export const getOwnerBookings = async () => {
+export const getOwnerBookings = async (params = {}) => {
   try {
-    const response = await api.get("/bookings/owner");
+    const queryString = buildBookingsQuery(params, {
+      includePlayroomId: true,
+    });
+
+    const response = await api.get(`/bookings/owner?${queryString}`);
 
     return {
       success: true,
+      count: Number(response.data?.count) || 0,
+      pagination: response.data?.pagination || {
+        total: 0,
+        page: toSafePage(params.page),
+        limit: toSafeLimit(params.limit),
+        pages: 0,
+      },
       data: Array.isArray(response.data?.data) ? response.data.data : [],
     };
   } catch (error) {
@@ -367,6 +438,14 @@ export const getOwnerBookings = async () => {
       status: error.response?.status,
       error:
         error.response?.data?.message || "Greška pri dohvatanju rezervacija.",
+      data: [],
+      count: 0,
+      pagination: {
+        total: 0,
+        page: toSafePage(params.page),
+        limit: toSafeLimit(params.limit),
+        pages: 0,
+      },
     };
   }
 };
@@ -533,13 +612,22 @@ export const manualBookTimeSlot = async (slotId, bookingData) => {
     usluge: normalizeIdList(bookingData.usluge),
     brojDece: toSafeCount(bookingData.brojDece),
     brojRoditelja: toSafeCount(bookingData.brojRoditelja),
-    imeRoditelja: normalizeText(bookingData.imeRoditelja, 100),
-    prezimeRoditelja: normalizeText(bookingData.prezimeRoditelja, 100),
+    imeRoditelja: normalizeText(
+      bookingData.imeRoditelja || bookingData.ime,
+      100,
+    ),
+    prezimeRoditelja: normalizeText(
+      bookingData.prezimeRoditelja || bookingData.prezime,
+      100,
+    ),
     emailRoditelja: normalizeText(
-      bookingData.emailRoditelja,
+      bookingData.emailRoditelja || bookingData.email,
       120,
     ).toLowerCase(),
-    telefonRoditelja: normalizeText(bookingData.telefonRoditelja, 30),
+    telefonRoditelja: normalizeText(
+      bookingData.telefonRoditelja || bookingData.telefon,
+      30,
+    ),
     napomena: normalizeText(bookingData.napomena, 500),
   };
 
@@ -582,11 +670,34 @@ export const manualBookInterval = async (bookingData) => {
     };
   }
 
+  const payload = {
+    ...bookingData,
+    cenaIds: normalizeIdList(bookingData.cenaIds),
+    paketId: normalizeId(bookingData.paketId) || null,
+    usluge: normalizeIdList(bookingData.usluge),
+    brojDece: toSafeCount(bookingData.brojDece),
+    brojRoditelja: toSafeCount(bookingData.brojRoditelja),
+    imeRoditelja: normalizeText(
+      bookingData.imeRoditelja || bookingData.ime,
+      100,
+    ),
+    prezimeRoditelja: normalizeText(
+      bookingData.prezimeRoditelja || bookingData.prezime,
+      100,
+    ),
+    emailRoditelja: normalizeText(
+      bookingData.emailRoditelja || bookingData.email,
+      120,
+    ).toLowerCase(),
+    telefonRoditelja: normalizeText(
+      bookingData.telefonRoditelja || bookingData.telefon,
+      30,
+    ),
+    napomena: normalizeText(bookingData.napomena, 500),
+  };
+
   try {
-    const response = await api.post(
-      "/timeslots/manual-book-interval",
-      bookingData,
-    );
+    const response = await api.post("/timeslots/manual-book-interval", payload);
 
     return {
       success: true,

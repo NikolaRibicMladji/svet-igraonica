@@ -159,37 +159,47 @@ const BookingUserFields = ({
         </div>
       )}
 
-      <div className="form-group terms-checkbox" ref={termsRef}>
-        <label className="terms-checkbox-label">
-          <span>
-            Prihvatam{" "}
-            <a
-              href="/terms-of-service"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Uslove korišćenja
-            </a>
-            ,{" "}
-            <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">
-              Politiku privatnosti
-            </a>{" "}
-            i{" "}
-            <a href="/booking-policy" target="_blank" rel="noopener noreferrer">
-              Pravila rezervacije
-            </a>
-            .
-          </span>
+      {!isAuthenticated && (
+        <div className="form-group terms-checkbox" ref={termsRef}>
+          <label className="terms-checkbox-label">
+            <span>
+              Prihvatam{" "}
+              <a
+                href="/terms-of-service"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Uslove korišćenja
+              </a>
+              ,{" "}
+              <a
+                href="/privacy-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Politiku privatnosti
+              </a>{" "}
+              i{" "}
+              <a
+                href="/booking-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Pravila rezervacije
+              </a>
+              .
+            </span>
 
-          <input
-            id="booking-accepted-terms"
-            type="checkbox"
-            checked={acceptedTerms}
-            onChange={handleTermsChange}
-            aria-label="Prihvatam uslove korišćenja, politiku privatnosti i pravila rezervacije"
-          />
-        </label>
-      </div>
+            <input
+              id="booking-accepted-terms"
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={handleTermsChange}
+              aria-label="Prihvatam uslove korišćenja, politiku privatnosti i pravila rezervacije"
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 };

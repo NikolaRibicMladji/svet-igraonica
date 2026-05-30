@@ -215,7 +215,7 @@ export const validateBookingSubmit = ({
     }
   }
 
-  if (!acceptedTerms) {
+  if (!isAuthenticated && !acceptedTerms) {
     return {
       success: false,
       field: "terms",

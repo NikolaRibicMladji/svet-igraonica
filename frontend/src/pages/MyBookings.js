@@ -4,6 +4,16 @@ import { cancelBooking, getMyBookings } from "../services/bookingService";
 import "../styles/MyBookings.css";
 import { useToast } from "../context/ToastContext";
 
+const PAGE_LIMIT = 10;
+
+const BOOKING_STATUS_OPTIONS = [
+  { value: "svi", label: "Svi statusi" },
+  { value: "cekanje", label: "Čeka potvrdu" },
+  { value: "potvrdjeno", label: "Potvrđeno" },
+  { value: "otkazano", label: "Otkazano" },
+  { value: "zavrseno", label: "Završeno" },
+];
+
 const MyBookings = () => {
   const navigate = useNavigate();
   const { success: showSuccess, error: showError } = useToast();
@@ -14,6 +24,14 @@ const MyBookings = () => {
   const [cancellingId, setCancellingId] = useState("");
   const [bookingToCancel, setBookingToCancel] = useState(null);
   const [expandedBookingId, setExpandedBookingId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState("svi");
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: PAGE_LIMIT,
+    pages: 0,
+  });
 
   const calculateDuration = (od, doVreme) => {
     if (!od || !doVreme) return "-";
@@ -80,20 +98,52 @@ const MyBookings = () => {
     setError("");
 
     try {
-      const result = await getMyBookings();
+      const result = await getMyBookings({
+        page: currentPage,
+        limit: PAGE_LIMIT,
+        status: statusFilter === "svi" ? "" : statusFilter,
+      });
 
       if (result?.success) {
+        const nextPagination = result.pagination || {
+          total: 0,
+          page: currentPage,
+          limit: PAGE_LIMIT,
+          pages: 0,
+        };
+
+        if (nextPagination.pages > 0 && currentPage > nextPagination.pages) {
+          setCurrentPage(nextPagination.pages);
+          return;
+        }
+
+        setPagination(nextPagination);
+
         setBookings(
           Array.isArray(result.data)
-            ? result.data.sort((a, b) => new Date(b.datum) - new Date(a.datum))
+            ? [...result.data].sort(
+                (a, b) => new Date(b.datum) - new Date(a.datum),
+              )
             : [],
         );
       } else {
         setBookings([]);
+        setPagination({
+          total: 0,
+          page: currentPage,
+          limit: PAGE_LIMIT,
+          pages: 0,
+        });
         setError(result?.error || "Greška pri učitavanju rezervacija.");
       }
     } catch (err) {
       setBookings([]);
+      setPagination({
+        total: 0,
+        page: currentPage,
+        limit: PAGE_LIMIT,
+        pages: 0,
+      });
       setError(
         err?.response?.data?.message ||
           err?.message ||
@@ -102,11 +152,17 @@ const MyBookings = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, statusFilter]);
 
   useEffect(() => {
     loadBookings();
   }, [loadBookings]);
+
+  const handleStatusFilterChange = (e) => {
+    setStatusFilter(e.target.value);
+    setCurrentPage(1);
+    setExpandedBookingId(null);
+  };
 
   const openCancelModal = (booking) => {
     if (cancellingId) return;
@@ -186,6 +242,18 @@ const MyBookings = () => {
   const canCancelBooking = (status) =>
     ["cekanje", "potvrdjeno"].includes(String(status).toLowerCase());
 
+  const getEmptyStateText = () => {
+    if (statusFilter === "svi") {
+      return "Još nemate nijednu rezervaciju.";
+    }
+
+    const selectedStatus = BOOKING_STATUS_OPTIONS.find(
+      (option) => option.value === statusFilter,
+    );
+
+    return `Nema rezervacija za status: ${selectedStatus?.label || "izabrani status"}.`;
+  };
+
   if (loading) {
     return (
       <div className="container loading" role="status" aria-live="polite">
@@ -198,6 +266,27 @@ const MyBookings = () => {
     <div className="container my-bookings-page">
       <h1>📋 Moje rezervacije</h1>
 
+      <div className="my-bookings-toolbar">
+        <div className="my-bookings-filter">
+          <label htmlFor="my-bookings-status">Status</label>
+          <select
+            id="my-bookings-status"
+            value={statusFilter}
+            onChange={handleStatusFilterChange}
+          >
+            {BOOKING_STATUS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <p className="my-bookings-count">
+          Ukupno: <strong>{pagination.total}</strong>
+        </p>
+      </div>
+
       {error && (
         <div className="error-message" role="alert">
           {error}
@@ -206,14 +295,29 @@ const MyBookings = () => {
 
       {bookings.length === 0 ? (
         <div className="empty-state" role="status" aria-live="polite">
-          <p>Još nemate nijednu rezervaciju.</p>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => navigate("/playrooms")}
-          >
-            Pogledaj igraonice
-          </button>
+          <p>{getEmptyStateText()}</p>
+
+          {statusFilter === "svi" ? (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => navigate("/playrooms")}
+            >
+              Pogledaj igraonice
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => {
+                setStatusFilter("svi");
+                setCurrentPage(1);
+                setExpandedBookingId(null);
+              }}
+            >
+              Prikaži sve rezervacije
+            </button>
+          )}
         </div>
       ) : (
         <div className="bookings-list">
@@ -408,6 +512,40 @@ const MyBookings = () => {
               </div>
             );
           })}
+        </div>
+      )}
+      {pagination.pages > 1 && (
+        <div
+          className="pagination-controls"
+          aria-label="Paginacija rezervacija"
+        >
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              setCurrentPage((prev) => Math.max(prev - 1, 1));
+              setExpandedBookingId(null);
+            }}
+            disabled={currentPage <= 1}
+          >
+            Prethodna
+          </button>
+
+          <span>
+            Strana {pagination.page} od {pagination.pages}
+          </span>
+
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              setCurrentPage((prev) => Math.min(prev + 1, pagination.pages));
+              setExpandedBookingId(null);
+            }}
+            disabled={currentPage >= pagination.pages}
+          >
+            Sledeća
+          </button>
         </div>
       )}
       {bookingToCancel && (
