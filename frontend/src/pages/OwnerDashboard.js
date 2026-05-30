@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { getMyPlayrooms, getPlayroomStats } from "../services/playroomService";
+import {
+  getMyPlayrooms,
+  getPlayroomStats,
+  getOwnerMonthlyAnalytics,
+} from "../services/playroomService";
 import { getReviews } from "../services/reviewService";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -24,6 +28,8 @@ const OwnerDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const { success: showSuccess, error: showError } = useToast();
   const [stats, setStats] = useState(null);
+  const [monthlyAnalytics, setMonthlyAnalytics] = useState(null);
+  const [monthlyAnalyticsLoading, setMonthlyAnalyticsLoading] = useState(false);
   const [myPlayrooms, setMyPlayrooms] = useState([]);
   const [selectedPlayroomId, setSelectedPlayroomId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -199,6 +205,32 @@ const OwnerDashboard = () => {
     }
   }, []);
 
+  const fetchMonthlyAnalytics = useCallback(
+    async (playroomId, selectedMonth) => {
+      if (!playroomId || !selectedMonth) {
+        setMonthlyAnalytics(null);
+        return;
+      }
+
+      try {
+        setMonthlyAnalyticsLoading(true);
+
+        const result = await getOwnerMonthlyAnalytics(
+          playroomId,
+          selectedMonth,
+        );
+
+        setMonthlyAnalytics(result?.success ? result.data : null);
+      } catch (err) {
+        console.error("Greška pri učitavanju mesečne analitike:", err);
+        setMonthlyAnalytics(null);
+      } finally {
+        setMonthlyAnalyticsLoading(false);
+      }
+    },
+    [],
+  );
+
   const fetchReviews = useCallback(async (playroomId) => {
     if (!playroomId) {
       setReviews([]);
@@ -269,6 +301,10 @@ const OwnerDashboard = () => {
 
     return () => clearInterval(interval);
   }, [authLoading, user?.role, selectedPlayroomId, fetchBookings, fetchStats]);
+
+  useEffect(() => {
+    fetchMonthlyAnalytics(selectedPlayroomId, monthFilter);
+  }, [selectedPlayroomId, monthFilter, fetchMonthlyAnalytics]);
 
   const handleConfirm = async (bookingId) => {
     if (!bookingId) {
@@ -546,61 +582,55 @@ const OwnerDashboard = () => {
     });
   }, [filteredBookings]);
 
+  const analyticsBookings = useMemo(
+    () => filteredBookings.filter((booking) => booking.status !== "otkazano"),
+    [filteredBookings],
+  );
+
   const timeStats = useMemo(() => {
     const map = {};
-    let total = 0;
 
-    filteredBookings.forEach((b) => {
-      if (!b.vremeOd || !b.vremeDo) return;
+    analyticsBookings.forEach((booking) => {
+      if (!booking.vremeOd || !booking.vremeDo) return;
 
-      const key = `${b.vremeOd}-${b.vremeDo}`;
+      const key = `${booking.vremeOd}-${booking.vremeDo}`;
       map[key] = (map[key] || 0) + 1;
-      total += 1;
     });
 
-    const entries = Object.entries(map);
+    const entries = Object.entries(map).sort(
+      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+    );
 
-    if (entries.length === 0) {
+    if (!entries.length) {
       return {
         mostPopular: null,
-        mostPopularPercent: null,
         leastPopular: null,
-        leastPopularPercent: null,
       };
     }
 
-    entries.sort((a, b) => b[1] - a[1]);
-
-    const mostPopular = entries[0];
-    const leastPopular = entries[entries.length - 1];
-
     return {
-      mostPopular: mostPopular[0],
-      mostPopularPercent:
-        total > 0 ? Math.round((mostPopular[1] / total) * 100) : 0,
-      leastPopular: leastPopular[0],
-      leastPopularPercent:
-        total > 0 ? Math.round((leastPopular[1] / total) * 100) : 0,
+      mostPopular: entries[0][0],
+      leastPopular: entries.length > 1 ? entries[entries.length - 1][0] : null,
     };
-  }, [filteredBookings]);
+  }, [analyticsBookings]);
 
   const dayStats = useMemo(() => {
     const map = {};
     let total = 0;
 
-    filteredBookings.forEach((b) => {
-      if (!b.datum) return;
+    analyticsBookings.forEach((booking) => {
+      if (!booking.datum) return;
 
-      const date = new Date(b.datum);
+      const date = new Date(booking.datum);
       const day = date.getDay();
 
       map[day] = (map[day] || 0) + 1;
       total += 1;
     });
 
-    const entries = Object.entries(map);
+    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
 
-    if (entries.length === 0) {
+    if (!entries.length) {
       return {
         bestDay: null,
         bestDayPercent: null,
@@ -608,8 +638,6 @@ const OwnerDashboard = () => {
         worstDayPercent: null,
       };
     }
-
-    entries.sort((a, b) => b[1] - a[1]);
 
     const bestDay = entries[0];
     const worstDay = entries[entries.length - 1];
@@ -620,120 +648,81 @@ const OwnerDashboard = () => {
       worstDay: DAY_NAMES[worstDay[0]],
       worstDayPercent: total > 0 ? Math.round((worstDay[1] / total) * 100) : 0,
     };
-  }, [filteredBookings]);
+  }, [analyticsBookings]);
 
   const packageStats = useMemo(() => {
     const map = {};
-    let totalWithPackage = 0;
 
-    filteredBookings.forEach((b) => {
-      const paket = b.izabraniPaket;
+    analyticsBookings.forEach((booking) => {
+      const paket = booking.izabraniPaket;
 
       if (!paket?.naziv) return;
 
-      totalWithPackage += 1;
       map[paket.naziv] = (map[paket.naziv] || 0) + 1;
     });
 
-    const entries = Object.entries(map);
+    const entries = Object.entries(map).sort(
+      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+    );
 
-    if (entries.length === 0) {
+    if (!entries.length) {
       return {
         mostUsed: null,
-        mostUsedPercent: null,
         leastUsed: null,
-        leastUsedPercent: null,
       };
     }
 
-    entries.sort((a, b) => b[1] - a[1]);
-
-    const mostUsed = entries[0];
-    const leastUsed = entries[entries.length - 1];
-
     return {
-      mostUsed: mostUsed[0],
-      mostUsedPercent:
-        totalWithPackage > 0
-          ? Math.round((mostUsed[1] / totalWithPackage) * 100)
-          : 0,
-      leastUsed: leastUsed[0],
-      leastUsedPercent:
-        totalWithPackage > 0
-          ? Math.round((leastUsed[1] / totalWithPackage) * 100)
-          : 0,
+      mostUsed: {
+        name: entries[0][0],
+        count: entries[0][1],
+      },
+      leastUsed: {
+        name: entries[entries.length - 1][0],
+        count: entries[entries.length - 1][1],
+      },
     };
-  }, [filteredBookings]);
+  }, [analyticsBookings]);
 
   const serviceStats = useMemo(() => {
     const map = {};
-    let totalServices = 0;
 
-    filteredBookings.forEach((b) => {
-      if (!Array.isArray(b.izabraneUsluge)) return;
+    analyticsBookings.forEach((booking) => {
+      if (!Array.isArray(booking.izabraneUsluge)) return;
 
-      b.izabraneUsluge.forEach((usluga) => {
+      booking.izabraneUsluge.forEach((usluga) => {
         if (!usluga?.naziv) return;
 
-        totalServices += 1;
         map[usluga.naziv] = (map[usluga.naziv] || 0) + 1;
       });
     });
 
-    const entries = Object.entries(map);
+    const entries = Object.entries(map).sort(
+      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+    );
 
-    if (entries.length === 0) {
+    if (!entries.length) {
       return {
         mostUsed: null,
-        mostUsedPercent: null,
         leastUsed: null,
-        leastUsedPercent: null,
       };
     }
 
-    entries.sort((a, b) => b[1] - a[1]);
-
-    const mostUsed = entries[0];
-    const leastUsed = entries[entries.length - 1];
-
     return {
-      mostUsed: mostUsed[0],
-      mostUsedPercent:
-        totalServices > 0 ? Math.round((mostUsed[1] / totalServices) * 100) : 0,
-      leastUsed: leastUsed[0],
-      leastUsedPercent:
-        totalServices > 0
-          ? Math.round((leastUsed[1] / totalServices) * 100)
-          : 0,
+      mostUsed: {
+        name: entries[0][0],
+        count: entries[0][1],
+      },
+      leastUsed: {
+        name: entries[entries.length - 1][0],
+        count: entries[entries.length - 1][1],
+      },
     };
-  }, [filteredBookings]);
+  }, [analyticsBookings]);
 
   const cancellationStats = useMemo(() => {
-    const total = filteredBookings.length;
-
-    if (total === 0) {
-      return 0;
-    }
-
-    const cancelled = filteredBookings.filter(
-      (b) => b.status === "otkazano",
-    ).length;
-
-    return Math.round((cancelled / total) * 100);
-  }, [filteredBookings]);
-
-  const occupancyStats = useMemo(() => {
-    const total = filteredBookings.length;
-
-    if (total === 0) {
-      return 0;
-    }
-
-    const occupied = filteredBookings.filter(
-      (b) => b.status === "potvrdjeno" || b.status === "zavrseno",
-    ).length;
-
-    return Math.round((occupied / total) * 100);
+    return filteredBookings.filter((booking) => booking.status === "otkazano")
+      .length;
   }, [filteredBookings]);
 
   const reviewsStats = useMemo(() => {
@@ -1550,18 +1539,18 @@ const OwnerDashboard = () => {
               <div className="stats-box">
                 <h4>🥇 Najpopularniji termin</h4>
                 <p>
-                  {timeStats.mostPopular
-                    ? `${timeStats.mostPopular} (${timeStats.mostPopularPercent}%)`
-                    : "-"}
+                  {monthFilter
+                    ? monthlyAnalytics?.mostPopularTime || "-"
+                    : timeStats.mostPopular || "-"}
                 </p>
               </div>
 
               <div className="stats-box">
                 <h4>🧊 Najslabiji termin</h4>
                 <p>
-                  {timeStats.leastPopular
-                    ? `${timeStats.leastPopular} (${timeStats.leastPopularPercent}%)`
-                    : "-"}
+                  {monthFilter
+                    ? monthlyAnalytics?.leastPopularTime || "-"
+                    : timeStats.leastPopular || "-"}
                 </p>
               </div>
 
@@ -1586,46 +1575,72 @@ const OwnerDashboard = () => {
               <div className="stats-box">
                 <h4>📦 Najprodavaniji paket</h4>
                 <p>
-                  {packageStats.mostUsed
-                    ? `${packageStats.mostUsed} (${packageStats.mostUsedPercent}%)`
-                    : "-"}
+                  {monthFilter
+                    ? monthlyAnalytics?.mostUsedPackage
+                      ? `${monthlyAnalytics.mostUsedPackage.name} (${monthlyAnalytics.mostUsedPackage.count}x)`
+                      : "-"
+                    : packageStats.mostUsed
+                      ? `${packageStats.mostUsed.name} (${packageStats.mostUsed.count}x)`
+                      : "-"}
                 </p>
               </div>
 
               <div className="stats-box">
                 <h4>📉 Najmanje korišćen paket</h4>
                 <p>
-                  {packageStats.leastUsed
-                    ? `${packageStats.leastUsed} (${packageStats.leastUsedPercent}%)`
-                    : "-"}
+                  {monthFilter
+                    ? monthlyAnalytics?.leastUsedPackage
+                      ? `${monthlyAnalytics.leastUsedPackage.name} (${monthlyAnalytics.leastUsedPackage.count}x)`
+                      : "-"
+                    : packageStats.leastUsed
+                      ? `${packageStats.leastUsed.name} (${packageStats.leastUsed.count}x)`
+                      : "-"}
                 </p>
               </div>
 
               <div className="stats-box">
                 <h4>➕ Najčešća usluga</h4>
                 <p>
-                  {serviceStats.mostUsed
-                    ? `${serviceStats.mostUsed} (${serviceStats.mostUsedPercent}%)`
-                    : "-"}
+                  {monthFilter
+                    ? monthlyAnalytics?.mostUsedService
+                      ? `${monthlyAnalytics.mostUsedService.name} (${monthlyAnalytics.mostUsedService.count}x)`
+                      : "-"
+                    : serviceStats.mostUsed
+                      ? `${serviceStats.mostUsed.name} (${serviceStats.mostUsed.count}x)`
+                      : "-"}
                 </p>
               </div>
 
               <div className="stats-box">
                 <h4>🧊 Najmanje korišćena usluga</h4>
                 <p>
-                  {serviceStats.leastUsed
-                    ? `${serviceStats.leastUsed} (${serviceStats.leastUsedPercent}%)`
-                    : "-"}
+                  {monthFilter
+                    ? monthlyAnalytics?.leastUsedService
+                      ? `${monthlyAnalytics.leastUsedService.name} (${monthlyAnalytics.leastUsedService.count}x)`
+                      : "-"
+                    : serviceStats.leastUsed
+                      ? `${serviceStats.leastUsed.name} (${serviceStats.leastUsed.count}x)`
+                      : "-"}
                 </p>
               </div>
               <div className="stats-box">
                 <h4>❌ Otkazane rezervacije</h4>
-                <p>{cancellationStats}%</p>
+                <p>
+                  {monthFilter
+                    ? (monthlyAnalytics?.cancellations ?? 0)
+                    : cancellationStats}
+                </p>
               </div>
 
               <div className="stats-box">
                 <h4>📊 Popunjenost termina</h4>
-                <p>{occupancyStats}%</p>
+                <p>
+                  {monthlyAnalyticsLoading
+                    ? "Učitavanje..."
+                    : monthFilter
+                      ? monthlyAnalytics?.occupancy?.label || "0/0"
+                      : "Izaberite mesec"}
+                </p>
               </div>
             </div>
           </div>

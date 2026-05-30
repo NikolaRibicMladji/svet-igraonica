@@ -9,6 +9,8 @@ const ErrorResponse = require("../utils/errorResponse");
 const {
   getNowInAppTimezone,
   startOfDayInAppTimezone,
+  endOfDayInAppTimezone,
+  parseDateOnlyInAppTimezone,
 } = require("../utils/dateTime");
 const {
   createPlayroomWithSlots,
@@ -28,6 +30,54 @@ const {
 
 const escapeRegex = (value = "") => {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
+
+const MONTH_REGEX = /^\d{4}-\d{2}$/;
+
+const getMonthRange = (month) => {
+  const safeMonth = String(month || "").trim();
+
+  if (!MONTH_REGEX.test(safeMonth)) {
+    throw new ErrorResponse("Mesec mora biti u formatu YYYY-MM.", 422);
+  }
+
+  const [year, monthNumber] = safeMonth.split("-").map(Number);
+
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(monthNumber) ||
+    monthNumber < 1 ||
+    monthNumber > 12
+  ) {
+    throw new ErrorResponse("Mesec nije validan.", 422);
+  }
+
+  const lastDay = new Date(year, monthNumber, 0).getDate();
+
+  const startDate = startOfDayInAppTimezone(
+    parseDateOnlyInAppTimezone(`${safeMonth}-01`),
+  );
+
+  const endDate = endOfDayInAppTimezone(
+    parseDateOnlyInAppTimezone(
+      `${safeMonth}-${String(lastDay).padStart(2, "0")}`,
+    ),
+  );
+
+  return {
+    month: safeMonth,
+    startDate,
+    endDate,
+  };
+};
+
+const toUsageStat = (entry) => {
+  if (!entry) return null;
+
+  return {
+    name: entry._id,
+    count: entry.count,
+  };
 };
 
 const normalizeRadnoVreme = (radnoVreme = {}) => {
@@ -608,14 +658,55 @@ exports.deactivatePlayroom = async (req, res, next) => {
 exports.verifyPlayroom = async (req, res, next) => {
   try {
     const { id } = req.validated.params;
+
     const result = await verifyPlayroomAndGenerateSlots(id);
+
+    const slotSync = await syncTimeSlotsWithWorkingHours(id);
+
+    if (!slotSync.success) {
+      logger.error(
+        "Greška pri sinhronizaciji termina nakon verifikacije igraonice:",
+        {
+          playroomId: id,
+          message: slotSync.message,
+        },
+      );
+    }
+
+    const updatedPlayroom = await Playroom.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          deactivatedAt: null,
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+
+    const createdCount =
+      (result.slotResult?.createdCount || 0) + (slotSync.createdCount || 0);
+
+    const slotSyncPayload = slotSync.success
+      ? slotSync
+      : {
+          ...slotSync,
+          warning:
+            slotSync.message ||
+            "Igraonica je verifikovana, ali termini nisu sinhronizovani.",
+        };
 
     return res.status(200).json({
       success: true,
-      data: result.playroom,
-      message: `Igraonica je verifikovana. ${
-        result.slotResult?.createdCount || 0
-      } termina je automatski generisano.`,
+      data: updatedPlayroom || result.playroom,
+      message: `Igraonica je verifikovana. Novo: ${createdCount}, reaktivirano: ${
+        slotSync.reactivatedCount || 0
+      }, deaktivirano: ${slotSync.deactivatedCount || 0}, konflikti: ${
+        slotSync.conflictCount || 0
+      }.`,
+      slotSync: slotSyncPayload,
     });
   } catch (error) {
     next(error);
@@ -746,6 +837,155 @@ exports.getOwnerStats = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Mesečna analitika za vlasnika/admina
+// @route   GET /api/playrooms/:id/monthly-analytics?month=YYYY-MM
+// @access  Private (vlasnik ili admin)
+exports.getOwnerMonthlyAnalytics = async (req, res, next) => {
+  try {
+    const { id: playroomId } = req.validated.params;
+    const { month } = req.query;
+
+    const playroom = await Playroom.findById(playroomId).select(
+      "_id naziv vlasnikId rezimRezervacije",
+    );
+
+    if (!playroom) {
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      throw new ErrorResponse("Nemate dozvolu za ovaj pristup", 403);
+    }
+
+    const { startDate, endDate, month: safeMonth } = getMonthRange(month);
+
+    const bookingBaseMatch = {
+      playroomId: playroom._id,
+      datum: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+    };
+
+    const activeBookingMatch = {
+      ...bookingBaseMatch,
+      status: { $ne: BOOKING_STATUS.OTKAZANO },
+    };
+
+    const [
+      totalSlots,
+      occupiedBookings,
+      canceledBookings,
+      timeStats,
+      packageStats,
+      serviceStats,
+    ] = await Promise.all([
+      TimeSlot.countDocuments({
+        playroomId: playroom._id,
+        datum: { $gte: startDate, $lte: endDate },
+        aktivno: true,
+        vanRadnogVremena: false,
+      }),
+
+      Booking.countDocuments(activeBookingMatch),
+
+      Booking.countDocuments({
+        ...bookingBaseMatch,
+        status: BOOKING_STATUS.OTKAZANO,
+      }),
+
+      Booking.aggregate([
+        { $match: activeBookingMatch },
+        {
+          $group: {
+            _id: {
+              $concat: ["$vremeOd", "-", "$vremeDo"],
+            },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { count: -1, _id: 1 } },
+      ]),
+
+      Booking.aggregate([
+        {
+          $match: {
+            ...activeBookingMatch,
+            "izabraniPaket.naziv": { $exists: true, $ne: "" },
+          },
+        },
+        {
+          $group: {
+            _id: "$izabraniPaket.naziv",
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { count: -1, _id: 1 } },
+      ]),
+
+      Booking.aggregate([
+        { $match: activeBookingMatch },
+        { $unwind: "$izabraneUsluge" },
+        {
+          $match: {
+            "izabraneUsluge.naziv": { $exists: true, $ne: "" },
+          },
+        },
+        {
+          $group: {
+            _id: "$izabraneUsluge.naziv",
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { count: -1, _id: 1 } },
+      ]),
+    ]);
+
+    const mostPopularTime = timeStats[0]?._id || null;
+    const leastPopularTime =
+      timeStats.length > 1 ? timeStats[timeStats.length - 1]._id : null;
+
+    const mostUsedPackage = toUsageStat(packageStats[0]);
+    const leastUsedPackage =
+      packageStats.length > 1
+        ? toUsageStat(packageStats[packageStats.length - 1])
+        : null;
+
+    const mostUsedService = toUsageStat(serviceStats[0]);
+    const leastUsedService =
+      serviceStats.length > 1
+        ? toUsageStat(serviceStats[serviceStats.length - 1])
+        : null;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        playroomId: playroom._id,
+        playroomName: playroom.naziv,
+        month: safeMonth,
+        occupancy: {
+          occupied: occupiedBookings,
+          total: totalSlots,
+          label: `${occupiedBookings}/${totalSlots}`,
+        },
+        cancellations: canceledBookings,
+        mostPopularTime,
+        leastPopularTime,
+        mostUsedPackage,
+        leastUsedPackage,
+        mostUsedService,
+        leastUsedService,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Dohvati gradove za filter
 // @route   GET /api/playrooms/filter-cities
 // @access  Public

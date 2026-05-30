@@ -26,6 +26,7 @@ const {
   verifyPlayroom,
   regenerateTimeSlots,
   getOwnerStats,
+  getOwnerMonthlyAnalytics,
   getFilterCities,
 } = require("../controllers/playroomController");
 
@@ -49,6 +50,15 @@ router.get(
   validate(playroomIdParamSchema),
   checkOwner,
   getOwnerStats,
+);
+
+router.get(
+  "/:id/monthly-analytics",
+  protect,
+  authorize(ROLES.VLASNIK, ROLES.ADMIN),
+  validate(playroomIdParamSchema),
+  checkOwner,
+  getOwnerMonthlyAnalytics,
 );
 
 // ⚠️ Mora posle specifičnih GET ruta

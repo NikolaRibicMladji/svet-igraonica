@@ -331,3 +331,47 @@ export const getPlayroomStats = async (playroomId) => {
     };
   }
 };
+
+const MONTH_REGEX = /^\d{4}-\d{2}$/;
+
+export const getOwnerMonthlyAnalytics = async (playroomId, month) => {
+  const safePlayroomId = normalizeId(playroomId);
+  const safeMonth = String(month || "").trim();
+
+  if (!safePlayroomId) {
+    return {
+      success: false,
+      error: "Nedostaje ID igraonice za mesečnu analitiku.",
+    };
+  }
+
+  if (!MONTH_REGEX.test(safeMonth)) {
+    return {
+      success: false,
+      error: "Izaberite validan mesec.",
+    };
+  }
+
+  try {
+    const response = await api.get(
+      `/playrooms/${encodeURIComponent(
+        safePlayroomId,
+      )}/monthly-analytics?month=${encodeURIComponent(safeMonth)}`,
+    );
+
+    return {
+      success: true,
+      data: response.data?.data || null,
+    };
+  } catch (error) {
+    console.error("Greška pri dohvatanju mesečne analitike:", error);
+
+    return {
+      success: false,
+      status: error.response?.status,
+      error:
+        error.response?.data?.message ||
+        "Greška pri dohvatanju mesečne analitike.",
+    };
+  }
+};
