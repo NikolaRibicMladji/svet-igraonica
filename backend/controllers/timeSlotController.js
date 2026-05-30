@@ -1,9 +1,10 @@
 const Playroom = require("../models/Playroom");
 const Booking = require("../models/Booking");
 const { generateTimeSlotsForPlayroom } = require("../utils/generateTimeSlots");
-
+const BOOKING_STATUS = require("../constants/bookingStatus");
 const timeSlotService = require("../services/timeSlotService");
 const mongoose = require("mongoose");
+const { queueBookingEmails } = require("../services/emailQueueService");
 const TimeSlot = require("../models/TimeSlot");
 const bookingService = require("../services/bookingService");
 const { getBlockingStatuses } = require("../services/bookingService");
@@ -112,9 +113,9 @@ exports.getTimeSlotsByPlayroom = async (req, res, next) => {
     const playroom = await Playroom.findById(playroomId).lean();
     ensurePublicPlayroom(playroom);
 
-    const startDate = startOfDayInAppTimezone(
-      parseDateOnlyInAppTimezone(datum),
-    );
+    const targetDate = bookingService.parseValidDate(datum);
+
+    const startDate = startOfDayInAppTimezone(targetDate);
     const endDate = endOfDayInAppTimezone(startDate);
 
     const now = getNowInAppTimezone();
@@ -125,8 +126,10 @@ exports.getTimeSlotsByPlayroom = async (req, res, next) => {
       aktivno: true,
       vanRadnogVremena: false,
     })
+      .select("_id datum vremeOd vremeDo cena zauzeto")
       .sort({ vremeOd: 1 })
       .lean();
+
     const isToday =
       formatInTimeZone(startDate, APP_TIMEZONE, "yyyy-MM-dd") ===
       formatInTimeZone(now, APP_TIMEZONE, "yyyy-MM-dd");
@@ -180,7 +183,11 @@ exports.getMyTimeSlots = async (req, res, next) => {
 exports.getTimeSlotById = async (req, res, next) => {
   try {
     const { id } = req.validated.params;
-    const timeSlot = await TimeSlot.findById(id).lean();
+    const timeSlot = await TimeSlot.findById(id)
+      .select(
+        "_id datum vremeOd vremeDo cena zauzeto playroomId aktivno vanRadnogVremena",
+      )
+      .lean();
 
     if (!timeSlot) {
       throw new ErrorResponse("Termin nije pronađen", 404);
@@ -193,9 +200,18 @@ exports.getTimeSlotById = async (req, res, next) => {
       throw new ErrorResponse("Termin nije pronađen", 404);
     }
 
+    const publicTimeSlot = {
+      _id: timeSlot._id,
+      datum: timeSlot.datum,
+      vremeOd: timeSlot.vremeOd,
+      vremeDo: timeSlot.vremeDo,
+      cena: timeSlot.cena,
+      zauzeto: timeSlot.zauzeto,
+    };
+
     res.status(200).json({
       success: true,
-      data: timeSlot,
+      data: publicTimeSlot,
     });
   } catch (error) {
     next(error);
@@ -779,12 +795,32 @@ exports.manualBookTimeSlot = async (req, res, next) => {
       session,
     });
 
+    const confirmedBooking = await Booking.findByIdAndUpdate(
+      booking._id,
+      {
+        $set: {
+          status: BOOKING_STATUS.POTVRDJENO,
+          potvrdjenoAt: getNowInAppTimezone(),
+          potvrdioId: req.user.id,
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+        session,
+      },
+    );
+
     await session.commitTransaction();
 
-    return res.status(200).json({
+    queueBookingEmails((confirmedBooking || booking)._id).catch(() => {});
+
+    return res.status(201).json({
       success: true,
-      data: booking,
-      message: `Termin je uspešno zauzet. Ukupno: ${booking.ukupnaCena} RSD`,
+      data: confirmedBooking || booking,
+      message: `Termin je uspešno ručno rezervisan i potvrđen. Ukupno: ${
+        (confirmedBooking || booking).ukupnaCena
+      } RSD`,
     });
   } catch (error) {
     if (session.inTransaction()) {
@@ -863,12 +899,30 @@ exports.manualBookInterval = async (req, res, next) => {
       session,
     });
 
+    const confirmedBooking = await Booking.findByIdAndUpdate(
+      booking._id,
+      {
+        $set: {
+          status: BOOKING_STATUS.POTVRDJENO,
+          potvrdjenoAt: getNowInAppTimezone(),
+          potvrdioId: req.user.id,
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+        session,
+      },
+    );
+
     await session.commitTransaction();
+
+    queueBookingEmails((confirmedBooking || booking)._id).catch(() => {});
 
     return res.status(201).json({
       success: true,
-      data: booking,
-      message: "Termin je uspešno ručno zauzet.",
+      data: confirmedBooking || booking,
+      message: "Termin je uspešno ručno rezervisan i potvrđen.",
     });
   } catch (error) {
     if (session.inTransaction()) {
