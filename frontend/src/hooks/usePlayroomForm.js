@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   deleteImage,
   deleteVideo,
+  setProfileImage,
   uploadImage,
   uploadVideo,
 } from "../services/uploadService";
@@ -822,7 +823,26 @@ export const usePlayroomForm = ({ initialData, onSubmit, ownerEmail = "" }) => {
 
       try {
         const uploaded = await uploadImage(playroomId, file);
-        setProfilnaSlika(uploaded);
+        const uploadedPublicId = getMediaPublicId(uploaded);
+
+        if (!uploadedPublicId) {
+          throw new Error("Uploadovana slika nema publicId.");
+        }
+
+        const profileResult = await setProfileImage(
+          playroomId,
+          uploadedPublicId,
+        );
+
+        setProfilnaSlika(profileResult?.profilnaSlika || uploaded);
+
+        setSlike((prev) => {
+          const exists = prev.some(
+            (img) => getMediaPublicId(img) === uploadedPublicId,
+          );
+
+          return exists ? prev : [...prev, uploaded];
+        });
       } catch (err) {
         console.error("Greška pri uploadu slike:", err);
         setError(

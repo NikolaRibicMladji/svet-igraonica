@@ -29,6 +29,18 @@ const deletePlayroomImageSchema = z.object({
   query: z.object({}).optional(),
 });
 
+const setPlayroomProfileImageSchema = z.object({
+  body: z
+    .object({
+      publicId: cloudinaryPublicId,
+    })
+    .strict(),
+  params: z.object({
+    playroomId: objectId,
+  }),
+  query: z.object({}).optional(),
+});
+
 const uploadPlayroomVideoSchema = z.object({
   body: z.object({}).optional(),
   params: z.object({
@@ -54,4 +66,5 @@ module.exports = {
   deletePlayroomImageSchema,
   uploadPlayroomVideoSchema,
   deletePlayroomVideoSchema,
+  setPlayroomProfileImageSchema,
 };

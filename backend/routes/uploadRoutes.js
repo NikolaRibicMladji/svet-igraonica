@@ -7,6 +7,7 @@ const ROLES = require("../constants/roles");
 const {
   uploadPlayroomImageSchema,
   deletePlayroomImageSchema,
+  setPlayroomProfileImageSchema,
   uploadPlayroomVideoSchema,
   deletePlayroomVideoSchema,
 } = require("../validations/uploadValidation");
@@ -15,6 +16,7 @@ const upload = require("../middleware/upload");
 const {
   uploadPlayroomImage,
   deletePlayroomImage,
+  setPlayroomProfileImage,
 } = require("../controllers/uploadController");
 
 const {
@@ -32,6 +34,13 @@ router.post(
   validate(uploadPlayroomImageSchema),
   upload.singleImage("image"),
   uploadPlayroomImage,
+);
+
+// ⭐ postavi profilnu sliku
+router.put(
+  "/playroom/:playroomId/profile-image",
+  validate(setPlayroomProfileImageSchema),
+  setPlayroomProfileImage,
 );
 
 // 🗑 brisanje slike

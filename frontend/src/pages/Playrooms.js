@@ -85,7 +85,7 @@ const Playrooms = () => {
   const observer = useRef(null);
 
   const loadPlayrooms = useCallback(async () => {
-    const shouldShowFullLoading = page === 1 && playrooms.length === 0;
+    const shouldShowFullLoading = page === 1;
 
     if (shouldShowFullLoading) {
       setLoading(true);
@@ -154,7 +154,7 @@ const Playrooms = () => {
 
       setLoadingMore(false);
     }
-  }, [filters, page, debouncedSearch, playrooms.length]);
+  }, [filters, page, debouncedSearch]);
 
   useEffect(() => {
     return () => {

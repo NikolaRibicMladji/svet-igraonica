@@ -411,16 +411,6 @@ const Book = () => {
     }
   }, [playroom?._id, selectedDate, loadTimeSlots]);
 
-  const scrollToTop = () => {
-    setTimeout(() => {
-      if (topRef.current) {
-        topRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-      } else {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-    }, 100);
-  };
-
   const isMobileViewport = () =>
     typeof window !== "undefined" &&
     window.matchMedia("(max-width: 768px)").matches;
@@ -471,14 +461,14 @@ const Book = () => {
     }, 450);
   };
 
-  const clearValidationToast = () => {
+  const clearValidationToast = useCallback(() => {
     if (validationToastIdRef.current) {
       removeToast(validationToastIdRef.current);
       validationToastIdRef.current = null;
     }
 
     setActiveValidationField("");
-  };
+  }, [removeToast]);
 
   const showScreenError = (message, ref, field = "") => {
     const safeMessage = message || "Došlo je do greške.";
@@ -632,6 +622,7 @@ const Book = () => {
     isAuthenticated,
     isOwnerBooking,
     isFiksno,
+    clearValidationToast,
   ]);
 
   const handleBookingFailure = async (failure) => {

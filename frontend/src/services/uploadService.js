@@ -150,3 +150,31 @@ export const deleteVideo = async (playroomId, publicId) => {
     data: res.data?.data || null,
   };
 };
+
+export const setProfileImage = async (playroomId, publicId) => {
+  const safePlayroomId = normalizeId(playroomId);
+  const safePublicId = String(publicId || "").trim();
+
+  if (!safePlayroomId) {
+    throw new Error("Nedostaje ID igraonice za profilnu sliku.");
+  }
+
+  if (!safePublicId) {
+    throw new Error("Nedostaje publicId profilne slike.");
+  }
+
+  const res = await api.put(
+    `/upload/playroom/${encodeURIComponent(safePlayroomId)}/profile-image`,
+    {
+      publicId: safePublicId,
+    },
+  );
+
+  const data = res.data?.data || {};
+
+  return {
+    success: Boolean(res.data?.success ?? true),
+    message: res.data?.message || "Profilna slika je ažurirana.",
+    profilnaSlika: normalizeImageItem(data.profilnaSlika || data),
+  };
+};

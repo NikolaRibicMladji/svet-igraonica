@@ -168,3 +168,56 @@ exports.deletePlayroomImage = async (req, res, next) => {
     next(error);
   }
 };
+
+// Postavi postojeću sliku iz galerije kao profilnu sliku
+exports.setPlayroomProfileImage = async (req, res, next) => {
+  try {
+    const { playroomId } = req.validated.params;
+    const { publicId } = req.validated.body;
+
+    const playroom = await Playroom.findById(playroomId);
+
+    if (!playroom) {
+      throw new ErrorResponse("Igraonica nije pronađena", 404);
+    }
+
+    if (
+      playroom.vlasnikId.toString() !== req.user.id &&
+      req.user.role !== "admin"
+    ) {
+      throw new ErrorResponse(
+        "Nemate pravo da menjate profilnu sliku za ovu igraonicu",
+        403,
+      );
+    }
+
+    if (!Array.isArray(playroom.slike) || playroom.slike.length === 0) {
+      throw new ErrorResponse("Igraonica nema slike.", 404);
+    }
+
+    const selectedImage = playroom.slike.find(
+      (image) => image.publicId === publicId,
+    );
+
+    if (!selectedImage) {
+      throw new ErrorResponse("Slika nije pronađena u galeriji.", 404);
+    }
+
+    playroom.profilnaSlika = {
+      url: selectedImage.url,
+      publicId: selectedImage.publicId,
+    };
+
+    await playroom.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Profilna slika je ažurirana.",
+      data: {
+        profilnaSlika: playroom.profilnaSlika,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
