@@ -79,14 +79,40 @@
   margin: 30px 0;
 }
 
-.search-input {
+.search-input-wrap {
+  position: relative;
   width: 100%;
   max-width: 420px;
-  padding: 14px 20px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 14px 48px 14px 20px;
   border: 2px solid #e2e8f0;
   border-radius: 40px;
   font-size: 0.95rem;
   transition: all 0.2s ease;
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.search-clear-btn:hover {
+  background: #ffebe6;
+  color: #ff6b4a;
 }
 
 .search-input:focus {
@@ -426,7 +452,8 @@
 .contact-item:focus-visible,
 .social-item:focus-visible,
 .review-count-link:focus-visible,
-.search-input:focus-visible {
+.search-input:focus-visible,
+.search-clear-btn:focus-visible {
   outline: 3px solid rgba(255, 107, 74, 0.35);
   outline-offset: 3px;
 }

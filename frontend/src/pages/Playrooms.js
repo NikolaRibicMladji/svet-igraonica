@@ -83,9 +83,11 @@ const Playrooms = () => {
   const [copiedPhoneId, setCopiedPhoneId] = useState("");
   const navigate = useNavigate();
   const observer = useRef(null);
+  const searchInputRef = useRef(null);
+  const hasLoadedOnce = useRef(false);
 
   const loadPlayrooms = useCallback(async () => {
-    const shouldShowFullLoading = page === 1;
+    const shouldShowFullLoading = page === 1 && !hasLoadedOnce.current;
 
     if (shouldShowFullLoading) {
       setLoading(true);
@@ -152,6 +154,7 @@ const Playrooms = () => {
         setLoading(false);
       }
 
+      hasLoadedOnce.current = true;
       setLoadingMore(false);
     }
   }, [filters, page, debouncedSearch]);
@@ -237,6 +240,17 @@ const Playrooms = () => {
     });
   };
 
+  const handleClearSearch = useCallback(() => {
+    if (!searchTerm) return;
+
+    setSearchTerm("");
+    setDebouncedSearch("");
+    setPlayrooms([]);
+    setPage(1);
+    setHasMore(true);
+    searchInputRef.current?.focus();
+  }, [searchTerm]);
+
   const handlePhoneClick = async (phone, playroomId) => {
     const href = getPhoneHref(phone);
 
@@ -299,21 +313,35 @@ const Playrooms = () => {
       />
 
       <div className="search-bar">
-        <input
-          id="playroom-search"
-          type="text"
-          aria-label="Pretraži igraonice"
-          placeholder="🔍 Pretraži po nazivu igraonice ili gradu..."
-          value={searchTerm}
-          onChange={(e) => {
-            const value = e.target.value;
+        <div className="search-input-wrap">
+          <input
+            ref={searchInputRef}
+            id="playroom-search"
+            type="text"
+            aria-label="Pretraži igraonice"
+            placeholder="🔍 Pretraži po nazivu igraonice ili gradu..."
+            value={searchTerm}
+            onChange={(e) => {
+              const value = e.target.value;
 
-            setSearchTerm(value);
-            setPage(1);
-            setHasMore(true);
-          }}
-          className="search-input"
-        />
+              setSearchTerm(value);
+              setPage(1);
+              setHasMore(true);
+            }}
+            className="search-input"
+          />
+
+          {searchTerm && (
+            <button
+              type="button"
+              className="search-clear-btn"
+              onClick={handleClearSearch}
+              aria-label="Obriši pretragu"
+            >
+              ×
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
