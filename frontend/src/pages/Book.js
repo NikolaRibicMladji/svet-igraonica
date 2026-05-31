@@ -411,18 +411,12 @@ const Book = () => {
     }
   }, [playroom?._id, selectedDate, loadTimeSlots]);
 
-  const isMobileViewport = () =>
-    typeof window !== "undefined" &&
-    window.matchMedia("(max-width: 768px)").matches;
-
-  const scrollToElementOnMobile = (ref, offset = 115) => {
-    if (!isMobileViewport()) return;
-
-    const target = ref?.current;
-
-    if (!target) return;
-
+  const scrollToElementAfterRender = (ref, offset = 115) => {
     setTimeout(() => {
+      const target = ref?.current;
+
+      if (!target) return;
+
       const elementTop =
         target.getBoundingClientRect().top + window.pageYOffset;
 
@@ -430,7 +424,7 @@ const Book = () => {
         top: Math.max(elementTop - offset, 0),
         behavior: "smooth",
       });
-    }, 150);
+    }, 200);
   };
 
   const scrollToField = (ref) => {
@@ -468,6 +462,15 @@ const Book = () => {
     }
 
     setActiveValidationField("");
+  }, [removeToast]);
+
+  useEffect(() => {
+    return () => {
+      if (validationToastIdRef.current) {
+        removeToast(validationToastIdRef.current);
+        validationToastIdRef.current = null;
+      }
+    };
   }, [removeToast]);
 
   const showScreenError = (message, ref, field = "") => {
@@ -657,13 +660,15 @@ const Book = () => {
       setSelectedEndTime(
         item?.vremeDo || minutesToTime(timeToMinutes(value) + trajanjeTermina),
       );
+
+      scrollToElementAfterRender(bookingDetailsRef);
       return;
     }
 
     setSelectedTimeSlotId("");
     setSelectedEndTime("");
 
-    scrollToElementOnMobile(endTimeRef);
+    scrollToElementAfterRender(endTimeRef);
   };
 
   const handleEndTimeSelect = (value) => {
@@ -676,7 +681,7 @@ const Book = () => {
 
     setSelectedEndTime(value);
 
-    scrollToElementOnMobile(bookingDetailsRef);
+    scrollToElementAfterRender(bookingDetailsRef);
   };
 
   const handleDateChange = (value) => {

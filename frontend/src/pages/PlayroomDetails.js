@@ -69,6 +69,12 @@ const DAY_LABELS = {
   nedelja: "Nedelja",
 };
 
+const isPaidPrice = (item) => {
+  const value = Number(item?.cena);
+
+  return Number.isFinite(value) && value > 0;
+};
+
 const PlayroomDetails = () => {
   const { id } = useParams();
 
@@ -178,13 +184,18 @@ const PlayroomDetails = () => {
 
   const cene = Array.isArray(playroom.cene) ? playroom.cene : [];
 
-  const cenaDete = cene.find((c) => normalizeText(c.naziv) === "dete");
+  const cenaDete = cene.find(
+    (c) => normalizeText(c.naziv) === "dete" && isPaidPrice(c),
+  );
 
-  const cenaRoditelj = cene.find((c) => normalizeText(c.naziv) === "roditelj");
+  const cenaRoditelj = cene.find(
+    (c) => normalizeText(c.naziv) === "roditelj" && isPaidPrice(c),
+  );
 
   const ostaleCene = cene.filter((c) => {
     const naziv = normalizeText(c.naziv);
-    return naziv !== "dete" && naziv !== "roditelj";
+
+    return naziv !== "dete" && naziv !== "roditelj" && isPaidPrice(c);
   });
 
   const instagramUrl = getSafeExternalUrl(playroom.drustveneMreze?.instagram);
@@ -533,7 +544,7 @@ const PlayroomDetails = () => {
               <div className="price-group">
                 <h3>💰 Cene</h3>
 
-                {cenaDete ? (
+                {cenaDete && (
                   <div className="price-item">
                     <span>Deca:</span>
                     <strong>{cenaDete.cena} RSD</strong>
@@ -546,14 +557,9 @@ const PlayroomDetails = () => {
                       <span className="price-desc">({cenaDete.opis})</span>
                     )}
                   </div>
-                ) : (
-                  <div className="price-item">
-                    <span>Deca:</span>
-                    <strong>besplatno</strong>
-                  </div>
                 )}
 
-                {cenaRoditelj ? (
+                {cenaRoditelj && (
                   <div className="price-item">
                     <span>Roditelji:</span>
                     <strong>{cenaRoditelj.cena} RSD</strong>
@@ -565,11 +571,6 @@ const PlayroomDetails = () => {
                     {cenaRoditelj.opis && (
                       <span className="price-desc">({cenaRoditelj.opis})</span>
                     )}
-                  </div>
-                ) : (
-                  <div className="price-item">
-                    <span>Roditelji:</span>
-                    <strong>besplatno</strong>
                   </div>
                 )}
 
