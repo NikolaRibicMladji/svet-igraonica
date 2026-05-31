@@ -750,6 +750,7 @@ export const createGuestBooking = async (data) => {
       telefon: normalizeText(data.telefon, 30),
       password: String(data.password || ""),
       confirmPassword: String(data.confirmPassword || ""),
+      acceptedTerms: data.acceptedTerms === true,
     };
 
     const response = await api.post("/bookings/guest", payload);
@@ -778,6 +779,7 @@ export const submitBooking = async ({
   bookingPayload,
   password = "",
   confirmPassword = "",
+  acceptedTerms = false,
 }) => {
   if (isAuthenticated) {
     return createBooking(bookingPayload);
@@ -787,9 +789,9 @@ export const submitBooking = async ({
     ...bookingPayload,
     password,
     confirmPassword,
+    acceptedTerms,
   });
 };
-
 export const getAvailableTimeSlots = async (playroomId, datum = null) => {
   const safePlayroomId = normalizeId(playroomId);
 

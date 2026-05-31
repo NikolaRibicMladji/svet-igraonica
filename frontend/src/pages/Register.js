@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import "../styles/global.css";
@@ -25,6 +25,14 @@ const Register = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const imeRef = useRef(null);
+  const prezimeRef = useRef(null);
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+  const confirmPasswordRef = useRef(null);
+  const telefonRef = useRef(null);
+  const roleRef = useRef(null);
+  const acceptedTermsRef = useRef(null);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -68,6 +76,38 @@ const Register = () => {
         {errors[field]}
       </div>
     ) : null;
+
+  const scrollToFirstError = (field) => {
+    const refs = {
+      ime: imeRef,
+      prezime: prezimeRef,
+      email: emailRef,
+      password: passwordRef,
+      confirmPassword: confirmPasswordRef,
+      telefon: telefonRef,
+      role: roleRef,
+      acceptedTerms: acceptedTermsRef,
+    };
+
+    const target = refs[field]?.current;
+
+    if (!target) return;
+
+    const elementTop = target.getBoundingClientRect().top + window.pageYOffset;
+
+    window.scrollTo({
+      top: Math.max(elementTop - 130, 0),
+      behavior: "smooth",
+    });
+
+    setTimeout(() => {
+      const focusable = target.querySelector(
+        "input, select, textarea, button:not([disabled])",
+      );
+
+      focusable?.focus({ preventScroll: true });
+    }, 450);
+  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -123,7 +163,15 @@ const Register = () => {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+
+    const firstErrorField = Object.keys(newErrors)[0];
+
+    if (firstErrorField) {
+      scrollToFirstError(firstErrorField);
+      return false;
+    }
+
+    return true;
   };
 
   const handleChange = (e) => {
@@ -257,7 +305,7 @@ const Register = () => {
         )}
 
         <form onSubmit={handleSubmit} noValidate>
-          <div className="form-group">
+          <div className="form-group" ref={imeRef}>
             <label htmlFor="register-ime">Ime</label>
             <input
               id="register-ime"
@@ -275,7 +323,7 @@ const Register = () => {
             {renderFieldError("ime")}
           </div>
 
-          <div className="form-group">
+          <div className="form-group" ref={prezimeRef}>
             <label htmlFor="register-prezime">Prezime</label>
             <input
               id="register-prezime"
@@ -295,7 +343,7 @@ const Register = () => {
             {renderFieldError("prezime")}
           </div>
 
-          <div className="form-group">
+          <div className="form-group" ref={emailRef}>
             <label htmlFor="register-email">Email</label>
             <input
               id="register-email"
@@ -314,7 +362,7 @@ const Register = () => {
             {renderFieldError("email")}
           </div>
 
-          <div className="form-group">
+          <div className="form-group" ref={passwordRef}>
             <label htmlFor="register-password">Lozinka</label>
             <div className="password-input-wrapper">
               <input
@@ -346,7 +394,7 @@ const Register = () => {
             {renderFieldError("password")}
           </div>
 
-          <div className="form-group">
+          <div className="form-group" ref={confirmPasswordRef}>
             <label htmlFor="register-confirm-password">Potvrdite lozinku</label>
             <div className="password-input-wrapper">
               <input
@@ -383,7 +431,7 @@ const Register = () => {
             {renderFieldError("confirmPassword")}
           </div>
 
-          <div className="form-group">
+          <div className="form-group" ref={telefonRef}>
             <label htmlFor="register-telefon">Telefon</label>
             <input
               id="register-telefon"
@@ -403,7 +451,7 @@ const Register = () => {
             {renderFieldError("telefon")}
           </div>
 
-          <div className="form-group">
+          <div className="form-group" ref={roleRef}>
             <label htmlFor="register-role">Tip korisnika</label>
             <select
               id="register-role"
@@ -423,7 +471,7 @@ const Register = () => {
             </select>
             {renderFieldError("role")}
           </div>
-          <div className="form-group terms-checkbox">
+          <div className="form-group terms-checkbox" ref={acceptedTermsRef}>
             <label className="terms-checkbox-label">
               <span>
                 Prihvatam{" "}
@@ -484,10 +532,17 @@ const Register = () => {
           <button
             type="submit"
             className="btn btn-primary"
-            disabled={submitting || !acceptedTerms}
+            disabled={submitting}
             aria-busy={submitting}
           >
-            {submitting ? "Registrujem..." : "Registruj se"}
+            {submitting ? (
+              <>
+                <span className="btn-spinner" aria-hidden="true" />
+                <span>Registracija u toku...</span>
+              </>
+            ) : (
+              "Registruj se"
+            )}
           </button>
         </form>
 
