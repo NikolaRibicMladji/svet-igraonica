@@ -3,7 +3,6 @@ const ROLES = require("../constants/roles");
 
 const TARGET_ROLES = Object.freeze({
   SVI: "svi",
-  ADMIN: ROLES.ADMIN,
   VLASNIK: ROLES.VLASNIK,
   RODITELJ: ROLES.RODITELJ,
 });

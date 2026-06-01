@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
@@ -9,6 +9,13 @@ import {
   validateChangePasswordForm,
   validateDeleteAccountForm,
 } from "../utils/accountValidationUtils";
+import {
+  createAdminNotification,
+  getMyNotifications,
+  getUnreadNotificationCount,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+} from "../services/notificationService";
 
 const getRoleLabel = (role = "") => {
   const normalizedRole = String(role || "").toLowerCase();
@@ -24,6 +31,26 @@ const formatAccountValue = (value) => {
   const safeValue = String(value || "").trim();
 
   return safeValue || "-";
+};
+
+const getNotificationPriorityLabel = (priority = "") => {
+  if (priority === "hitno") return "Hitno";
+  if (priority === "vazno") return "Važno";
+  return "Info";
+};
+
+const formatNotificationDate = (value) => {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return date.toLocaleDateString("sr-RS", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 };
 
 const Navbar = () => {
@@ -45,6 +72,21 @@ const Navbar = () => {
   const [loggingOut, setLoggingOut] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const accountDropdownRef = useRef(null);
+  const notificationsDropdownRef = useRef(null);
+
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [markingNotificationId, setMarkingNotificationId] = useState("");
+  const [markingAllNotifications, setMarkingAllNotifications] = useState(false);
+  const [notificationForm, setNotificationForm] = useState({
+    title: "",
+    message: "",
+    targetRole: "vlasnik",
+    priority: "info",
+  });
   const [showPasswordFields, setShowPasswordFields] = useState({
     currentPassword: false,
     newPassword: false,
@@ -83,6 +125,97 @@ const Navbar = () => {
     }));
   };
 
+  const loadUnreadCount = useCallback(async () => {
+    if (!isAuthenticated) {
+      setUnreadCount(0);
+      return;
+    }
+
+    const result = await getUnreadNotificationCount();
+
+    if (result?.success) {
+      setUnreadCount(result.unreadCount || 0);
+    }
+  }, [isAuthenticated]);
+
+  const loadNotifications = useCallback(async () => {
+    if (!isAuthenticated) {
+      setNotifications([]);
+      return;
+    }
+
+    setNotificationsLoading(true);
+    setNotificationsError("");
+
+    const result = await getMyNotifications({
+      page: 1,
+      limit: 5,
+    });
+
+    if (result?.success) {
+      setNotifications(Array.isArray(result.data) ? result.data : []);
+    } else {
+      setNotifications([]);
+      setNotificationsError(
+        result?.error || "Greška pri učitavanju obaveštenja.",
+      );
+    }
+
+    setNotificationsLoading(false);
+  }, [isAuthenticated]);
+
+  const toggleNotifications = async () => {
+    setNotificationsOpen((prev) => !prev);
+    setAccountOpen(false);
+
+    if (!notificationsOpen) {
+      await Promise.all([loadNotifications(), loadUnreadCount()]);
+    }
+  };
+
+  const handleMarkNotificationAsRead = async (notificationId) => {
+    if (!notificationId || markingNotificationId) return;
+
+    setMarkingNotificationId(notificationId);
+
+    const result = await markNotificationAsRead(notificationId);
+
+    if (result?.success) {
+      setNotifications((prev) =>
+        prev.map((notification) =>
+          notification._id === notificationId
+            ? { ...notification, read: true }
+            : notification,
+        ),
+      );
+
+      await loadUnreadCount();
+    }
+
+    setMarkingNotificationId("");
+  };
+
+  const handleMarkAllNotificationsAsRead = async () => {
+    if (markingAllNotifications) return;
+
+    setMarkingAllNotifications(true);
+
+    const result = await markAllNotificationsAsRead();
+
+    if (result?.success) {
+      setNotifications((prev) =>
+        prev.map((notification) => ({
+          ...notification,
+          read: true,
+        })),
+      );
+
+      setUnreadCount(0);
+    }
+
+    setMarkingAllNotifications(false);
+  };
+
   const openAccountModal = (modalName) => {
     setActiveModal(modalName);
     setAccountOpen(false);
@@ -108,6 +241,12 @@ const Navbar = () => {
     });
     setDeleteForm({
       currentPassword: "",
+    });
+    setNotificationForm({
+      title: "",
+      message: "",
+      targetRole: "vlasnik",
+      priority: "info",
     });
     setShowPasswordFields({
       currentPassword: false,
@@ -143,6 +282,7 @@ const Navbar = () => {
       setLogoutConfirmOpen(false);
       navigate("/login", { replace: true });
       closeMenu();
+      setNotificationsOpen(false);
     }
   };
 
@@ -154,12 +294,30 @@ const Navbar = () => {
   }, [menuOpen]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setNotificationsOpen(false);
+      return;
+    }
+
+    loadUnreadCount();
+  }, [isAuthenticated, user?._id, loadUnreadCount]);
+
+  useEffect(() => {
     const handleClickOutside = (event) => {
       if (
         accountDropdownRef.current &&
         !accountDropdownRef.current.contains(event.target)
       ) {
         setAccountOpen(false);
+      }
+
+      if (
+        notificationsDropdownRef.current &&
+        !notificationsDropdownRef.current.contains(event.target)
+      ) {
+        setNotificationsOpen(false);
       }
     };
 
@@ -254,6 +412,109 @@ const Navbar = () => {
               <>
                 {renderAuthenticatedLinks()}
 
+                {user?.role !== "admin" && (
+                  <div
+                    className="navbar-notifications"
+                    ref={notificationsDropdownRef}
+                  >
+                    <button
+                      type="button"
+                      className="notification-bell-btn"
+                      onClick={toggleNotifications}
+                      aria-expanded={notificationsOpen}
+                      aria-controls="notifications-dropdown"
+                      aria-label={`Obaveštenja${unreadCount > 0 ? `, nepročitano ${unreadCount}` : ""}`}
+                    >
+                      🔔
+                      {unreadCount > 0 && (
+                        <span className="notification-badge">
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
+                      )}
+                    </button>
+
+                    {notificationsOpen && (
+                      <div
+                        id="notifications-dropdown"
+                        className="notifications-dropdown"
+                      >
+                        <div className="notifications-dropdown-header">
+                          <strong>Obaveštenja</strong>
+
+                          {unreadCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleMarkAllNotificationsAsRead}
+                              disabled={markingAllNotifications}
+                            >
+                              {markingAllNotifications
+                                ? "Čuvam..."
+                                : "Označi sve"}
+                            </button>
+                          )}
+                        </div>
+
+                        {notificationsLoading ? (
+                          <p className="notifications-state">Učitavanje...</p>
+                        ) : notificationsError ? (
+                          <p className="notifications-error">
+                            {notificationsError}
+                          </p>
+                        ) : notifications.length === 0 ? (
+                          <p className="notifications-state">
+                            Nema obaveštenja.
+                          </p>
+                        ) : (
+                          <div className="notifications-list">
+                            {notifications.map((notification) => (
+                              <div
+                                key={notification._id}
+                                className={`notification-item ${
+                                  notification.read ? "read" : "unread"
+                                } priority-${notification.priority || "info"}`}
+                              >
+                                <div className="notification-item-top">
+                                  <span>
+                                    {getNotificationPriorityLabel(
+                                      notification.priority,
+                                    )}
+                                  </span>
+                                  <small>
+                                    {formatNotificationDate(
+                                      notification.publishedAt,
+                                    )}
+                                  </small>
+                                </div>
+
+                                <h4>{notification.title}</h4>
+                                <p>{notification.message}</p>
+
+                                {!notification.read && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleMarkNotificationAsRead(
+                                        notification._id,
+                                      )
+                                    }
+                                    disabled={
+                                      markingNotificationId === notification._id
+                                    }
+                                  >
+                                    {markingNotificationId === notification._id
+                                      ? "Čuvam..."
+                                      : "Označi kao pročitano"}
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="navbar-user" ref={accountDropdownRef}>
                   <button
                     type="button"
@@ -277,6 +538,15 @@ const Navbar = () => {
                       >
                         👤 Lični podaci
                       </button>
+
+                      {user?.role === "admin" && (
+                        <button
+                          type="button"
+                          onClick={() => openAccountModal("notifications")}
+                        >
+                          🔔 Notifikacije
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -370,11 +640,13 @@ const Navbar = () => {
             aria-label={
               activeModal === "profile"
                 ? "Lični podaci"
-                : activeModal === "password"
-                  ? "Promena lozinke"
-                  : activeModal === "email"
-                    ? "Promena emaila"
-                    : "Brisanje profila"
+                : activeModal === "notifications"
+                  ? "Slanje notifikacije"
+                  : activeModal === "password"
+                    ? "Promena lozinke"
+                    : activeModal === "email"
+                      ? "Promena emaila"
+                      : "Brisanje profila"
             }
           >
             <button
@@ -426,6 +698,139 @@ const Navbar = () => {
                 >
                   Zatvori
                 </button>
+              </>
+            )}
+
+            {/* ADMIN NOTIFIKACIJE */}
+            {activeModal === "notifications" && user?.role === "admin" && (
+              <>
+                <h2>Slanje notifikacije</h2>
+
+                <form
+                  className="account-form"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (submitting) return;
+
+                    setFormError("");
+
+                    const title = notificationForm.title.trim();
+                    const message = notificationForm.message.trim();
+
+                    if (title.length < 3) {
+                      setFormError("Naslov mora imati najmanje 3 karaktera.");
+                      return;
+                    }
+
+                    if (message.length < 5) {
+                      setFormError(
+                        "Tekst obaveštenja mora imati najmanje 5 karaktera.",
+                      );
+                      return;
+                    }
+
+                    setSubmitting(true);
+
+                    const result = await createAdminNotification({
+                      title,
+                      message,
+                      targetRole: notificationForm.targetRole,
+                      priority: notificationForm.priority,
+                    });
+
+                    setSubmitting(false);
+
+                    if (result?.success) {
+                      showToast("Notifikacija je uspešno poslata.", "success");
+
+                      setNotificationForm({
+                        title: "",
+                        message: "",
+                        targetRole: "vlasnik",
+                        priority: "info",
+                      });
+
+                      setTimeout(() => {
+                        closeAccountModal();
+                      }, 800);
+                    } else {
+                      setFormError(
+                        result?.error || "Slanje notifikacije nije uspelo.",
+                      );
+                    }
+                  }}
+                >
+                  <input
+                    type="text"
+                    placeholder="Naslov obaveštenja"
+                    value={notificationForm.title}
+                    maxLength={120}
+                    onChange={(e) =>
+                      setNotificationForm((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+
+                  <textarea
+                    className="account-notification-textarea"
+                    placeholder="Tekst obaveštenja"
+                    value={notificationForm.message}
+                    maxLength={3000}
+                    rows="6"
+                    onChange={(e) =>
+                      setNotificationForm((prev) => ({
+                        ...prev,
+                        message: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+
+                  <select
+                    value={notificationForm.targetRole}
+                    onChange={(e) =>
+                      setNotificationForm((prev) => ({
+                        ...prev,
+                        targetRole: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="vlasnik">Svi vlasnici</option>
+                    <option value="roditelj">Svi roditelji</option>
+                    <option value="svi">Vlasnici i roditelji</option>
+                  </select>
+
+                  <select
+                    value={notificationForm.priority}
+                    onChange={(e) =>
+                      setNotificationForm((prev) => ({
+                        ...prev,
+                        priority: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="info">Info</option>
+                    <option value="vazno">Važno</option>
+                    <option value="hitno">Hitno</option>
+                  </select>
+
+                  {formError && (
+                    <div className="account-error" role="alert">
+                      {formError}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className={`account-submit-btn ${submitting ? "loading" : ""}`}
+                    disabled={submitting}
+                  >
+                    {submitting ? "Šaljem..." : "Pošalji notifikaciju"}
+                  </button>
+                </form>
               </>
             )}
 

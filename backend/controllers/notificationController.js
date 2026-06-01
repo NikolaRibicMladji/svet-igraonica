@@ -3,15 +3,20 @@ const NotificationRead = require("../models/NotificationRead");
 const ErrorResponse = require("../utils/errorResponse");
 const { getNowInAppTimezone } = require("../utils/dateTime");
 
-const buildUserNotificationFilter = (
-  userRole,
-  now = getNowInAppTimezone(),
-) => ({
-  active: true,
-  publishedAt: { $lte: now },
-  $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
-  targetRole: { $in: ["svi", userRole] },
-});
+const buildUserNotificationFilter = (userRole, now = getNowInAppTimezone()) => {
+  if (userRole === "admin") {
+    return {
+      _id: { $exists: false },
+    };
+  }
+
+  return {
+    active: true,
+    publishedAt: { $lte: now },
+    $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+    targetRole: { $in: ["svi", userRole] },
+  };
+};
 
 const getReadNotificationIds = async (userId) => {
   return NotificationRead.find({ userId }).distinct("notificationId");

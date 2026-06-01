@@ -3,10 +3,10 @@ const ROLES = require("../constants/roles");
 const objectIdSchema = z.string().regex(/^[a-f\d]{24}$/i, "ID nije validan");
 
 const notificationTargetRoleSchema = z.enum(
-  ["svi", ROLES.ADMIN, ROLES.VLASNIK, ROLES.RODITELJ],
+  ["svi", ROLES.VLASNIK, ROLES.RODITELJ],
   {
     errorMap: () => ({
-      message: "Primaoci mogu biti: svi, admin, vlasnik ili roditelj",
+      message: "Primaoci mogu biti: svi, vlasnik ili roditelj",
     }),
   },
 );
