@@ -14,7 +14,7 @@ import {
   getMyNotifications,
   getUnreadNotificationCount,
   markAllNotificationsAsRead,
-  markNotificationAsRead,
+  searchAdminPlayroomsForNotifications,
 } from "../services/notificationService";
 
 const getRoleLabel = (role = "") => {
@@ -73,20 +73,27 @@ const Navbar = () => {
   const [submitting, setSubmitting] = useState(false);
   const accountDropdownRef = useRef(null);
   const notificationsDropdownRef = useRef(null);
-
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
-  const [markingNotificationId, setMarkingNotificationId] = useState("");
   const [markingAllNotifications, setMarkingAllNotifications] = useState(false);
   const [notificationForm, setNotificationForm] = useState({
     title: "",
     message: "",
+    targetType: "role",
     targetRole: "vlasnik",
+    targetPlayroomId: "",
     priority: "info",
   });
+
+  const [playroomSearch, setPlayroomSearch] = useState("");
+  const [playroomResults, setPlayroomResults] = useState([]);
+  const [selectedNotificationPlayroom, setSelectedNotificationPlayroom] =
+    useState(null);
+  const [playroomSearchLoading, setPlayroomSearchLoading] = useState(false);
+
   const [showPasswordFields, setShowPasswordFields] = useState({
     currentPassword: false,
     newPassword: false,
@@ -165,55 +172,38 @@ const Navbar = () => {
   }, [isAuthenticated]);
 
   const toggleNotifications = async () => {
-    setNotificationsOpen((prev) => !prev);
+    const shouldOpen = !notificationsOpen;
+
+    setNotificationsOpen(shouldOpen);
     setAccountOpen(false);
 
-    if (!notificationsOpen) {
-      await Promise.all([loadNotifications(), loadUnreadCount()]);
-    }
-  };
+    if (!shouldOpen) return;
 
-  const handleMarkNotificationAsRead = async (notificationId) => {
-    if (!notificationId || markingNotificationId) return;
+    await loadNotifications();
 
-    setMarkingNotificationId(notificationId);
+    if (unreadCount > 0 && !markingAllNotifications) {
+      setMarkingAllNotifications(true);
 
-    const result = await markNotificationAsRead(notificationId);
+      const result = await markAllNotificationsAsRead();
 
-    if (result?.success) {
-      setNotifications((prev) =>
-        prev.map((notification) =>
-          notification._id === notificationId
-            ? { ...notification, read: true }
-            : notification,
-        ),
-      );
+      if (result?.success) {
+        setUnreadCount(0);
 
-      await loadUnreadCount();
-    }
+        setNotifications((prev) =>
+          prev.map((notification) => ({
+            ...notification,
+            read: true,
+          })),
+        );
+      } else {
+        await loadUnreadCount();
+      }
 
-    setMarkingNotificationId("");
-  };
-
-  const handleMarkAllNotificationsAsRead = async () => {
-    if (markingAllNotifications) return;
-
-    setMarkingAllNotifications(true);
-
-    const result = await markAllNotificationsAsRead();
-
-    if (result?.success) {
-      setNotifications((prev) =>
-        prev.map((notification) => ({
-          ...notification,
-          read: true,
-        })),
-      );
-
-      setUnreadCount(0);
+      setMarkingAllNotifications(false);
+      return;
     }
 
-    setMarkingAllNotifications(false);
+    await loadUnreadCount();
   };
 
   const openAccountModal = (modalName) => {
@@ -245,9 +235,15 @@ const Navbar = () => {
     setNotificationForm({
       title: "",
       message: "",
+      targetType: "role",
       targetRole: "vlasnik",
+      targetPlayroomId: "",
       priority: "info",
     });
+    setPlayroomSearch("");
+    setPlayroomResults([]);
+    setSelectedNotificationPlayroom(null);
+    setPlayroomSearchLoading(false);
     setShowPasswordFields({
       currentPassword: false,
       newPassword: false,
@@ -303,6 +299,60 @@ const Navbar = () => {
 
     loadUnreadCount();
   }, [isAuthenticated, user?._id, loadUnreadCount]);
+
+  useEffect(() => {
+    if (
+      activeModal !== "notifications" ||
+      user?.role !== "admin" ||
+      notificationForm.targetType !== "playroom"
+    ) {
+      setPlayroomResults([]);
+      setPlayroomSearchLoading(false);
+      return;
+    }
+
+    const safeSearch = playroomSearch.trim();
+
+    if (safeSearch.length < 2) {
+      setPlayroomResults([]);
+      setPlayroomSearchLoading(false);
+      return;
+    }
+
+    if (
+      selectedNotificationPlayroom &&
+      safeSearch ===
+        `${selectedNotificationPlayroom.naziv} · ${selectedNotificationPlayroom.grad}`
+    ) {
+      setPlayroomResults([]);
+      setPlayroomSearchLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const timeoutId = setTimeout(async () => {
+      setPlayroomSearchLoading(true);
+
+      const result = await searchAdminPlayroomsForNotifications(safeSearch, 10);
+
+      if (!cancelled) {
+        setPlayroomResults(result?.success ? result.data || [] : []);
+        setPlayroomSearchLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [
+    activeModal,
+    user?.role,
+    notificationForm.targetType,
+    playroomSearch,
+    selectedNotificationPlayroom,
+  ]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -440,18 +490,6 @@ const Navbar = () => {
                       >
                         <div className="notifications-dropdown-header">
                           <strong>Obaveštenja</strong>
-
-                          {unreadCount > 0 && (
-                            <button
-                              type="button"
-                              onClick={handleMarkAllNotificationsAsRead}
-                              disabled={markingAllNotifications}
-                            >
-                              {markingAllNotifications
-                                ? "Čuvam..."
-                                : "Označi sve"}
-                            </button>
-                          )}
                         </div>
 
                         {notificationsLoading ? (
@@ -488,24 +526,6 @@ const Navbar = () => {
 
                                 <h4>{notification.title}</h4>
                                 <p>{notification.message}</p>
-
-                                {!notification.read && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      handleMarkNotificationAsRead(
-                                        notification._id,
-                                      )
-                                    }
-                                    disabled={
-                                      markingNotificationId === notification._id
-                                    }
-                                  >
-                                    {markingNotificationId === notification._id
-                                      ? "Čuvam..."
-                                      : "Označi kao pročitano"}
-                                  </button>
-                                )}
                               </div>
                             ))}
                           </div>
@@ -729,12 +749,22 @@ const Navbar = () => {
                       return;
                     }
 
+                    if (
+                      notificationForm.targetType === "playroom" &&
+                      !notificationForm.targetPlayroomId
+                    ) {
+                      setFormError("Izaberite konkretnu igraonicu.");
+                      return;
+                    }
+
                     setSubmitting(true);
 
                     const result = await createAdminNotification({
                       title,
                       message,
+                      targetType: notificationForm.targetType,
                       targetRole: notificationForm.targetRole,
+                      targetPlayroomId: notificationForm.targetPlayroomId,
                       priority: notificationForm.priority,
                     });
 
@@ -746,9 +776,14 @@ const Navbar = () => {
                       setNotificationForm({
                         title: "",
                         message: "",
+                        targetType: "role",
                         targetRole: "vlasnik",
+                        targetPlayroomId: "",
                         priority: "info",
                       });
+                      setPlayroomSearch("");
+                      setPlayroomResults([]);
+                      setSelectedNotificationPlayroom(null);
 
                       setTimeout(() => {
                         closeAccountModal();
@@ -790,18 +825,117 @@ const Navbar = () => {
                   />
 
                   <select
-                    value={notificationForm.targetRole}
-                    onChange={(e) =>
+                    value={
+                      notificationForm.targetType === "playroom"
+                        ? "playroom"
+                        : notificationForm.targetRole
+                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+
+                      if (value === "playroom") {
+                        setNotificationForm((prev) => ({
+                          ...prev,
+                          targetType: "playroom",
+                          targetRole: "vlasnik",
+                          targetPlayroomId: "",
+                        }));
+                        setPlayroomSearch("");
+                        setPlayroomResults([]);
+                        setSelectedNotificationPlayroom(null);
+                        return;
+                      }
+
                       setNotificationForm((prev) => ({
                         ...prev,
-                        targetRole: e.target.value,
-                      }))
-                    }
+                        targetType: "role",
+                        targetRole: value,
+                        targetPlayroomId: "",
+                      }));
+                      setPlayroomSearch("");
+                      setPlayroomResults([]);
+                      setSelectedNotificationPlayroom(null);
+                    }}
                   >
                     <option value="vlasnik">Svi vlasnici</option>
                     <option value="roditelj">Svi roditelji</option>
                     <option value="svi">Vlasnici i roditelji</option>
+                    <option value="playroom">Igraonica</option>
                   </select>
+
+                  {notificationForm.targetType === "playroom" && (
+                    <div className="account-playroom-search-box">
+                      <input
+                        type="text"
+                        placeholder="Pretraži igraonicu po nazivu, gradu ili adresi"
+                        value={playroomSearch}
+                        onChange={(e) => {
+                          setPlayroomSearch(e.target.value);
+                          setNotificationForm((prev) => ({
+                            ...prev,
+                            targetPlayroomId: "",
+                          }));
+                          setSelectedNotificationPlayroom(null);
+                        }}
+                      />
+
+                      {playroomSearch.trim().length > 0 &&
+                        playroomSearch.trim().length < 2 && (
+                          <p className="account-field-hint">
+                            Unesite najmanje 2 karaktera za pretragu.
+                          </p>
+                        )}
+
+                      {playroomSearchLoading && (
+                        <p className="account-field-hint">
+                          Pretražujem igraonice...
+                        </p>
+                      )}
+
+                      {selectedNotificationPlayroom && (
+                        <div className="selected-playroom-notification">
+                          Izabrano:{" "}
+                          <strong>
+                            {selectedNotificationPlayroom.naziv} ·{" "}
+                            {selectedNotificationPlayroom.grad}
+                          </strong>
+                        </div>
+                      )}
+
+                      {playroomResults.length > 0 && (
+                        <div className="playroom-search-results">
+                          {playroomResults.map((playroom) => (
+                            <button
+                              type="button"
+                              key={playroom._id}
+                              className="playroom-search-result"
+                              onClick={() => {
+                                setNotificationForm((prev) => ({
+                                  ...prev,
+                                  targetPlayroomId: playroom._id,
+                                }));
+                                setSelectedNotificationPlayroom(playroom);
+                                setPlayroomResults([]);
+                                setPlayroomSearch(
+                                  `${playroom.naziv} · ${playroom.grad}`,
+                                );
+                              }}
+                            >
+                              <strong>{playroom.naziv}</strong>
+                              <span>
+                                {playroom.grad || "-"} ·{" "}
+                                {playroom.adresa || "-"}
+                              </span>
+                              <small>
+                                Vlasnik: {playroom.vlasnikId?.ime || "-"}{" "}
+                                {playroom.vlasnikId?.prezime || ""}
+                              </small>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <select
                     value={notificationForm.priority}

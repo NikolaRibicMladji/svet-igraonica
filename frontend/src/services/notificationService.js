@@ -177,19 +177,80 @@ export const getAdminNotifications = async ({
   }
 };
 
+export const searchAdminPlayroomsForNotifications = async (
+  searchTerm,
+  limit = 10,
+) => {
+  const safeSearchTerm = String(searchTerm || "").trim();
+
+  if (safeSearchTerm.length < 2) {
+    return {
+      success: true,
+      data: [],
+      count: 0,
+    };
+  }
+
+  try {
+    const query = new URLSearchParams({
+      q: safeSearchTerm,
+      limit: String(normalizeLimit(limit)),
+    });
+
+    const response = await api.get(
+      `/admin/playrooms/search?${query.toString()}`,
+    );
+
+    return {
+      success: true,
+      data: Array.isArray(response.data?.data) ? response.data.data : [],
+      count: response.data?.count || 0,
+    };
+  } catch (error) {
+    console.error("Greška pri pretrazi igraonica za notifikacije:", error);
+
+    return {
+      success: false,
+      status: error.response?.status,
+      data: [],
+      count: 0,
+      error: getErrorMessage(error, "Greška pri pretrazi igraonica."),
+    };
+  }
+};
+
 export const createAdminNotification = async ({
   title,
   message,
-  targetRole,
+  targetType = "role",
+  targetRole = "",
+  targetPlayroomId = "",
   priority = "info",
   expiresAt = null,
 }) => {
+  const safeTargetType = targetType === "playroom" ? "playroom" : "role";
+
   const payload = {
     title: String(title || "").trim(),
     message: String(message || "").trim(),
-    targetRole,
+    targetType: safeTargetType,
     priority,
   };
+
+  if (safeTargetType === "playroom") {
+    const safePlayroomId = normalizeId(targetPlayroomId);
+
+    if (!safePlayroomId) {
+      return {
+        success: false,
+        error: "Izaberite igraonicu za slanje notifikacije.",
+      };
+    }
+
+    payload.targetPlayroomId = safePlayroomId;
+  } else {
+    payload.targetRole = targetRole;
+  }
 
   if (expiresAt) {
     payload.expiresAt = expiresAt;

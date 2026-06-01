@@ -171,8 +171,15 @@ exports.resendVerificationEmail = async (req, res, next) => {
 // @access  Private (admin)
 exports.createNotification = async (req, res, next) => {
   try {
-    const { title, message, targetRole, priority, expiresAt } =
-      req.validated.body;
+    const {
+      title,
+      message,
+      targetType = "role",
+      targetRole,
+      targetPlayroomId,
+      priority,
+      expiresAt,
+    } = req.validated.body;
 
     const now = getNowInAppTimezone();
 
@@ -180,10 +187,35 @@ exports.createNotification = async (req, res, next) => {
       throw new ErrorResponse("Datum isteka mora biti u budućnosti.", 400);
     }
 
+    let finalTargetRole = targetRole;
+    let finalTargetUserId = null;
+    let finalTargetPlayroomId = null;
+
+    if (targetType === "playroom") {
+      const playroom = await Playroom.findById(targetPlayroomId)
+        .select("_id naziv grad vlasnikId")
+        .lean();
+
+      if (!playroom) {
+        throw new ErrorResponse("Igraonica nije pronađena.", 404);
+      }
+
+      if (!playroom.vlasnikId) {
+        throw new ErrorResponse("Igraonica nema povezanog vlasnika.", 400);
+      }
+
+      finalTargetRole = "vlasnik";
+      finalTargetUserId = playroom.vlasnikId;
+      finalTargetPlayroomId = playroom._id;
+    }
+
     const notification = await Notification.create({
       title,
       message,
-      targetRole,
+      targetType,
+      targetRole: finalTargetRole,
+      targetUserId: finalTargetUserId,
+      targetPlayroomId: finalTargetPlayroomId,
       priority,
       expiresAt: expiresAt || null,
       active: true,
@@ -193,6 +225,8 @@ exports.createNotification = async (req, res, next) => {
 
     const populatedNotification = await Notification.findById(notification._id)
       .populate("createdBy", "ime prezime email role")
+      .populate("targetUserId", "ime prezime email role")
+      .populate("targetPlayroomId", "naziv grad adresa vlasnikId")
       .lean();
 
     return res.status(201).json({
@@ -210,7 +244,15 @@ exports.createNotification = async (req, res, next) => {
 // @access  Private (admin)
 exports.getAdminNotifications = async (req, res, next) => {
   try {
-    const { page, limit, targetRole, priority, active } = req.validated.query;
+    const {
+      page,
+      limit,
+      targetRole,
+      targetType,
+      targetPlayroomId,
+      priority,
+      active,
+    } = req.validated.query;
 
     const safeLimit = Math.min(limit, 50);
     const skip = (page - 1) * safeLimit;
@@ -219,6 +261,14 @@ exports.getAdminNotifications = async (req, res, next) => {
 
     if (targetRole) {
       filter.targetRole = targetRole;
+    }
+
+    if (targetType) {
+      filter.targetType = targetType;
+    }
+
+    if (targetPlayroomId) {
+      filter.targetPlayroomId = targetPlayroomId;
     }
 
     if (priority) {
@@ -232,6 +282,8 @@ exports.getAdminNotifications = async (req, res, next) => {
     const [notifications, total] = await Promise.all([
       Notification.find(filter)
         .populate("createdBy", "ime prezime email role")
+        .populate("targetUserId", "ime prezime email role")
+        .populate("targetPlayroomId", "naziv grad adresa vlasnikId")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(safeLimit)
@@ -274,6 +326,38 @@ exports.deactivateNotification = async (req, res, next) => {
       success: true,
       data: notification,
       message: "Obaveštenje je deaktivirano.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Pretraga igraonica za admin notifikacije
+// @route   GET /api/admin/playrooms/search?q=...
+// @access  Private (admin)
+exports.searchPlayroomsForNotifications = async (req, res, next) => {
+  try {
+    const { q, limit } = req.validated.query;
+
+    const search = String(q || "").trim();
+
+    const playrooms = await Playroom.find({
+      $or: [
+        { naziv: { $regex: search, $options: "i" } },
+        { grad: { $regex: search, $options: "i" } },
+        { adresa: { $regex: search, $options: "i" } },
+      ],
+    })
+      .select("_id naziv grad adresa vlasnikId status verifikovan")
+      .populate("vlasnikId", "ime prezime email role")
+      .sort({ naziv: 1, grad: 1 })
+      .limit(Math.min(limit, 20))
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      count: playrooms.length,
+      data: playrooms,
     });
   } catch (error) {
     next(error);

@@ -9,7 +9,8 @@ const {
 const bookingService = require("../services/bookingService");
 const authService = require("../services/authService");
 const mongoose = require("mongoose");
-
+const Notification = require("../models/Notification");
+const logger = require("../utils/logger");
 const ErrorResponse = require("../utils/errorResponse");
 
 const getBookingModePlayroom = async ({ playroomId, session = null }) => {
@@ -26,6 +27,178 @@ const getBookingModePlayroom = async ({ playroomId, session = null }) => {
   }
 
   return playroom;
+};
+
+const formatBookingDateForNotification = (dateValue) => {
+  if (!dateValue) return "-";
+
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return date.toLocaleDateString("sr-RS", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+const createNewBookingOwnerNotification = async ({
+  booking,
+  session = null,
+}) => {
+  if (!booking?.playroomId) return;
+
+  try {
+    const playroomQuery = Playroom.findById(booking.playroomId).select(
+      "_id naziv grad vlasnikId",
+    );
+
+    if (session) {
+      playroomQuery.session(session);
+    }
+
+    const playroom = await playroomQuery.lean();
+
+    if (!playroom?.vlasnikId) return;
+
+    const datum = formatBookingDateForNotification(booking.datum);
+    const parentName = `${booking.imeRoditelja || ""} ${
+      booking.prezimeRoditelja || ""
+    }`.trim();
+
+    await Notification.create(
+      [
+        {
+          title: "Nova rezervacija",
+          message: `Imate novu rezervaciju za igraonicu ${playroom.naziv} dana ${datum} od ${booking.vremeOd} do ${booking.vremeDo}. Roditelj: ${parentName || booking.emailRoditelja}.`,
+          targetType: "playroom",
+          targetRole: "vlasnik",
+          targetUserId: playroom.vlasnikId,
+          targetPlayroomId: playroom._id,
+          priority: "vazno",
+          active: true,
+          createdBy: null,
+        },
+      ],
+      session ? { session } : {},
+    );
+  } catch (error) {
+    logger.error("NEW BOOKING OWNER NOTIFICATION ERROR:", {
+      message: error.message,
+      bookingId: booking?._id,
+    });
+  }
+};
+
+const createBookingConfirmedParentNotification = async ({
+  booking,
+  confirmedBy = null,
+}) => {
+  if (!booking?._id) return;
+
+  try {
+    const fullBooking = await Booking.findById(booking._id)
+      .populate("playroomId", "naziv grad")
+      .select(
+        "_id roditeljId playroomId datum vremeOd vremeDo imeRoditelja prezimeRoditelja emailRoditelja",
+      )
+      .lean();
+
+    if (!fullBooking?.roditeljId) return;
+
+    const datum = formatBookingDateForNotification(fullBooking.datum);
+    const playroomName = fullBooking.playroomId?.naziv || "izabranu igraonicu";
+
+    await Notification.create([
+      {
+        title: "Rezervacija je potvrđena",
+        message: `Vaša rezervacija za igraonicu ${playroomName} dana ${datum} od ${fullBooking.vremeOd} do ${fullBooking.vremeDo} je potvrđena.`,
+        targetType: "user",
+        targetRole: ROLES.RODITELJ,
+        targetUserId: fullBooking.roditeljId,
+        targetPlayroomId: null,
+        priority: "vazno",
+        active: true,
+        createdBy: confirmedBy?._id || confirmedBy?.id || null,
+      },
+    ]);
+  } catch (error) {
+    logger.error("BOOKING CONFIRMED PARENT NOTIFICATION ERROR:", {
+      message: error.message,
+      bookingId: booking?._id,
+    });
+  }
+};
+
+const createBookingCanceledNotification = async ({
+  booking,
+  canceledBy = null,
+}) => {
+  if (!booking?._id || !canceledBy?.role) return;
+
+  try {
+    const fullBooking = await Booking.findById(booking._id)
+      .populate({
+        path: "playroomId",
+        select: "naziv grad vlasnikId",
+        populate: {
+          path: "vlasnikId",
+          select: "ime prezime email role",
+        },
+      })
+      .populate("roditeljId", "ime prezime email telefon role")
+      .select(
+        "_id roditeljId playroomId datum vremeOd vremeDo imeRoditelja prezimeRoditelja emailRoditelja",
+      )
+      .lean();
+
+    if (!fullBooking) return;
+
+    const datum = formatBookingDateForNotification(fullBooking.datum);
+    const playroomName = fullBooking.playroomId?.naziv || "izabranu igraonicu";
+    const ownerId = fullBooking.playroomId?.vlasnikId?._id;
+    const parentId = fullBooking.roditeljId?._id || fullBooking.roditeljId;
+
+    if (canceledBy.role === ROLES.RODITELJ && ownerId) {
+      await Notification.create([
+        {
+          title: "Rezervacija je otkazana",
+          message: `Roditelj je otkazao rezervaciju za igraonicu ${playroomName} dana ${datum} od ${fullBooking.vremeOd} do ${fullBooking.vremeDo}. Termin je ponovo slobodan.`,
+          targetType: "playroom",
+          targetRole: ROLES.VLASNIK,
+          targetUserId: ownerId,
+          targetPlayroomId: fullBooking.playroomId._id,
+          priority: "vazno",
+          active: true,
+          createdBy: canceledBy?._id || canceledBy?.id || null,
+        },
+      ]);
+
+      return;
+    }
+
+    if ([ROLES.VLASNIK, ROLES.ADMIN].includes(canceledBy.role) && parentId) {
+      await Notification.create([
+        {
+          title: "Rezervacija je otkazana",
+          message: `Vaša rezervacija za igraonicu ${playroomName} dana ${datum} od ${fullBooking.vremeOd} do ${fullBooking.vremeDo} je otkazana.`,
+          targetType: "user",
+          targetRole: ROLES.RODITELJ,
+          targetUserId: parentId,
+          targetPlayroomId: null,
+          priority: "hitno",
+          active: true,
+          createdBy: canceledBy?._id || canceledBy?.id || null,
+        },
+      ]);
+    }
+  } catch (error) {
+    logger.error("BOOKING CANCELED NOTIFICATION ERROR:", {
+      message: error.message,
+      bookingId: booking?._id,
+    });
+  }
 };
 
 // @desc    Kreiraj novu rezervaciju (ulogovan korisnik)
@@ -106,6 +279,10 @@ exports.createBooking = async (req, res, next) => {
         payload,
       });
     }
+
+    await createNewBookingOwnerNotification({
+      booking,
+    });
 
     return res.status(201).json({
       success: true,
@@ -214,6 +391,11 @@ exports.createGuestBooking = async (req, res, next) => {
         session,
       });
     }
+
+    await createNewBookingOwnerNotification({
+      booking: createdBooking,
+      session,
+    });
 
     await session.commitTransaction();
 
@@ -419,9 +601,14 @@ exports.cancelBooking = async (req, res, next) => {
   try {
     const { id } = req.validated.params;
 
-    await bookingService.cancelBookingById({
+    const canceledBooking = await bookingService.cancelBookingById({
       bookingId: id,
       currentUser: req.user,
+    });
+
+    await createBookingCanceledNotification({
+      booking: canceledBooking,
+      canceledBy: req.user,
     });
 
     return res.status(200).json({
@@ -485,6 +672,11 @@ exports.confirmBooking = async (req, res, next) => {
     const confirmedBooking = await bookingService.confirmBookingById({
       bookingId: id,
       currentUser: req.user,
+    });
+
+    await createBookingConfirmedParentNotification({
+      booking: confirmedBooking,
+      confirmedBy: req.user,
     });
 
     return res.status(200).json({

@@ -8,6 +8,7 @@ const {
   adminPlayroomIdParamSchema,
   rejectPlayroomSchema,
   adminUsersQuerySchema,
+  adminPlayroomsSearchQuerySchema,
   createAdminNotificationSchema,
   adminNotificationsQuerySchema,
   adminNotificationIdParamSchema,
@@ -22,6 +23,7 @@ const {
   createNotification,
   getAdminNotifications,
   deactivateNotification,
+  searchPlayroomsForNotifications,
 } = require("../controllers/adminController");
 
 // 🔒 sve rute su zaštićene + samo ADMIN
@@ -30,6 +32,12 @@ router.use(authorize(ROLES.ADMIN));
 
 // 📦 PLAYROOMS
 router.get("/playrooms/unverified", getUnverifiedPlayrooms);
+
+router.get(
+  "/playrooms/search",
+  validate(adminPlayroomsSearchQuerySchema),
+  searchPlayroomsForNotifications,
+);
 
 router.put(
   "/playrooms/:id/verify",

@@ -106,6 +106,7 @@ const startServer = async () => {
       require("./jobs/completeBookings");
       require("./jobs/emailQueueWorker");
       require("./jobs/cleanupEmailQueue");
+      require("./jobs/cleanupNotifications");
     }
 
     server = app.listen(PORT, () => {

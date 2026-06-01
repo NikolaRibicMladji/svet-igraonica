@@ -3,23 +3,52 @@ const NotificationRead = require("../models/NotificationRead");
 const ErrorResponse = require("../utils/errorResponse");
 const { getNowInAppTimezone } = require("../utils/dateTime");
 
-const buildUserNotificationFilter = (userRole, now = getNowInAppTimezone()) => {
+const READ_VISIBLE_FOR_MS = 24 * 60 * 60 * 1000;
+
+const buildUserNotificationFilter = ({
+  userId,
+  userRole,
+  now = getNowInAppTimezone(),
+}) => {
   if (userRole === "admin") {
     return {
       _id: { $exists: false },
     };
   }
 
-  return {
+  const baseFilter = {
     active: true,
     publishedAt: { $lte: now },
     $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
-    targetRole: { $in: ["svi", userRole] },
+  };
+
+  return {
+    ...baseFilter,
+    $and: [
+      {
+        $or: [
+          {
+            targetType: "role",
+            targetRole: { $in: ["svi", userRole] },
+          },
+          {
+            targetType: "playroom",
+            targetUserId: userId,
+          },
+          {
+            targetType: "user",
+            targetUserId: userId,
+          },
+        ],
+      },
+    ],
   };
 };
 
-const getReadNotificationIds = async (userId) => {
-  return NotificationRead.find({ userId }).distinct("notificationId");
+const getReadNotificationDocs = async (userId) => {
+  return NotificationRead.find({ userId })
+    .select("notificationId readAt")
+    .lean();
 };
 
 // @desc    Dohvati moja obaveštenja
@@ -32,12 +61,38 @@ exports.getMyNotifications = async (req, res, next) => {
     const safeLimit = Math.min(limit, 50);
     const skip = (page - 1) * safeLimit;
 
-    const readIds = await getReadNotificationIds(req.user.id);
+    const now = getNowInAppTimezone();
+    const readDocs = await getReadNotificationDocs(req.user.id);
 
-    const filter = buildUserNotificationFilter(req.user.role);
+    const readIds = readDocs.map((item) => item.notificationId);
+
+    const visibleReadIds = readDocs
+      .filter((item) => {
+        if (!item.readAt) return false;
+
+        const readAt = new Date(item.readAt).getTime();
+
+        if (Number.isNaN(readAt)) return false;
+
+        return now.getTime() - readAt <= READ_VISIBLE_FOR_MS;
+      })
+      .map((item) => item.notificationId);
+
+    const filter = buildUserNotificationFilter({
+      userId: req.user.id,
+      userRole: req.user.role,
+      now,
+    });
 
     if (unreadOnly) {
       filter._id = { $nin: readIds };
+    } else {
+      filter.$and = [
+        ...(filter.$and || []),
+        {
+          $or: [{ _id: { $nin: readIds } }, { _id: { $in: visibleReadIds } }],
+        },
+      ];
     }
 
     const [notifications, total] = await Promise.all([
@@ -75,7 +130,10 @@ exports.getMyNotifications = async (req, res, next) => {
 // @access  Private
 exports.getUnreadNotificationCount = async (req, res, next) => {
   try {
-    const filter = buildUserNotificationFilter(req.user.role);
+    const filter = buildUserNotificationFilter({
+      userId: req.user.id,
+      userRole: req.user.role,
+    });
 
     const notifications = await Notification.find(filter).select("_id").lean();
     const notificationIds = notifications.map((item) => item._id);
@@ -110,7 +168,10 @@ exports.markNotificationAsRead = async (req, res, next) => {
 
     const notification = await Notification.findOne({
       _id: id,
-      ...buildUserNotificationFilter(req.user.role),
+      ...buildUserNotificationFilter({
+        userId: req.user.id,
+        userRole: req.user.role,
+      }),
     }).lean();
 
     if (!notification) {
@@ -149,7 +210,10 @@ exports.markNotificationAsRead = async (req, res, next) => {
 exports.markAllNotificationsAsRead = async (req, res, next) => {
   try {
     const notifications = await Notification.find(
-      buildUserNotificationFilter(req.user.role),
+      buildUserNotificationFilter({
+        userId: req.user.id,
+        userRole: req.user.role,
+      }),
     )
       .select("_id")
       .lean();

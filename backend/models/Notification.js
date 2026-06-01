@@ -7,6 +7,12 @@ const TARGET_ROLES = Object.freeze({
   RODITELJ: ROLES.RODITELJ,
 });
 
+const TARGET_TYPES = Object.freeze({
+  ROLE: "role",
+  PLAYROOM: "playroom",
+  USER: "user",
+});
+
 const NOTIFICATION_PRIORITIES = Object.freeze({
   INFO: "info",
   VAZNO: "vazno",
@@ -31,10 +37,32 @@ const NotificationSchema = new mongoose.Schema(
       maxlength: [3000, "Tekst može imati najviše 3000 karaktera"],
     },
 
+    targetType: {
+      type: String,
+      enum: Object.values(TARGET_TYPES),
+      default: TARGET_TYPES.ROLE,
+      required: true,
+      index: true,
+    },
+
     targetRole: {
       type: String,
       enum: Object.values(TARGET_ROLES),
       required: [true, "Primaoci obaveštenja su obavezni"],
+      index: true,
+    },
+
+    targetUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+
+    targetPlayroomId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Playroom",
+      default: null,
       index: true,
     },
 
@@ -66,7 +94,7 @@ const NotificationSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "Admin koji je kreirao obaveštenje je obavezan"],
+      default: null,
       index: true,
     },
   },
@@ -75,8 +103,70 @@ const NotificationSchema = new mongoose.Schema(
   },
 );
 
+NotificationSchema.pre("validate", function (next) {
+  if (this.targetType === TARGET_TYPES.PLAYROOM) {
+    if (!this.targetPlayroomId) {
+      this.invalidate(
+        "targetPlayroomId",
+        "Igraonica je obavezna za ciljano obaveštenje.",
+      );
+    }
+
+    if (!this.targetUserId) {
+      this.invalidate(
+        "targetUserId",
+        "Vlasnik igraonice je obavezan za ciljano obaveštenje.",
+      );
+    }
+
+    if (this.targetRole !== ROLES.VLASNIK) {
+      this.invalidate(
+        "targetRole",
+        "Ciljano obaveštenje za igraonicu može biti poslato samo vlasniku.",
+      );
+    }
+  }
+
+  if (this.targetType === TARGET_TYPES.USER) {
+    if (!this.targetUserId) {
+      this.invalidate(
+        "targetUserId",
+        "Korisnik je obavezan za privatno obaveštenje.",
+      );
+    }
+
+    if (!this.targetRole || this.targetRole === TARGET_ROLES.SVI) {
+      this.invalidate(
+        "targetRole",
+        "Privatno obaveštenje mora imati konkretnu korisničku rolu.",
+      );
+    }
+
+    this.targetPlayroomId = null;
+  }
+
+  if (this.targetType === TARGET_TYPES.ROLE) {
+    this.targetUserId = null;
+    this.targetPlayroomId = null;
+  }
+
+  next();
+});
+
 NotificationSchema.index({
   targetRole: 1,
+  active: 1,
+  publishedAt: -1,
+});
+
+NotificationSchema.index({
+  targetUserId: 1,
+  active: 1,
+  publishedAt: -1,
+});
+
+NotificationSchema.index({
+  targetPlayroomId: 1,
   active: 1,
   publishedAt: -1,
 });
@@ -94,4 +184,5 @@ NotificationSchema.methods.toJSON = function () {
 
 module.exports = mongoose.model("Notification", NotificationSchema);
 module.exports.TARGET_ROLES = TARGET_ROLES;
+module.exports.TARGET_TYPES = TARGET_TYPES;
 module.exports.NOTIFICATION_PRIORITIES = NOTIFICATION_PRIORITIES;

@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Notification = require("../models/Notification");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
@@ -6,6 +7,7 @@ const generateAccessToken = require("../utils/generateToken");
 const ROLES = require("../constants/roles");
 const RefreshSession = require("../models/RefreshSession");
 const mongoose = require("mongoose");
+const logger = require("../utils/logger");
 const { sendEmailVerificationEmail } = require("../utils/emailService");
 
 const EMAIL_VERIFICATION_EXPIRES_MINUTES = 15;
@@ -24,6 +26,31 @@ const createError = (message, statusCode = 400) => {
 };
 
 const normalizeEmail = (email = "") => String(email).trim().toLowerCase();
+
+const createWelcomeNotification = async (user, session = null) => {
+  if (!user?._id || !user?.role) return;
+
+  try {
+    await Notification.create(
+      [
+        {
+          title: "Dobrodošli na Svet igraonica",
+          message:
+            "Hvala vam što ste se registrovali. Ovde ćete dobijati važna obaveštenja vezana za vaš nalog, rezervacije i rad platforme.",
+          targetType: "user",
+          targetRole: user.role,
+          targetUserId: user._id,
+          priority: "info",
+          active: true,
+          createdBy: null,
+        },
+      ],
+      session ? { session } : {},
+    );
+  } catch (error) {
+    logger.error("WELCOME NOTIFICATION ERROR:", error.message);
+  }
+};
 
 const hashPassword = async (password) => {
   const salt = await bcrypt.genSalt(10);
@@ -192,6 +219,8 @@ exports.registerUser = async (data, metadata = {}) => {
     role: userRole,
     acceptedTerms,
   });
+
+  await createWelcomeNotification(user);
 
   await sendEmailVerificationEmail(user, emailVerificationToken);
 
@@ -402,6 +431,8 @@ exports.registerGuestParent = async (data, session = null) => {
     acceptedTerms,
     session,
   });
+
+  await createWelcomeNotification(user, session);
 
   await sendEmailVerificationEmail(user, emailVerificationToken, {
     context: "guest_booking",
