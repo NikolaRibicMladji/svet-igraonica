@@ -3,6 +3,7 @@ const ErrorResponse = require("../utils/errorResponse");
 const { getNowInAppTimezone } = require("../utils/dateTime");
 const User = require("../models/User");
 const PLAYROOM_STATUS = require("../constants/playroomStatus");
+const Notification = require("../models/Notification");
 const {
   verifyPlayroomAndGenerateSlots,
 } = require("../services/playroomService");
@@ -159,6 +160,120 @@ exports.resendVerificationEmail = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Email za verifikaciju je ponovo poslat adminu.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Kreiraj admin obaveštenje
+// @route   POST /api/admin/notifications
+// @access  Private (admin)
+exports.createNotification = async (req, res, next) => {
+  try {
+    const { title, message, targetRole, priority, expiresAt } =
+      req.validated.body;
+
+    const now = getNowInAppTimezone();
+
+    if (expiresAt && expiresAt <= now) {
+      throw new ErrorResponse("Datum isteka mora biti u budućnosti.", 400);
+    }
+
+    const notification = await Notification.create({
+      title,
+      message,
+      targetRole,
+      priority,
+      expiresAt: expiresAt || null,
+      active: true,
+      publishedAt: now,
+      createdBy: req.user.id,
+    });
+
+    const populatedNotification = await Notification.findById(notification._id)
+      .populate("createdBy", "ime prezime email role")
+      .lean();
+
+    return res.status(201).json({
+      success: true,
+      data: populatedNotification,
+      message: "Obaveštenje je uspešno kreirano.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dohvati admin listu obaveštenja
+// @route   GET /api/admin/notifications
+// @access  Private (admin)
+exports.getAdminNotifications = async (req, res, next) => {
+  try {
+    const { page, limit, targetRole, priority, active } = req.validated.query;
+
+    const safeLimit = Math.min(limit, 50);
+    const skip = (page - 1) * safeLimit;
+
+    const filter = {};
+
+    if (targetRole) {
+      filter.targetRole = targetRole;
+    }
+
+    if (priority) {
+      filter.priority = priority;
+    }
+
+    if (typeof active === "boolean") {
+      filter.active = active;
+    }
+
+    const [notifications, total] = await Promise.all([
+      Notification.find(filter)
+        .populate("createdBy", "ime prezime email role")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(safeLimit)
+        .lean(),
+
+      Notification.countDocuments(filter),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      count: notifications.length,
+      total,
+      page,
+      limit: safeLimit,
+      pages: Math.ceil(total / safeLimit),
+      data: notifications,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Deaktiviraj admin obaveštenje
+// @route   PUT /api/admin/notifications/:id/deactivate
+// @access  Private (admin)
+exports.deactivateNotification = async (req, res, next) => {
+  try {
+    const { id } = req.validated.params;
+
+    const notification = await Notification.findById(id);
+
+    if (!notification) {
+      throw new ErrorResponse("Obaveštenje nije pronađeno.", 404);
+    }
+
+    notification.active = false;
+    await notification.save();
+
+    return res.status(200).json({
+      success: true,
+      data: notification,
+      message: "Obaveštenje je deaktivirano.",
     });
   } catch (error) {
     next(error);

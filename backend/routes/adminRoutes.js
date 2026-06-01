@@ -8,6 +8,9 @@ const {
   adminPlayroomIdParamSchema,
   rejectPlayroomSchema,
   adminUsersQuerySchema,
+  createAdminNotificationSchema,
+  adminNotificationsQuerySchema,
+  adminNotificationIdParamSchema,
 } = require("../validations/adminValidation");
 
 const {
@@ -16,6 +19,9 @@ const {
   verifyPlayroom,
   rejectPlayroom,
   resendVerificationEmail,
+  createNotification,
+  getAdminNotifications,
+  deactivateNotification,
 } = require("../controllers/adminController");
 
 // 🔒 sve rute su zaštićene + samo ADMIN
@@ -45,5 +51,24 @@ router.post(
 
 // 👤 USERS
 router.get("/users", validate(adminUsersQuerySchema), getAllUsers);
+
+// 🔔 NOTIFICATIONS
+router.get(
+  "/notifications",
+  validate(adminNotificationsQuerySchema),
+  getAdminNotifications,
+);
+
+router.post(
+  "/notifications",
+  validate(createAdminNotificationSchema),
+  createNotification,
+);
+
+router.put(
+  "/notifications/:id/deactivate",
+  validate(adminNotificationIdParamSchema),
+  deactivateNotification,
+);
 
 module.exports = router;

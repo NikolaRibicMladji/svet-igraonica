@@ -139,6 +139,11 @@ app.use("/api/playrooms", apiLimiter, require("./routes/playroomRoutes"));
 app.use("/api/timeslots", apiLimiter, require("./routes/timeSlotRoutes"));
 app.use("/api/bookings", apiLimiter, require("./routes/bookingRoutes"));
 app.use("/api/admin", apiLimiter, require("./routes/adminRoutes"));
+app.use(
+  "/api/notifications",
+  apiLimiter,
+  require("./routes/notificationRoutes"),
+);
 app.use("/api/reviews", apiLimiter, require("./routes/reviewRoutes"));
 app.use("/api/upload", apiLimiter, require("./routes/uploadRoutes"));
 
