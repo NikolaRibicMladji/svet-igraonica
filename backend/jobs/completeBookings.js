@@ -158,9 +158,9 @@ const completeExpiredBookings = async () => {
 // Pokreni odmah pri startu
 completeExpiredBookings();
 
-// Zakazivanje: svakih 10 minuta
+// Zakazivanje: svakih 5 minuta
 cron.schedule(
-  "*/10 * * * *",
+  "*/5 * * * *",
   () => {
     logger.info(
       `⏰ Cron job: Provera termina za završavanje... [${APP_TIMEZONE}]`,
@@ -173,7 +173,7 @@ cron.schedule(
 );
 
 logger.info(
-  `📅 Cron job za završavanje termina aktivan (svakih 10 minuta) | timezone: ${APP_TIMEZONE}`,
+  `📅 Cron job za završavanje termina aktivan (svakih 5 minuta) | timezone: ${APP_TIMEZONE}`,
 );
 
 module.exports = { completeExpiredBookings };

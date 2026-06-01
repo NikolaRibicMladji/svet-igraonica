@@ -179,14 +179,14 @@ const processEmailQueue = async () => {
   }
 };
 
-cron.schedule("* * * * *", processEmailQueue, {
+cron.schedule("*/15 * * * * *", processEmailQueue, {
   timezone: APP_TIMEZONE,
 });
 
 processEmailQueue();
 
 logger.info("Email queue worker pokrenut", {
-  interval: "* * * * *",
+  interval: "*/15 * * * * *",
   timezone: APP_TIMEZONE,
 });
 
