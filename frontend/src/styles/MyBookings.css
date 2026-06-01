@@ -9,6 +9,58 @@
   color: #0f172a;
   font-size: 2rem;
 }
+.my-bookings-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #eef2f7;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.my-bookings-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.my-bookings-filter label {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+
+.my-bookings-filter select {
+  min-width: 180px;
+  padding: 10px 38px 10px 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.my-bookings-filter select:focus {
+  outline: none;
+  border-color: #ff6b4a;
+  box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.12);
+}
+
+.my-bookings-count {
+  margin: 0;
+  color: #475569;
+  font-weight: 600;
+}
+
+.my-bookings-count strong {
+  color: #ff6b4a;
+}
 
 .bookings-list {
   column-count: 2;
@@ -307,7 +359,36 @@
   }
 
   .my-bookings-page {
-    padding: 20px 0;
+    padding: 20px 16px;
+  }
+  .my-bookings-toolbar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding: 14px;
+  }
+
+  .my-bookings-filter {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .my-bookings-filter select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .my-bookings-count {
+    width: 100%;
+    padding-top: 4px;
+  }
+
+  .booking-card {
+    width: 100%;
   }
 
   .booking-card {

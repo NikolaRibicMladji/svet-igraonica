@@ -9,6 +9,7 @@ const TimeSlot = require("../models/TimeSlot");
 const bookingService = require("../services/bookingService");
 const { getBlockingStatuses } = require("../services/bookingService");
 const ErrorResponse = require("../utils/errorResponse");
+const User = require("../models/User");
 const {
   APP_TIMEZONE,
   getNowInAppTimezone,
@@ -48,6 +49,36 @@ const ensurePublicPlayroom = (playroom) => {
   if (!playroom.verifikovan || playroom.status !== PLAYROOM_STATUS.AKTIVAN) {
     throw new ErrorResponse("Igraonica nije javno dostupna", 403);
   }
+};
+
+const findExistingParentForManualBooking = async ({
+  emailRoditelja,
+  telefonRoditelja,
+  session,
+}) => {
+  const normalizedEmail = String(emailRoditelja || "")
+    .trim()
+    .toLowerCase();
+
+  if (!normalizedEmail) return null;
+
+  const parent = await User.findOne({
+    email: normalizedEmail,
+    role: "roditelj",
+  })
+    .select("_id telefon")
+    .session(session);
+
+  if (!parent) return null;
+
+  const inputPhone = String(telefonRoditelja || "").replace(/\D/g, "");
+  const parentPhone = String(parent.telefon || "").replace(/\D/g, "");
+
+  if (inputPhone && parentPhone && inputPhone !== parentPhone) {
+    return null;
+  }
+
+  return parent;
 };
 
 // @desc    Kreiraj novi termin (samo vlasnik igraonice)
@@ -777,9 +808,15 @@ exports.manualBookTimeSlot = async (req, res, next) => {
       );
     }
 
+    const existingParent = await findExistingParentForManualBooking({
+      emailRoditelja,
+      telefonRoditelja,
+      session,
+    });
+
     const booking = await bookingService.reserveSlot({
       slotId: timeSlot._id,
-      user: null,
+      user: existingParent,
       payload: {
         cenaIds,
         paketId,
@@ -878,12 +915,18 @@ exports.manualBookInterval = async (req, res, next) => {
       );
     }
 
+    const existingParent = await findExistingParentForManualBooking({
+      emailRoditelja,
+      telefonRoditelja,
+      session,
+    });
+
     const booking = await bookingService.reserveCustomInterval({
       playroomId,
       datum,
       vremeOd,
       vremeDo,
-      user: null,
+      user: existingParent,
       payload: {
         cenaIds,
         paketId,

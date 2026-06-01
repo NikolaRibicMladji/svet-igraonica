@@ -249,6 +249,8 @@ exports.createGuestBooking = async (req, res, next) => {
 // @access  Private (roditelj)
 exports.getMyBookings = async (req, res, next) => {
   try {
+    await bookingService.cancelExpiredPendingBookings();
+
     const { page, limit, status, datumOd, datumDo } = req.validated.query;
     const safeLimit = Math.min(limit, 50);
     const skip = (page - 1) * safeLimit;
@@ -310,6 +312,8 @@ exports.getMyBookings = async (req, res, next) => {
 // @access  Private (vlasnik)
 exports.getOwnerBookings = async (req, res, next) => {
   try {
+    await bookingService.cancelExpiredPendingBookings();
+
     const { page, limit, status, datumOd, datumDo, playroomId } =
       req.validated.query;
 

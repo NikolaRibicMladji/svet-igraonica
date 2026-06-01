@@ -10,6 +10,22 @@ import {
   validateDeleteAccountForm,
 } from "../utils/accountValidationUtils";
 
+const getRoleLabel = (role = "") => {
+  const normalizedRole = String(role || "").toLowerCase();
+
+  if (normalizedRole === "roditelj") return "Roditelj";
+  if (normalizedRole === "vlasnik") return "Vlasnik";
+  if (normalizedRole === "admin") return "Admin";
+
+  return "-";
+};
+
+const formatAccountValue = (value) => {
+  const safeValue = String(value || "").trim();
+
+  return safeValue || "-";
+};
+
 const Navbar = () => {
   const {
     user,
@@ -257,6 +273,13 @@ const Navbar = () => {
                     <div id="account-dropdown" className="account-dropdown">
                       <button
                         type="button"
+                        onClick={() => openAccountModal("profile")}
+                      >
+                        👤 Lični podaci
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => openAccountModal("password")}
                       >
                         🔒 Promeni lozinku
@@ -345,11 +368,13 @@ const Navbar = () => {
             role="dialog"
             aria-modal="true"
             aria-label={
-              activeModal === "password"
-                ? "Promena lozinke"
-                : activeModal === "email"
-                  ? "Promena emaila"
-                  : "Brisanje profila"
+              activeModal === "profile"
+                ? "Lični podaci"
+                : activeModal === "password"
+                  ? "Promena lozinke"
+                  : activeModal === "email"
+                    ? "Promena emaila"
+                    : "Brisanje profila"
             }
           >
             <button
@@ -361,6 +386,48 @@ const Navbar = () => {
             >
               ✖
             </button>
+
+            {/* LIČNI PODACI */}
+            {activeModal === "profile" && (
+              <>
+                <h2>Lični podaci</h2>
+
+                <div className="account-profile-details">
+                  <div className="account-profile-row">
+                    <span>Ime</span>
+                    <strong>{formatAccountValue(user?.ime)}</strong>
+                  </div>
+
+                  <div className="account-profile-row">
+                    <span>Prezime</span>
+                    <strong>{formatAccountValue(user?.prezime)}</strong>
+                  </div>
+
+                  <div className="account-profile-row">
+                    <span>Email</span>
+                    <strong>{formatAccountValue(user?.email)}</strong>
+                  </div>
+
+                  <div className="account-profile-row">
+                    <span>Telefon</span>
+                    <strong>{formatAccountValue(user?.telefon)}</strong>
+                  </div>
+
+                  <div className="account-profile-row">
+                    <span>Uloga</span>
+                    <strong>{getRoleLabel(user?.role)}</strong>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="account-submit-btn account-profile-close-btn"
+                  onClick={closeAccountModal}
+                >
+                  Zatvori
+                </button>
+              </>
+            )}
 
             {/* PROMENA LOZINKE */}
             {activeModal === "password" && (

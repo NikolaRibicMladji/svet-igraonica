@@ -52,10 +52,10 @@ export const validatePhone = (phone) => {
 
   const digitsOnly = cleanedPhone.replace(/\D/g, "");
 
-  if (digitsOnly.length < 6) {
+  if (digitsOnly.length < 8) {
     return {
       success: false,
-      error: "Telefon mora imati bar 6 cifara.",
+      error: "Telefon mora imati bar 8 cifara.",
     };
   }
 

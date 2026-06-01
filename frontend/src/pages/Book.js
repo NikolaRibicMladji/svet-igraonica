@@ -633,9 +633,11 @@ const Book = () => {
 
     if (isOverlapBookingError(failure)) {
       await loadTimeSlots();
+      showScreenError(message, startTimeRef, "startTime");
+      return;
     }
 
-    showScreenError(message, startTimeRef);
+    showScreenError(message, topRef);
   };
 
   const handleStartTimeSelect = (itemOrValue) => {
@@ -707,7 +709,11 @@ const Book = () => {
       ime: imeRef,
       prezime: prezimeRef,
       email: emailRef,
+
       telefon: telefonRef,
+      phone: telefonRef,
+      telefonRoditelja: telefonRef,
+
       password: passwordRef,
       confirmPassword: confirmPasswordRef,
       terms: termsRef,
@@ -803,7 +809,12 @@ const Book = () => {
         await loadTimeSlots();
 
         if (isOwnerBooking) {
-          navigate("/owner/timeslots", { replace: true });
+          const query = new URLSearchParams({
+            datum: formatDateForBackend(selectedDate),
+            tab: "occupied",
+          });
+
+          navigate(`/owner/timeslots?${query.toString()}`, { replace: true });
           return;
         }
 

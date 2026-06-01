@@ -195,7 +195,7 @@ exports.forgotPassword = async (req, res, next) => {
     )}`;
 
     await sendMail({
-      from: `"Svet Igraonica" <${process.env.EMAIL_FROM}>`,
+      type: "password_reset",
       to: user.email,
       subject: "Reset lozinke - Svet Igraonica",
       html: `
@@ -242,8 +242,15 @@ exports.resetPassword = async (req, res, next) => {
 
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(password, salt);
+
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
+
+    user.emailVerified = true;
+    user.emailVerifiedAt = user.emailVerifiedAt || new Date();
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpires = undefined;
+    user.emailVerificationLastSentAt = null;
 
     await user.save();
 

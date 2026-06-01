@@ -117,6 +117,119 @@ const getBlockingStatuses = () => [
   BOOKING_STATUS.CEKANJE,
 ];
 
+const getCurrentTimeString = (date) => {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(
+    date.getMinutes(),
+  ).padStart(2, "0")}`;
+};
+
+const isBookingStartExpired = (booking, now = getNowInAppTimezone()) => {
+  if (!booking?.datum || !booking?.vremeOd) return false;
+
+  try {
+    const startTime = buildDateTime(booking.datum, booking.vremeOd);
+    return startTime <= now;
+  } catch {
+    return false;
+  }
+};
+
+const cancelExpiredPendingBookings = async () => {
+  const now = getNowInAppTimezone();
+  const startOfToday = startOfDayInAppTimezone(now);
+  const endOfToday = endOfDayInAppTimezone(now);
+  const todayTime = getCurrentTimeString(now);
+
+  const candidateBookings = await Booking.find({
+    status: BOOKING_STATUS.CEKANJE,
+    $or: [
+      { datum: { $lt: startOfToday } },
+      {
+        datum: { $gte: startOfToday, $lte: endOfToday },
+        vremeOd: { $lte: todayTime },
+      },
+    ],
+  })
+    .select("_id datum vremeOd timeSlotId")
+    .lean();
+
+  const expiredBookings = candidateBookings.filter((booking) =>
+    isBookingStartExpired(booking, now),
+  );
+
+  if (!expiredBookings.length) {
+    return {
+      modifiedCount: 0,
+      slotCount: 0,
+    };
+  }
+
+  const bookingIds = expiredBookings.map((booking) => booking._id);
+
+  const slotIds = [
+    ...new Set(
+      expiredBookings
+        .map((booking) => booking.timeSlotId?.toString())
+        .filter(Boolean),
+    ),
+  ];
+
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const bookingUpdateResult = await Booking.updateMany(
+      {
+        _id: { $in: bookingIds },
+        status: BOOKING_STATUS.CEKANJE,
+      },
+      {
+        $set: {
+          status: BOOKING_STATUS.OTKAZANO,
+          otkazanoAt: now,
+          razlogOtkazivanja:
+            "Automatski otkazano jer rezervacija nije potvrđena pre početka termina.",
+        },
+      },
+      {
+        session,
+        runValidators: true,
+      },
+    );
+
+    if (slotIds.length > 0) {
+      await TimeSlot.updateMany(
+        {
+          _id: { $in: slotIds },
+          zauzeto: true,
+        },
+        {
+          $set: {
+            zauzeto: false,
+          },
+        },
+        {
+          session,
+          runValidators: true,
+        },
+      );
+    }
+
+    await session.commitTransaction();
+
+    return {
+      modifiedCount: bookingUpdateResult.modifiedCount || 0,
+      slotCount: slotIds.length,
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    await session.endSession();
+  }
+};
+
 const getActiveBookingsForDate = async ({
   playroomId,
   datum,
@@ -1047,13 +1160,13 @@ const canUserManageBooking = (booking, user) => {
   };
 };
 
-const canConfirmPastBooking = (booking) => {
-  if (!booking?.datum || !booking?.vremeDo) {
+const canConfirmBookingBeforeStart = (booking) => {
+  if (!booking?.datum || !booking?.vremeOd) {
     return false;
   }
 
-  const bookingEnd = buildDateTime(booking.datum, booking.vremeDo);
-  return bookingEnd > getNowInAppTimezone();
+  const bookingStart = buildDateTime(booking.datum, booking.vremeOd);
+  return bookingStart > getNowInAppTimezone();
 };
 
 const cancelBookingById = async ({ bookingId, currentUser }) => {
@@ -1141,6 +1254,8 @@ const cancelBookingById = async ({ bookingId, currentUser }) => {
 };
 
 const confirmBookingById = async ({ bookingId, currentUser }) => {
+  await cancelExpiredPendingBookings();
+
   const session = await mongoose.startSession();
 
   try {
@@ -1179,8 +1294,11 @@ const confirmBookingById = async ({ bookingId, currentUser }) => {
       );
     }
 
-    if (!canConfirmPastBooking(booking)) {
-      throw new ErrorResponse("Prošli termin ne može biti potvrđen", 400);
+    if (!canConfirmBookingBeforeStart(booking)) {
+      throw new ErrorResponse(
+        "Rezervacija ne može biti potvrđena nakon početka termina",
+        400,
+      );
     }
 
     const playroom = await Playroom.findById(booking.playroomId?._id).session(
@@ -1252,4 +1370,5 @@ module.exports = {
   buildDateTime,
   parseValidDate,
   getBlockingStatuses,
+  cancelExpiredPendingBookings,
 };

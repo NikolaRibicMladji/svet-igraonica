@@ -599,3 +599,46 @@
     max-height: calc(100vh - 60px);
   }
 }
+.account-profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.account-profile-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.account-profile-row span {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.account-profile-row strong {
+  color: #0f172a;
+  text-align: right;
+  word-break: break-word;
+}
+.account-profile-close-btn {
+  margin-top: 18px;
+  width: 100%;
+}
+
+@media (max-width: 480px) {
+  .account-profile-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .account-profile-row strong {
+    text-align: left;
+  }
+}

@@ -11,7 +11,7 @@ import "../styles/AdminPanel.css";
 
 const AdminPanel = () => {
   const { user, loading: authLoading } = useAuth();
-
+  const adminTopRef = useRef(null);
   const [playrooms, setPlayrooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [verifyingId, setVerifyingId] = useState("");
@@ -103,6 +103,17 @@ const AdminPanel = () => {
       loadUsers(usersPage);
     }
   }, [authLoading, user?.role, usersPage, loadUsers]);
+
+  const handleUsersPageChange = (nextPage) => {
+    setUsersPage(nextPage);
+
+    setTimeout(() => {
+      adminTopRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
+  };
 
   const handleVerify = async (id) => {
     if (!id) {
@@ -209,7 +220,7 @@ const AdminPanel = () => {
   );
 
   return (
-    <div className="container admin-panel">
+    <div className="container admin-panel" ref={adminTopRef}>
       <h1>Admin panel</h1>
 
       {message && (
@@ -591,7 +602,9 @@ const AdminPanel = () => {
               <button
                 type="button"
                 className="btn-page"
-                onClick={() => setUsersPage((prev) => Math.max(1, prev - 1))}
+                onClick={() =>
+                  handleUsersPageChange(Math.max(1, usersPage - 1))
+                }
                 disabled={usersPage === 1}
                 aria-label="Prethodna strana korisnika"
               >
@@ -599,14 +612,16 @@ const AdminPanel = () => {
               </button>
 
               <span className="page-info">
-                Strana {usersPage} od {usersTotalPages} ({usersTotal} ukupno)
+                Strana {usersPage} od {usersTotalPages}
               </span>
 
               <button
                 type="button"
                 className="btn-page"
                 onClick={() =>
-                  setUsersPage((prev) => Math.min(usersTotalPages, prev + 1))
+                  handleUsersPageChange(
+                    Math.min(usersTotalPages, usersPage + 1),
+                  )
                 }
                 disabled={usersPage >= usersTotalPages}
                 aria-label="Sledeća strana korisnika"

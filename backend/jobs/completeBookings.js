@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const BOOKING_STATUS = require("../constants/bookingStatus");
 const TimeSlot = require("../models/TimeSlot");
 const logger = require("../utils/logger");
+const { cancelExpiredPendingBookings } = require("../services/bookingService");
 const {
   APP_TIMEZONE,
   getNowInAppTimezone,
@@ -31,6 +32,14 @@ const completeExpiredBookings = async () => {
     logger.info(
       `🔍 Proveravam termine koji su završeni... (${now.toLocaleString("sr-RS")})`,
     );
+
+    const autoCancelResult = await cancelExpiredPendingBookings();
+
+    if (autoCancelResult.modifiedCount > 0) {
+      logger.info(
+        `🕒 Automatski otkazano ${autoCancelResult.modifiedCount} isteklih rezervacija na čekanju`,
+      );
+    }
 
     // Uzimamo SAMO potvrđene rezervacije koje MOGU biti istekle:
     // 1) sve potvrđene pre današnjeg dana

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getMyPlayrooms } from "../services/playroomService";
 import {
   getAllTimeSlotsForOwner,
@@ -18,18 +18,39 @@ const getPhoneHref = (phone = "") => {
   return safePhone ? `tel:${safePhone}` : "";
 };
 
+const DATE_QUERY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+const getInitialOwnerDate = (search) => {
+  const query = new URLSearchParams(search);
+  const datum = String(query.get("datum") || "").trim();
+
+  return DATE_QUERY_REGEX.test(datum) ? datum : getLocalDate();
+};
+
+const getInitialOwnerTab = (search) => {
+  const query = new URLSearchParams(search);
+  const tab = String(query.get("tab") || "").trim();
+
+  return ["free", "occupied"].includes(tab) ? tab : null;
+};
+
 const OwnerTimeSlots = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [playrooms, setPlayrooms] = useState([]);
   const [selectedPlayroom, setSelectedPlayroom] = useState("");
   const [timeSlots, setTimeSlots] = useState([]);
   const [loadingPlayrooms, setLoadingPlayrooms] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(getLocalDate());
+  const [selectedDate, setSelectedDate] = useState(() =>
+    getInitialOwnerDate(location.search),
+  );
   const [message, setMessage] = useState("");
-  const [activeTab, setActiveTab] = useState(null);
+  const [activeTab, setActiveTab] = useState(() =>
+    getInitialOwnerTab(location.search),
+  );
   const [error, setError] = useState("");
 
   const [expandedBookingId, setExpandedBookingId] = useState(null);

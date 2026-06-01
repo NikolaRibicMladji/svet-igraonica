@@ -87,10 +87,7 @@ const resetPasswordSchema = z
         .max(50, "Potvrda lozinke je preduga"),
     }),
     params: z.object({
-      token: z
-        .string()
-        .length(64, "Token nije validan")
-        .regex(/^[a-fA-F0-9]+$/, "Token nije validan"),
+      token: z.string().regex(/^[a-fA-F0-9]{64}$/, "Token nije validan"),
     }),
     query: z.object({}).optional(),
   })
@@ -102,10 +99,7 @@ const resetPasswordSchema = z
 const verifyEmailSchema = z.object({
   body: z.object({}).optional(),
   params: z.object({
-    token: z
-      .string()
-      .length(64, "Token nije validan")
-      .regex(/^[a-fA-F0-9]+$/, "Token nije validan"),
+    token: z.string().regex(/^[a-fA-F0-9]{64}$/, "Token nije validan"),
   }),
   query: z.object({}).optional(),
 });

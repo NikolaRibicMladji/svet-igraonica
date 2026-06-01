@@ -1,6 +1,25 @@
 import React from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
+const sanitizePhoneInput = (value) => {
+  const safeValue = String(value || "").replace(/[^\d+]/g, "");
+  const hasLeadingPlus = safeValue.startsWith("+");
+  const digitsOnly = safeValue.replace(/\+/g, "");
+
+  return hasLeadingPlus ? `+${digitsOnly}` : digitsOnly;
+};
+
+const isAllowedPhoneControlKey = (key) =>
+  [
+    "Backspace",
+    "Delete",
+    "Tab",
+    "ArrowLeft",
+    "ArrowRight",
+    "Home",
+    "End",
+  ].includes(key);
+
 const BookingUserFields = ({
   isAuthenticated = false,
   korisnikPodaci = {},
@@ -30,6 +49,39 @@ const BookingUserFields = ({
   const handleTermsChange = (e) => {
     setAcceptedTerms?.(e.target.checked);
     clearError();
+  };
+
+  const handlePhoneChange = (e) => {
+    clearError();
+
+    const sanitizedValue = sanitizePhoneInput(e.target.value);
+
+    handleKorisnikChange?.({
+      target: {
+        name: "telefon",
+        value: sanitizedValue,
+      },
+    });
+  };
+
+  const handlePhoneKeyDown = (e) => {
+    if (e.ctrlKey || e.metaKey || isAllowedPhoneControlKey(e.key)) {
+      return;
+    }
+
+    if (/^\d$/.test(e.key)) {
+      return;
+    }
+
+    if (
+      e.key === "+" &&
+      e.currentTarget.selectionStart === 0 &&
+      !e.currentTarget.value.includes("+")
+    ) {
+      return;
+    }
+
+    e.preventDefault();
   };
 
   return (
@@ -92,10 +144,12 @@ const BookingUserFields = ({
           <input
             id="booking-telefon"
             type="tel"
+            inputMode="tel"
             autoComplete="tel"
             name="telefon"
             value={korisnikPodaci.telefon || ""}
-            onChange={handleKorisnikChange}
+            onChange={handlePhoneChange}
+            onKeyDown={handlePhoneKeyDown}
             required
           />
         </div>
