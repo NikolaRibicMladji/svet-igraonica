@@ -97,7 +97,7 @@ exports.getMyNotifications = async (req, res, next) => {
 
     const [notifications, total] = await Promise.all([
       Notification.find(filter)
-        .sort({ priority: -1, publishedAt: -1, createdAt: -1 })
+        .sort({ publishedAt: -1, createdAt: -1 })
         .skip(skip)
         .limit(safeLimit)
         .lean(),
