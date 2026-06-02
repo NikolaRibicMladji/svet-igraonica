@@ -835,21 +835,28 @@
 }
 
 @media (max-width: 768px) {
+  .navbar-actions {
+    margin-left: auto;
+  }
+
   .navbar-notifications {
-    width: 100%;
+    width: auto;
   }
 
   .notification-bell-btn {
-    width: 100%;
+    width: 44px;
     height: 44px;
-    border-radius: 14px;
+    border-radius: 999px;
   }
 
   .notifications-dropdown {
-    position: static;
-    width: 100%;
+    position: fixed;
+    top: 70px;
+    left: 12px;
+    right: 12px;
+    width: auto;
     max-height: 420px;
-    margin-top: 8px;
+    margin-top: 0;
   }
 }
 
@@ -978,5 +985,234 @@
 
   .playroom-search-result {
     padding: 10px;
+  }
+}
+/* ============================================
+   NAVBAR FINAL LAYOUT
+============================================ */
+
+.navbar-actions {
+  display: none;
+}
+
+.navbar-notifications-mobile {
+  display: none;
+}
+
+.notification-bell-text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.notification-bell-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.notification-bell-btn {
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+.notification-bell-btn:focus,
+.notification-bell-btn:focus-visible {
+  outline: none;
+}
+
+.notification-bell-btn:active {
+  transform: scale(0.94);
+}
+
+/* DESKTOP */
+@media (min-width: 769px) {
+  .navbar {
+    padding: 10px 0;
+  }
+
+  .navbar-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 34px;
+  }
+
+  .navbar-logo {
+    flex: 0 0 150px;
+    font-size: 1.35rem;
+    line-height: 1.2;
+  }
+
+  .navbar-links {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 24px;
+    min-width: 0;
+  }
+
+  .navbar-links > a,
+  .navbar-user-name,
+  .logout-btn,
+  .notification-bell-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .navbar-links > a {
+    text-align: center;
+    line-height: 1.25;
+  }
+
+  .navbar-notifications-desktop {
+    display: flex;
+    margin: 0;
+  }
+
+  .navbar-notifications-mobile {
+    display: none;
+  }
+
+  .navbar-notifications-desktop .notification-bell-btn {
+    width: auto;
+    min-width: auto;
+    height: 44px;
+    padding: 0;
+    gap: 7px;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: #475569;
+  }
+
+  .navbar-notifications-desktop .notification-bell-btn:hover {
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+    color: #ff6b4a;
+  }
+
+  .navbar-notifications-desktop .notification-bell-btn:active {
+    transform: scale(0.98);
+  }
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+  .navbar-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+  }
+
+  .navbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+  }
+
+  .navbar-notifications-desktop {
+    display: none;
+  }
+
+  .navbar-notifications-mobile {
+    display: block;
+  }
+
+  .notification-bell-text {
+    display: none;
+  }
+
+  .navbar-notifications .notification-bell-btn {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 999px;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .navbar-notifications .notification-bell-btn:hover {
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+  }
+}
+@media (min-width: 769px) {
+  .navbar-notifications-desktop .notification-bell-btn {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: 44px;
+    padding: 0;
+    line-height: 1.2;
+  }
+
+  .navbar-notifications-desktop .notification-bell-icon {
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .navbar-notifications-desktop .notification-bell-text {
+    font-size: 0.95rem;
+    line-height: 1.1;
+    text-align: center;
+  }
+}
+@media (min-width: 769px) {
+  .navbar-notifications-desktop .notification-bell-btn {
+    position: relative;
+  }
+
+  .navbar-notifications-desktop .notification-bell-btn::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -6px;
+    width: 0;
+    height: 2px;
+    background: linear-gradient(135deg, #ff6b4a, #ff8c6e);
+    transition: width 0.25s ease;
+  }
+
+  .navbar-notifications-desktop .notification-bell-btn:hover::after {
+    width: 100%;
+  }
+}
+.notification-bell-btn,
+.hamburger {
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  transition:
+    transform 0.12s ease,
+    opacity 0.12s ease;
+}
+
+.notification-bell-btn:focus,
+.notification-bell-btn:focus-visible,
+.hamburger:focus,
+.hamburger:focus-visible {
+  outline: none;
+}
+
+.notification-bell-btn:active,
+.hamburger:active {
+  transform: scale(0.92);
+  opacity: 0.75;
+}
+
+@media (min-width: 769px) {
+  .navbar-notifications-desktop .notification-bell-btn:active {
+    transform: scale(0.98);
+    opacity: 0.85;
   }
 }

@@ -72,7 +72,8 @@ const Navbar = () => {
   const [loggingOut, setLoggingOut] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const accountDropdownRef = useRef(null);
-  const notificationsDropdownRef = useRef(null);
+  const desktopNotificationsDropdownRef = useRef(null);
+  const mobileNotificationsDropdownRef = useRef(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -363,9 +364,17 @@ const Navbar = () => {
         setAccountOpen(false);
       }
 
+      const clickedOutsideDesktopNotifications =
+        desktopNotificationsDropdownRef.current &&
+        !desktopNotificationsDropdownRef.current.contains(event.target);
+
+      const clickedOutsideMobileNotifications =
+        mobileNotificationsDropdownRef.current &&
+        !mobileNotificationsDropdownRef.current.contains(event.target);
+
       if (
-        notificationsDropdownRef.current &&
-        !notificationsDropdownRef.current.contains(event.target)
+        clickedOutsideDesktopNotifications &&
+        clickedOutsideMobileNotifications
       ) {
         setNotificationsOpen(false);
       }
@@ -416,6 +425,79 @@ const Navbar = () => {
     return null;
   };
 
+  const renderNotificationsMenu = ({ variant = "desktop" } = {}) => {
+    if (!isAuthenticated || user?.role === "admin") return null;
+
+    return (
+      <div
+        className={`navbar-notifications navbar-notifications-${variant}`}
+        ref={
+          variant === "mobile"
+            ? mobileNotificationsDropdownRef
+            : desktopNotificationsDropdownRef
+        }
+      >
+        <button
+          type="button"
+          className="notification-bell-btn"
+          onClick={toggleNotifications}
+          aria-expanded={notificationsOpen}
+          aria-controls="notifications-dropdown"
+          aria-label={`Obaveštenja${
+            unreadCount > 0 ? `, nepročitano ${unreadCount}` : ""
+          }`}
+        >
+          <span className="notification-bell-icon">🔔</span>
+          <span className="notification-bell-text">Obaveštenja</span>
+          {unreadCount > 0 && (
+            <span className="notification-badge">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </button>
+
+        {notificationsOpen && (
+          <div id="notifications-dropdown" className="notifications-dropdown">
+            <div className="notifications-dropdown-header">
+              <strong>Obaveštenja</strong>
+            </div>
+
+            {notificationsLoading ? (
+              <p className="notifications-state">Učitavanje...</p>
+            ) : notificationsError ? (
+              <p className="notifications-error">{notificationsError}</p>
+            ) : notifications.length === 0 ? (
+              <p className="notifications-state">Nema obaveštenja.</p>
+            ) : (
+              <div className="notifications-list">
+                {notifications.map((notification) => (
+                  <div
+                    key={notification._id}
+                    className={`notification-item ${
+                      notification.read ? "read" : "unread"
+                    } priority-${notification.priority || "info"}`}
+                  >
+                    <div className="notification-item-top">
+                      <span>
+                        {getNotificationPriorityLabel(notification.priority)}
+                      </span>
+                      <small>
+                        {formatNotificationDate(notification.publishedAt)}
+                      </small>
+                    </div>
+
+                    <h4>{notification.title}</h4>
+                    <p>{notification.message}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <nav className="navbar">
@@ -423,18 +505,6 @@ const Navbar = () => {
           <Link to="/" className="navbar-logo" onClick={closeMenu}>
             🎈 Svet Igraonica
           </Link>
-
-          <button
-            type="button"
-            className={`hamburger ${menuOpen ? "open" : ""}`}
-            onClick={toggleMenu}
-            aria-label={menuOpen ? "Zatvori meni" : "Otvori meni"}
-            aria-expanded={menuOpen}
-          >
-            <span></span>
-            <span></span>
-            <span></span>
-          </button>
 
           <div className={`navbar-links ${menuOpen ? "open" : ""}`}>
             <NavLink to="/" onClick={closeMenu}>
@@ -462,78 +532,7 @@ const Navbar = () => {
               <>
                 {renderAuthenticatedLinks()}
 
-                {user?.role !== "admin" && (
-                  <div
-                    className="navbar-notifications"
-                    ref={notificationsDropdownRef}
-                  >
-                    <button
-                      type="button"
-                      className="notification-bell-btn"
-                      onClick={toggleNotifications}
-                      aria-expanded={notificationsOpen}
-                      aria-controls="notifications-dropdown"
-                      aria-label={`Obaveštenja${unreadCount > 0 ? `, nepročitano ${unreadCount}` : ""}`}
-                    >
-                      🔔
-                      {unreadCount > 0 && (
-                        <span className="notification-badge">
-                          {unreadCount > 99 ? "99+" : unreadCount}
-                        </span>
-                      )}
-                    </button>
-
-                    {notificationsOpen && (
-                      <div
-                        id="notifications-dropdown"
-                        className="notifications-dropdown"
-                      >
-                        <div className="notifications-dropdown-header">
-                          <strong>Obaveštenja</strong>
-                        </div>
-
-                        {notificationsLoading ? (
-                          <p className="notifications-state">Učitavanje...</p>
-                        ) : notificationsError ? (
-                          <p className="notifications-error">
-                            {notificationsError}
-                          </p>
-                        ) : notifications.length === 0 ? (
-                          <p className="notifications-state">
-                            Nema obaveštenja.
-                          </p>
-                        ) : (
-                          <div className="notifications-list">
-                            {notifications.map((notification) => (
-                              <div
-                                key={notification._id}
-                                className={`notification-item ${
-                                  notification.read ? "read" : "unread"
-                                } priority-${notification.priority || "info"}`}
-                              >
-                                <div className="notification-item-top">
-                                  <span>
-                                    {getNotificationPriorityLabel(
-                                      notification.priority,
-                                    )}
-                                  </span>
-                                  <small>
-                                    {formatNotificationDate(
-                                      notification.publishedAt,
-                                    )}
-                                  </small>
-                                </div>
-
-                                <h4>{notification.title}</h4>
-                                <p>{notification.message}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
+                {renderNotificationsMenu({ variant: "desktop" })}
 
                 <div className="navbar-user" ref={accountDropdownRef}>
                   <button
@@ -602,6 +601,21 @@ const Navbar = () => {
                 </button>
               </>
             )}
+          </div>
+          <div className="navbar-actions">
+            {renderNotificationsMenu({ variant: "mobile" })}
+
+            <button
+              type="button"
+              className={`hamburger ${menuOpen ? "open" : ""}`}
+              onClick={toggleMenu}
+              aria-label={menuOpen ? "Zatvori meni" : "Otvori meni"}
+              aria-expanded={menuOpen}
+            >
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
           </div>
         </div>
       </nav>
